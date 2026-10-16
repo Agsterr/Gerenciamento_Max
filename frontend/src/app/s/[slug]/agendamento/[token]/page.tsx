@@ -52,7 +52,7 @@ export default function BookingPage() {
               Cancelar agendamento
             </Button>
           )}
-          <Link href={`/s/${slug}`} className="text-sm text-rose-600 hover:underline">
+          <Link href={`/s/${slug}`} className="text-sm text-brand-rose hover:underline">
             Fazer outro agendamento
           </Link>
         </div>

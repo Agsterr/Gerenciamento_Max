@@ -21,7 +21,7 @@ Checklist do que **já está feito no código** (✅) e do que **você precisa f
   backup do Android está desativado para ele.
 - ✅ Apps nativos (não são *webview* do site) com funções próprias: agendamentos salvos no aparelho, busca,
   agenda com ações rápidas e WhatsApp — atende App Store 4.2 (funcionalidade mínima).
-- ☐ Troque os ícones provisórios (`assets/icon.png`) pela identidade visual definitiva.
+- ✅ Ícones, ícone adaptativo e monocromático (Android 13), splash nativa e artes das lojas prontos (`brand/`, `store/`).
 - ☐ Contas de demonstração para a revisão (veja §4).
 
 ## 2. Google Play
@@ -35,6 +35,8 @@ Checklist do que **já está feito no código** (✅) e do que **você precisa f
 | *Predictive back* (`enableOnBackInvokedCallback`) e *edge-to-edge* | ✅ |
 | `<queries>` para abrir WhatsApp/links/e-mail no Android 11+ | ✅ |
 | R8/minificação no release | ✅ |
+| ID de pacote único (`io.github.agsterr.salaomax.*`, sem `com.example`) | ✅ |
+| Ficha: título ≤30, descrição curta ≤80, ícone 512, arte 1024×500, prints 1080×1920 | ✅ prontos em `store/<app>/android/` |
 | ☐ **Teste fechado**: contas pessoais criadas após nov/2023 precisam de **12 testadores por 14 dias** antes de produção | console |
 | ☐ Questionário de classificação de conteúdo (resposta: sem conteúdo sensível) | console |
 | ☐ Público-alvo: **18+** (não é app para crianças) | console |
@@ -58,16 +60,16 @@ Checklist do que **já está feito no código** (✅) e do que **você precisa f
 
 | Item | Situação |
 |---|---|
-| Bundle IDs `com.max.salao.cliente` / `com.max.salao.gestao` | ✅ / ☐ registrar no developer.apple.com e escolher o *Team* no Xcode |
+| Bundle IDs `io.github.agsterr.salaomax.cliente` / `io.github.agsterr.salaomax.gestao` | ✅ / ☐ registrar no developer.apple.com e escolher o *Team* no Xcode |
 | **Privacy Manifest** (`ios/Runner/PrivacyInfo.xcprivacy`) com tipos de dados coletados e motivo de API (`UserDefaults` CA92.1 no cliente) | ✅ (os plugins trazem seus próprios manifestos) |
 | `ITSAppUsesNonExemptEncryption = false` (só HTTPS; dispensa documentação de exportação) | ✅ `Info.plist` |
 | Exclusão de conta dentro do app (5.1.1(v)) | ✅ |
 | *Sign in with Apple* | ✅ não necessário: não há login com Google/Facebook (regra 4.8 só se aplica a login social) |
 | iOS mínimo 15.0 | ✅ |
-| Cliente: só iPhone, retrato · Gestão: iPhone + iPad (recepção) | ✅ ☐ enviar prints de iPad 13" para o Gestão |
+| Os dois apps: só iPhone, retrato (dispensa prints de iPad e revisão de layout em tablet; no iPad eles rodam em modo compatível) | ✅ |
 | ☐ Rótulos de privacidade no App Store Connect (mesmos dados do manifesto: Nome, Telefone; no Gestão + E-mail e Conteúdo do usuário; **não usados para rastreamento**, **vinculados ao usuário**, finalidade *Funcionalidade do app*) | console |
 | ☐ URL de suporte e de política de privacidade na ficha | console |
-| ☐ Prints 6.9" (iPhone) obrigatórios | console |
+| Prints 6.9" (1320×2868), textos, palavras-chave e notas da versão | ✅ prontos em `store/<app>/ios/` |
 
 ### Pagamentos (atenção à regra 3.1)
 O app não vende nada. Se no futuro você **cobrar assinatura dos salões**, não exiba preços, botões ou links de
@@ -88,3 +90,11 @@ próprio salão.
 > qualquer nome e telefone (ex.: 11 99999-0000). O agendamento aparece em "Meus horários" e pode ser cancelado.
 
 ☐ Crie essa conta e esse salão no ambiente de produção antes de enviar e mantenha-os com dados.
+
+## 5. Nome do app nas lojas
+
+Os nomes nas fichas são **"Salão Max: Agende seu horário"** / **"Salão Max: Agende Beleza"** (cliente) e
+**"Salão Max Gestão: Agenda"** / **"Salão Max Gestão"** (salão). Na App Store o nome precisa ser único:
+se o App Store Connect disser que já existe, use uma variação como "Salão Max Agenda" ou "Salão Max Beauty".
+Evite usar no nome ou nos ícones marcas de terceiros (WhatsApp, Instagram) — nas descrições, citá-las para
+explicar uma função é permitido.

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: Jakarta; font-weight: 800; src: url("../../core/fonts/PlusJakartaSans-ExtraBold.ttf"); }
+  @font-face { font-family: Jakarta; font-weight: 600; src: url("../../core/fonts/PlusJakartaSans-SemiBold.ttf"); }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: var(--w); height: var(--h); overflow: hidden; }
+  body { font-family: Jakarta, sans-serif; position: relative; }
+  .bg { position: absolute; inset: 0; }
+  .cliente .bg { background: linear-gradient(150deg, #FF6A9A 0%, #E5267A 45%, #8E2DE2 100%); }
+  .gestao  .bg { background: linear-gradient(150deg, #3A1A7A 0%, #22104D 55%, #140A2E 100%); }
+  .glow { position: absolute; border-radius: 50%; filter: blur(calc(var(--u) * 6)); }
+  .cliente .g1 { background: rgba(255,255,255,.35); width: 60%; height: 30%; left: -15%; top: -8%; }
+  .cliente .g2 { background: rgba(255,214,120,.35); width: 50%; height: 25%; right: -18%; bottom: 10%; }
+  .gestao  .g1 { background: rgba(229,38,122,.55); width: 70%; height: 32%; right: -25%; top: -10%; }
+  .gestao  .g2 { background: rgba(142,45,226,.45); width: 60%; height: 30%; left: -25%; bottom: 0%; }
+  .text { position: absolute; left: 0; right: 0; top: calc(var(--u) * 7); padding: 0 calc(var(--u) * 7); text-align: center; color: #fff; }
+  h1 { font-weight: 800; font-size: calc(var(--u) * 7.6); line-height: 1.08; letter-spacing: calc(var(--u) * -0.2); }
+  p  { font-weight: 600; font-size: calc(var(--u) * 3.6); opacity: .88; margin-top: calc(var(--u) * 2.2); line-height: 1.3; }
+  .phone {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    top: var(--phoneTop); width: var(--phoneW); aspect-ratio: 1320 / 2868;
+    background: #0E0A18; border-radius: calc(var(--phoneW) * 0.135); padding: calc(var(--phoneW) * 0.028);
+    box-shadow: 0 calc(var(--u) * 4) calc(var(--u) * 10) rgba(20, 5, 40, .45), inset 0 0 0 calc(var(--u)*.35) #2A2440;
+  }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: calc(var(--phoneW) * 0.11); overflow: hidden; background: var(--top); }
+  .status { position: absolute; top: 0; left: 0; right: 0; height: 6.2%; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 9%; color: var(--statusColor); font-weight: 800; font-size: calc(var(--phoneW) * 0.042); z-index: 2; }
+  .island { position: absolute; top: 1.6%; left: 50%; transform: translateX(-50%); width: 30%; height: 3.3%; background: #000; border-radius: 99px; z-index: 3; }
+  .shot { position: absolute; left: 0; right: 0; top: 6.2%; width: 100%; height: 93.8%; object-fit: cover; object-position: top; }
+  .icons { display: flex; gap: calc(var(--phoneW) * 0.015); align-items: center; }
+  .bars span { display: inline-block; width: calc(var(--phoneW) * .009); margin-left: calc(var(--phoneW) * .004); background: var(--statusColor); border-radius: 2px; }
+  .batt { width: calc(var(--phoneW) * .058); height: calc(var(--phoneW) * .028); border: 2px solid var(--statusColor); border-radius: 5px; padding: 2px; }
+  .batt div { width: 80%; height: 100%; background: var(--statusColor); border-radius: 2px; }
+</style>
+</head>
+<body>
+  <div class="bg"></div><div class="glow g1"></div><div class="glow g2"></div>
+  <div class="text"><h1 id="title"></h1><p id="subtitle"></p></div>
+  <div class="phone">
+    <div class="screen">
+      <div class="island"></div>
+      <div class="status"><span>9:41</span>
+        <span class="icons"><span class="bars"><span style="height:5px"></span><span style="height:8px"></span><span style="height:11px"></span><span style="height:14px"></span></span><span class="batt"><div></div></span></span>
+      </div>
+      <img class="shot" id="shot">
+    </div>
+  </div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const w = +q.get("w"), h = +q.get("h");
+  const r = document.documentElement.style;
+  r.setProperty("--w", w + "px"); r.setProperty("--h", h + "px");
+  r.setProperty("--u", w / 100 + "px");
+  r.setProperty("--top", q.get("top")); r.setProperty("--statusColor", q.get("status"));
+  // o celular ocupa ~74% da largura e "vaza" pela parte de baixo
+  const tall = h / w > 2; // iPhone 6.9" (1320x2868) x Play (1080x1920)
+  const phoneW = Math.min(w * (tall ? 0.82 : 0.70), h * 0.39);
+  r.setProperty("--phoneW", phoneW + "px");
+  r.setProperty("--phoneTop", (h * (tall ? 0.205 : 0.235)) + "px");
+  document.body.className = q.get("theme");
+  document.getElementById("title").textContent = q.get("title");
+  document.getElementById("subtitle").textContent = q.get("subtitle");
+  document.getElementById("shot").src = q.get("img");
+</script>
+</body>
+</html>

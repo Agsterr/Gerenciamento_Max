@@ -13,7 +13,7 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.max.salao.salao_cliente"
+    namespace = "io.github.agsterr.salaomax.cliente"
     // Google Play exige targetSdk recente (36 = Android 16).
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
@@ -24,7 +24,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.max.salao.cliente"
+        applicationId = "io.github.agsterr.salaomax.cliente"
         minSdk = 24
         targetSdk = 36
         // versionCode/versionName vêm do pubspec.yaml (version: 1.0.0+1).

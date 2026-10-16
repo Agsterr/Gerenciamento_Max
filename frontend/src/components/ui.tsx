@@ -8,9 +8,9 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const VARIANTS = {
-  primary: "bg-rose-600 text-white hover:bg-rose-700 disabled:bg-rose-300",
+  primary: "bg-brand text-white shadow-glow hover:brightness-105 disabled:opacity-50 disabled:shadow-none",
   secondary: "bg-white text-zinc-800 border border-zinc-300 hover:bg-zinc-50",
-  danger: "bg-white text-rose-700 border border-rose-200 hover:bg-rose-50",
+  danger: "bg-white text-brand-rose border border-rose-200 hover:bg-rose-50",
   ghost: "text-zinc-600 hover:bg-zinc-100",
 };
 
@@ -18,7 +18,7 @@ export function Button({ variant = "primary", size = "md", className = "", ...pr
   const sizing = size === "sm" ? "px-2.5 py-1 text-sm" : "px-4 py-2";
   return (
     <button
-      className={`rounded-lg font-medium transition disabled:cursor-not-allowed ${sizing} ${VARIANTS[variant]} ${className}`}
+      className={`rounded-xl font-bold transition disabled:cursor-not-allowed ${sizing} ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );
@@ -29,9 +29,9 @@ type FieldProps = React.InputHTMLAttributes<HTMLInputElement> & { label: string 
 export function Field({ label, className = "", ...props }: FieldProps) {
   return (
     <label className={`block text-sm ${className}`}>
-      <span className="mb-1 block font-medium text-zinc-700">{label}</span>
+      <span className="mb-1 block font-semibold text-brand-ink">{label}</span>
       <input
-        className="w-full rounded-lg border border-zinc-300 px-3 py-2 outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100"
+        className="w-full rounded-xl border border-[#F1E3EB] bg-white px-3 py-2.5 outline-none focus:border-brand-rose focus:ring-4 focus:ring-brand-pink/15"
         {...props}
       />
     </label>
@@ -43,9 +43,9 @@ type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & { label: stri
 export function Select({ label, className = "", children, ...props }: SelectProps) {
   return (
     <label className={`block text-sm ${className}`}>
-      <span className="mb-1 block font-medium text-zinc-700">{label}</span>
+      <span className="mb-1 block font-semibold text-brand-ink">{label}</span>
       <select
-        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 outline-none focus:border-rose-500"
+        className="w-full rounded-xl border border-[#F1E3EB] bg-white px-3 py-2.5 outline-none focus:border-brand-rose"
         {...props}
       >
         {children}
@@ -55,13 +55,13 @@ export function Select({ label, className = "", children, ...props }: SelectProp
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-zinc-200 bg-white p-4 shadow-sm ${className}`}>{children}</div>;
+  return <div className={`shadow-soft rounded-2xl bg-white p-4 ${className}`}>{children}</div>;
 }
 
 export function PageHeader({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <h1 className="text-2xl font-semibold text-zinc-900">{title}</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight text-brand-ink">{title}</h1>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
     </div>
   );
@@ -69,7 +69,7 @@ export function PageHeader({ title, children }: { title: string; children?: Reac
 
 export function ErrorMessage({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{message}</p>;
+  return <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-brand-rose">{message}</p>;
 }
 
 export function Empty({ children }: { children: React.ReactNode }) {

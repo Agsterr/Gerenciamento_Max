@@ -16,11 +16,29 @@ class CatalogScreen extends StatelessWidget {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Cadastros'),
-          bottom: const TabBar(tabs: [Tab(text: 'Serviços'), Tab(text: 'Profissionais'), Tab(text: 'Produtos')]),
-        ),
-        body: TabBarView(children: [
+        body: Column(children: [
+          GradientHeader(
+            gradient: Brand.nightGradient,
+            bottomPadding: 16,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Cadastros', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white)),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(16)),
+                child: TabBar(
+                  dividerColor: Colors.transparent,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicator: BoxDecoration(gradient: Brand.gradient, borderRadius: BorderRadius.circular(12)),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white70,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w800),
+                  tabs: const [Tab(text: 'Serviços'), Tab(text: 'Equipe'), Tab(text: 'Produtos')],
+                ),
+              ),
+            ]),
+          ),
+          Expanded(child: TabBarView(children: [
           _CrudList<ServiceItem>(
             api: session.api,
             path: '/api/services',
@@ -44,12 +62,18 @@ class CatalogScreen extends StatelessWidget {
               'active': s?.active ?? true,
             },
             id: (s) => s.id,
-            tile: (s, _, onTap) => ListTile(
+            tile: (s, _, onTap) => _ItemCard(
               onTap: onTap,
-              title: Text(s.active ? s.name : '${s.name} (inativo)'),
-              subtitle: Text('${s.durationMinutes} min · custo ${formatMoney(s.cost)}'
-                  '${s.price > 0 ? ' · margem ${((s.price - s.cost) / s.price * 100).round()}%' : ''}'),
-              trailing: Text(formatMoney(s.price)),
+              inactive: !s.active,
+              leading: ServiceIcon(s.name),
+              title: s.name,
+              pills: [
+                Pill('${s.durationMinutes} min', icon: Icons.schedule_rounded),
+                if (s.price > 0)
+                  Pill('margem ${((s.price - s.cost) / s.price * 100).round()}%',
+                      icon: Icons.trending_up_rounded, color: const Color(0xFFDCFCE7), textColor: const Color(0xFF15803D)),
+              ],
+              trailing: Text(formatMoney(s.price), style: const TextStyle(fontWeight: FontWeight.w800, color: Brand.rose, fontSize: 16)),
             ),
           ),
           _CrudList<Professional>(
@@ -71,11 +95,14 @@ class CatalogScreen extends StatelessWidget {
               'active': p?.active ?? true,
             },
             id: (p) => p.id,
-            tile: (p, _, onTap) => ListTile(
+            tile: (p, _, onTap) => _ItemCard(
               onTap: onTap,
-              title: Text(p.active ? p.name : '${p.name} (inativo)'),
-              subtitle: Text(p.phone != null ? formatPhone(p.phone!) : 'Sem telefone'),
-              trailing: Text('${formatQuantity(p.commissionPercent)}%'),
+              inactive: !p.active,
+              leading: InitialsAvatar(p.name, size: 48),
+              title: p.name,
+              pills: [Pill(p.phone != null ? formatPhone(p.phone!) : 'Sem telefone', icon: Icons.phone_outlined)],
+              trailing: Pill('${formatQuantity(p.commissionPercent)}% comissão',
+                  color: const Color(0xFFEDE9FE), textColor: const Color(0xFF6D28D9)),
             ),
           ),
           _CrudList<Product>(
@@ -101,18 +128,34 @@ class CatalogScreen extends StatelessWidget {
               'active': p?.active ?? true,
             },
             id: (p) => p.id,
-            tile: (p, reload, onTap) => ListTile(
+            tile: (p, reload, onTap) => _ItemCard(
               onTap: onTap,
-              title: Text(p.active ? p.name : '${p.name} (inativo)'),
-              subtitle: Text('Estoque ${formatQuantity(p.stock)} ${p.unit}${p.lowStock ? ' · BAIXO' : ''}',
-                  style: p.lowStock ? TextStyle(color: Theme.of(context).colorScheme.error) : null),
-              trailing: IconButton(
+              inactive: !p.active,
+              leading: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: p.lowStock ? const Color(0xFFFFE4E6) : const Color(0xFFF3E8FF),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(Icons.inventory_2_outlined, color: p.lowStock ? const Color(0xFFBE123C) : const Color(0xFF7C3AED)),
+              ),
+              title: p.name,
+              pills: [
+                Pill('${formatQuantity(p.stock)} ${p.unit}',
+                    icon: p.lowStock ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
+                    color: p.lowStock ? const Color(0xFFFFE4E6) : const Color(0xFFDCFCE7),
+                    textColor: p.lowStock ? const Color(0xFFBE123C) : const Color(0xFF15803D)),
+                if (p.salePrice > 0) Pill(formatMoney(p.salePrice), icon: Icons.sell_outlined),
+              ],
+              trailing: IconButton.filledTonal(
                 tooltip: 'Movimentar estoque',
-                icon: const Icon(Icons.swap_vert),
+                icon: const Icon(Icons.swap_vert_rounded),
                 onPressed: () => _moveStock(context, session.api, p, reload),
               ),
             ),
           ),
+        ])),
         ]),
       ),
     );
@@ -240,7 +283,7 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
     super.build(context);
     return Scaffold(
       floatingActionButton: widget.canEdit
-          ? FloatingActionButton(heroTag: widget.path, tooltip: 'Novo ${widget.title}', onPressed: _edit, child: const Icon(Icons.add))
+          ? SizedBox(width: 140, child: GradientButton(label: 'Novo', icon: Icons.add_rounded, onPressed: _edit))
           : null,
       body: _error != null
           ? ErrorRetry(message: _error!, onRetry: _load)
@@ -249,15 +292,58 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(
-                    padding: const EdgeInsets.only(bottom: 88),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
                     children: [
                       if (_items!.isEmpty)
-                        const Padding(padding: EdgeInsets.all(32), child: Center(child: Text('Nenhum cadastro ainda.'))),
+                        EmptyState(icon: Icons.add_box_outlined, title: 'Nenhum ${widget.title} ainda', message: 'Toque em "Novo" para cadastrar.'),
                       for (final item in _items!)
-                        widget.tile(item, _load, widget.canEdit ? () => _edit(item) : null),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: widget.tile(item, _load, widget.canEdit ? () => _edit(item) : null),
+                        ),
                     ],
                   ),
                 ),
     );
   }
+}
+
+class _ItemCard extends StatelessWidget {
+  const _ItemCard({
+    required this.leading,
+    required this.title,
+    required this.pills,
+    required this.trailing,
+    required this.onTap,
+    required this.inactive,
+  });
+
+  final Widget leading;
+  final String title;
+  final List<Widget> pills;
+  final Widget trailing;
+  final VoidCallback? onTap;
+  final bool inactive;
+
+  @override
+  Widget build(BuildContext context) => Opacity(
+        opacity: inactive ? 0.55 : 1,
+        child: SoftCard(
+          onTap: onTap,
+          padding: const EdgeInsets.all(12),
+          child: Row(children: [
+            leading,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(inactive ? '$title (inativo)' : title, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 6),
+                Wrap(spacing: 6, runSpacing: 6, children: pills),
+              ]),
+            ),
+            const SizedBox(width: 8),
+            trailing,
+          ]),
+        ),
+      );
 }

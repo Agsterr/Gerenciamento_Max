@@ -25,8 +25,8 @@ export function SlotPicker({
             type="button"
             key={s.time}
             onClick={() => onChange(time)}
-            className={`rounded-lg border px-2 py-2 text-sm font-medium ${
-              value === time ? "border-rose-600 bg-rose-600 text-white" : "border-zinc-300 bg-white hover:border-rose-400"
+            className={`rounded-xl px-2 py-2.5 text-sm font-extrabold transition ${
+              value === time ? "bg-brand shadow-glow text-white" : "border-2 border-[#F1E3EB] bg-white hover:border-brand-pink"
             }`}
           >
             {time}

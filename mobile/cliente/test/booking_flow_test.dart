@@ -14,6 +14,9 @@ void main() {
   setUpAll(() => initializeDateFormatting('pt_BR'));
 
   testWidgets('cliente escolhe serviço, horário e agenda', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     SharedPreferences.setMockInitialValues({});
     final store = await BookingStore.load();
     Map<String, dynamic>? bookingBody;
@@ -55,18 +58,18 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(home: SalonScreen(slug: 'bella', store: store, api: api)));
     await tester.pumpAndSettle();
-    expect(find.text('Studio Bella'), findsOneWidget);
+    expect(find.text('Studio Bella'), findsWidgets);
 
     await tester.tap(find.text('Corte'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('10:00'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.widgetWithText(TextFormField, 'Nome'));
+    await tester.pumpAndSettle();
 
     await tester.enterText(find.widgetWithText(TextFormField, 'Nome'), 'Maria Souza');
     await tester.enterText(find.widgetWithText(TextFormField, 'WhatsApp'), '11988887777');
-    await tester.ensureVisible(find.textContaining('Confirmar Corte'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('Confirmar Corte'));
+    await tester.tap(find.text('Agendar'));
     await tester.pumpAndSettle();
 
     expect(bookingBody?['name'], 'Maria Souza');

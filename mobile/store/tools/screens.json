@@ -1,0 +1,90 @@
+{
+  "cliente": [
+    {
+      "file": "c1-home.png",
+      "title": "Seu horário de beleza em 1 minuto",
+      "subtitle": "Sem ligação, sem cadastro, sem espera",
+      "top": "#EB3782",
+      "status": "#FFFFFF"
+    },
+    {
+      "file": "c3-salao.png",
+      "title": "Escolha o serviço e quem vai atender",
+      "subtitle": "Preços e duração na palma da mão",
+      "top": "#E9317F",
+      "status": "#FFFFFF"
+    },
+    {
+      "file": "c4-horarios.png",
+      "title": "Horários livres em tempo real",
+      "subtitle": "Toque e pronto: o horário é seu",
+      "top": "#E5267A",
+      "status": "#FFFFFF"
+    },
+    {
+      "file": "c5-confirmado.png",
+      "title": "Confirmação na hora",
+      "subtitle": "Comprovante com data, hora e profissional",
+      "top": "#EE3D85",
+      "status": "#FFFFFF"
+    },
+    {
+      "file": "c6-meus-horarios.png",
+      "title": "Seus horários sempre à mão",
+      "subtitle": "Consulte ou cancele quando quiser",
+      "top": "#E6297B",
+      "status": "#FFFFFF"
+    },
+    {
+      "file": "c2-busca.png",
+      "title": "Encontre seu salão favorito",
+      "subtitle": "Pelo nome ou pelo link que ele enviou",
+      "top": "#EB3782",
+      "status": "#FFFFFF"
+    }
+  ],
+  "gestao": [
+    {
+      "file": "g1-agenda.png",
+      "title": "Sua agenda organizada num toque",
+      "subtitle": "Toda a equipe, status e valores do dia",
+      "top": "#2A135C",
+      "status": "#FFFFFF"
+    },
+    {
+      "file": "g2-novo.png",
+      "title": "Agende, encaixe e remarque fácil",
+      "subtitle": "Horários livres ou manual, com duração livre",
+      "top": "#13092A",
+      "status": "#FFFFFF"
+    },
+    {
+      "file": "g3-financeiro.png",
+      "title": "Saiba quanto seu salão lucra",
+      "subtitle": "Receita, custos, comissões e ranking",
+      "top": "#271257",
+      "status": "#FFFFFF"
+    },
+    {
+      "file": "g4-cadastros.png",
+      "title": "Serviços, equipe e estoque",
+      "subtitle": "Margem de lucro e alerta de estoque baixo",
+      "top": "#231050",
+      "status": "#FFFFFF"
+    },
+    {
+      "file": "g5-clientes.png",
+      "title": "Clientes com histórico",
+      "subtitle": "Observações e contato com um toque",
+      "top": "#241151",
+      "status": "#FFFFFF"
+    },
+    {
+      "file": "g0-login.png",
+      "title": "Tudo do seu salão em um só app",
+      "subtitle": "Agenda, clientes, estoque e financeiro",
+      "top": "#3E1871",
+      "status": "#FFFFFF"
+    }
+  ]
+}

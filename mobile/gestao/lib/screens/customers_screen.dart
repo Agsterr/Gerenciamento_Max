@@ -65,53 +65,89 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final items = _items;
     return Scaffold(
-      appBar: AppBar(title: const Text('Clientes')),
-      floatingActionButton: FloatingActionButton(tooltip: 'Novo cliente', onPressed: _edit, child: const Icon(Icons.person_add)),
-      body: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: TextField(
-            decoration: const InputDecoration(prefixIcon: Icon(Icons.search), labelText: 'Buscar nome ou telefone'),
-            onChanged: (v) {
-              _query = v.trim();
-              _debounce?.cancel();
-              _debounce = Timer(const Duration(milliseconds: 350), _load);
-            },
-          ),
-        ),
-        Expanded(
-          child: _error != null
-              ? ErrorRetry(message: _error!, onRetry: _load)
-              : _items == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: _items!.isEmpty
-                          ? ListView(children: const [Padding(padding: EdgeInsets.all(32), child: Center(child: Text('Nenhum cliente.')))])
-                          : ListView.builder(
-                              padding: const EdgeInsets.only(bottom: 88),
-                              itemCount: _items!.length,
-                              itemBuilder: (context, i) {
-                                final c = _items![i];
-                                return ListTile(
-                                  title: Text(c.name),
-                                  subtitle: Text([formatPhone(c.phone), if (c.notes != null) c.notes!].join(' · ')),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => _CustomerDetail(api: _api, customer: c, onEdit: () => _edit(c))),
-                                  ),
-                                  trailing: IconButton(
-                                    tooltip: 'WhatsApp',
-                                    icon: const Icon(Icons.chat_outlined),
-                                    onPressed: () => openWhatsApp(c.phone),
-                                  ),
-                                );
-                              },
-                            ),
+      floatingActionButton: SizedBox(
+        width: 150,
+        child: GradientButton(label: 'Cliente', icon: Icons.person_add_alt_1_rounded, onPressed: _edit),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 110),
+          children: [
+            GradientHeader(
+              gradient: Brand.nightGradient,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Clientes', style: text.headlineSmall?.copyWith(color: Colors.white)),
+                Text(items == null ? ' ' : '${items.length} cliente(s)${_query.isEmpty ? '' : ' encontrados'}',
+                    style: text.bodyMedium?.copyWith(color: Colors.white70)),
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Buscar nome ou telefone',
+                    floatingLabelBehavior: FloatingLabelBehavior.never,
+                    prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                  ),
+                  onChanged: (v) {
+                    _query = v.trim();
+                    _debounce?.cancel();
+                    _debounce = Timer(const Duration(milliseconds: 350), _load);
+                  },
+                ),
+              ]),
+            ),
+            if (_error != null)
+              ErrorRetry(message: _error!, onRetry: _load)
+            else if (items == null)
+              const Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator()))
+            else if (items.isEmpty)
+              const EmptyState(icon: Icons.people_outline_rounded, title: 'Nenhum cliente', message: 'Clientes que agendam online entram aqui automaticamente.')
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Column(children: [
+                  for (final c in items)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: SoftCard(
+                        padding: const EdgeInsets.all(12),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => _CustomerDetail(api: _api, customer: c, onEdit: () => _edit(c))),
+                        ),
+                        child: Row(children: [
+                          InitialsAvatar(c.name, size: 46),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(c.name, style: text.titleSmall),
+                              Text(formatPhone(c.phone), style: text.bodySmall?.copyWith(color: Brand.muted)),
+                              if (c.notes != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Pill(c.notes!, icon: Icons.sticky_note_2_outlined),
+                                ),
+                            ]),
+                          ),
+                          IconButton.filledTonal(
+                            tooltip: 'WhatsApp',
+                            style: IconButton.styleFrom(backgroundColor: const Color(0xFFDCFCE7), foregroundColor: Brand.whatsapp),
+                            icon: const Icon(Icons.chat_rounded),
+                            onPressed: () => openWhatsApp(c.phone),
+                          ),
+                        ]),
+                      ),
                     ),
+                ]),
+              ),
+          ],
         ),
-      ]),
+      ),
     );
   }
 }

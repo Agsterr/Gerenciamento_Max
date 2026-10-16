@@ -27,16 +27,22 @@ class _SalonScreenState extends State<SalonScreen> {
   String? _time;
 
   final _form = GlobalKey<FormState>();
+  final _scroll = ScrollController();
   late final _name = TextEditingController(text: widget.store.name);
   late final _phone = TextEditingController(text: widget.store.phone);
   bool _remember = true;
   bool _busy = false;
+  bool _collapsed = false;
 
   String get _base => '/api/public/salons/${widget.slug}';
 
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(() {
+      final collapsed = _scroll.hasClients && _scroll.offset > 120;
+      if (collapsed != _collapsed) setState(() => _collapsed = collapsed);
+    });
     _load();
   }
 
@@ -44,6 +50,7 @@ class _SalonScreenState extends State<SalonScreen> {
   void dispose() {
     _name.dispose();
     _phone.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -87,8 +94,17 @@ class _SalonScreenState extends State<SalonScreen> {
     }
   }
 
+  void _scrollToEnd() => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scroll.hasClients) {
+          _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 400), curve: Curves.easeOut);
+        }
+      });
+
   Future<void> _book() async {
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      _scrollToEnd();
+      return;
+    }
     setState(() => _busy = true);
     try {
       final json = await widget.api.post('$_base/bookings', {
@@ -108,7 +124,10 @@ class _SalonScreenState extends State<SalonScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => BookingScreen(slug: widget.slug, token: booking.token, api: widget.api, justBooked: true)),
+        MaterialPageRoute(
+          builder: (_) => BookingScreen(
+              slug: widget.slug, token: booking.token, api: widget.api, salonName: _salon!.name, justBooked: true),
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -123,146 +142,278 @@ class _SalonScreenState extends State<SalonScreen> {
   @override
   Widget build(BuildContext context) {
     final salon = _salon;
+    if (_error != null) return Scaffold(appBar: AppBar(), body: ErrorRetry(message: _error!, onRetry: _load));
+    if (salon == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
     return Scaffold(
-      appBar: AppBar(title: Text(salon?.name ?? 'Salão')),
-      body: switch ((salon, _error)) {
-        (_, final String error) => ErrorRetry(message: error, onRetry: _load),
-        (null, _) => const Center(child: CircularProgressIndicator()),
-        (final PublicSalon salon, _) => _content(salon),
-      },
+      body: CustomScrollView(
+        controller: _scroll,
+        slivers: [
+          _header(salon),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 140),
+            sliver: SliverList.list(children: _steps(salon)),
+          ),
+        ],
+      ),
+      bottomNavigationBar: _service == null ? null : _bottomBar(),
     );
   }
 
-  Widget _content(PublicSalon salon) {
+  Widget _header(PublicSalon salon) {
     final text = Theme.of(context).textTheme;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (salon.address != null) Text(salon.address!, style: text.bodyMedium),
-        const SizedBox(height: 8),
-        _Step(n: 1, title: 'Serviço', children: [
-          if (salon.services.isEmpty) const Text('Nenhum serviço disponível no momento.'),
-          for (final s in salon.services)
-            Card(
-              color: _service?.id == s.id ? Theme.of(context).colorScheme.primaryContainer : null,
-              child: ListTile(
-                title: Text(s.name),
-                subtitle: Text('${s.durationMinutes} min${s.description != null ? ' · ${s.description}' : ''}'),
-                trailing: Text(formatMoney(s.price), style: text.titleMedium),
-                onTap: () {
-                  setState(() => _service = s);
-                  _loadSlots();
-                },
+    return SliverAppBar(
+      pinned: true,
+      expandedHeight: 200,
+      backgroundColor: Brand.rose,
+      foregroundColor: Colors.white,
+      title: AnimatedOpacity(
+        opacity: _collapsed ? 1 : 0,
+        duration: const Duration(milliseconds: 150),
+        child: Text(salon.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+      ),
+      flexibleSpace: FlexibleSpaceBar(
+        collapseMode: CollapseMode.parallax,
+        background: Container(
+          decoration: const BoxDecoration(
+            gradient: Brand.gradient,
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+          ),
+          alignment: Alignment.bottomLeft,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: InitialsAvatar(salon.name, size: 60),
               ),
-            ),
-        ]),
-        if (_service != null) ...[
-          _Step(n: 2, title: 'Profissional', children: [
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              ChoiceChip(
-                label: const Text('Sem preferência'),
-                selected: _professionalId == null,
-                onSelected: (_) {
-                  setState(() => _professionalId = null);
-                  _loadSlots();
-                },
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(salon.name,
+                      style: text.headlineSmall?.copyWith(color: Colors.white), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  if (salon.address != null)
+                    Row(children: [
+                      const Icon(Icons.place_outlined, size: 16, color: Colors.white70),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(salon.address!,
+                            style: text.bodySmall?.copyWith(color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                    ]),
+                ]),
               ),
-              for (final p in salon.professionals)
-                ChoiceChip(
-                  label: Text(p.name),
-                  selected: _professionalId == p.id,
-                  onSelected: (_) {
-                    setState(() => _professionalId = p.id);
-                    _loadSlots();
-                  },
-                ),
+            ]),
+            const SizedBox(height: 14),
+            Wrap(spacing: 8, children: [
+              Pill('${salon.services.length} serviços', icon: Icons.auto_awesome, color: Colors.white.withValues(alpha: 0.2), textColor: Colors.white),
+              Pill('${salon.professionals.length} profissionais',
+                  icon: Icons.people_alt_outlined, color: Colors.white.withValues(alpha: 0.2), textColor: Colors.white),
             ]),
           ]),
-          _Step(n: 3, title: 'Dia e horário', children: [
-            DayPicker(
-              days: _days(salon),
-              selected: _day,
-              label: formatWeekdayShort,
-              onSelected: (d) {
-                setState(() => _day = d);
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _steps(PublicSalon salon) {
+    final text = Theme.of(context).textTheme;
+    return [
+      const SectionTitle('1. Escolha o serviço'),
+      if (salon.services.isEmpty) const Text('Nenhum serviço disponível no momento.'),
+      for (final s in salon.services)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: SoftCard(
+            border: Border.all(color: _service?.id == s.id ? Brand.rose : Colors.transparent, width: 2),
+            onTap: () {
+              setState(() => _service = s);
+              _loadSlots();
+            },
+            child: Row(children: [
+              ServiceIcon(s.name, selected: _service?.id == s.id),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(s.name, style: text.titleMedium),
+                  const SizedBox(height: 4),
+                  Pill('${s.durationMinutes} min', icon: Icons.schedule_rounded),
+                ]),
+              ),
+              Text(formatMoney(s.price), style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800)),
+            ]),
+          ),
+        ),
+      if (_service != null) ...[
+        const SectionTitle('2. Com quem?'),
+        SizedBox(
+          height: 104,
+          child: ListView(scrollDirection: Axis.horizontal, children: [
+            _ProfessionalOption(
+              name: 'Qualquer um',
+              icon: Icons.shuffle_rounded,
+              selected: _professionalId == null,
+              onTap: () {
+                setState(() => _professionalId = null);
                 _loadSlots();
               },
             ),
-            const SizedBox(height: 12),
-            if (_slots == null)
-              const Center(child: CircularProgressIndicator())
-            else
-              SlotGrid(slots: _slots!, selected: _time, onSelected: (s) => setState(() => _time = s.time)),
+            for (final p in salon.professionals)
+              _ProfessionalOption(
+                name: p.name,
+                selected: _professionalId == p.id,
+                onTap: () {
+                  setState(() => _professionalId = p.id);
+                  _loadSlots();
+                },
+              ),
           ]),
-        ],
-        if (_time != null)
-          _Step(n: 4, title: 'Seus dados', children: [
-            Form(
-              key: _form,
-              child: Column(children: [
-                TextFormField(
-                  controller: _name,
-                  decoration: const InputDecoration(labelText: 'Nome'),
-                  textCapitalization: TextCapitalization.words,
-                  autofillHints: const [AutofillHints.name],
-                  validator: (v) => (v ?? '').trim().isEmpty ? 'Informe seu nome' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _phone,
-                  decoration: const InputDecoration(labelText: 'WhatsApp', hintText: '(11) 99999-9999'),
-                  keyboardType: TextInputType.phone,
-                  autofillHints: const [AutofillHints.telephoneNumber],
-                  validator: (v) => (v ?? '').replaceAll(RegExp(r'\D'), '').length < 10 ? 'Telefone com DDD' : null,
-                ),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _remember,
-                  onChanged: (v) => setState(() => _remember = v ?? false),
-                  title: const Text('Lembrar meus dados neste aparelho'),
-                ),
-                Text(
-                  'Seu nome e telefone são enviados apenas para ${salon.name}, para confirmar o horário. '
-                  'Veja a Política de Privacidade em "Sobre".',
-                  style: text.bodySmall,
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _busy ? null : _book,
-                    child: Text(_busy ? 'Agendando...' : 'Confirmar ${_service!.name} às $_time'),
-                  ),
+        ),
+        const SectionTitle('3. Quando?'),
+        DayPicker(
+          days: _days(salon),
+          selected: _day,
+          onSelected: (d) {
+            setState(() => _day = d);
+            _loadSlots();
+          },
+        ),
+        const SizedBox(height: 16),
+        if (_slots == null)
+          const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+        else
+          SlotGrid(
+            slots: _slots!,
+            selected: _time,
+            onSelected: (s) {
+              setState(() => _time = s.time);
+              _scrollToEnd();
+            },
+          ),
+      ],
+      if (_time != null) ...[
+        const SectionTitle('4. Seus dados'),
+        SoftCard(
+          child: Form(
+            key: _form,
+            child: Column(children: [
+              TextFormField(
+                controller: _name,
+                decoration: const InputDecoration(labelText: 'Nome', prefixIcon: Icon(Icons.person_outline_rounded)),
+                textCapitalization: TextCapitalization.words,
+                autofillHints: const [AutofillHints.name],
+                validator: (v) => (v ?? '').trim().isEmpty ? 'Informe seu nome' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phone,
+                decoration: const InputDecoration(
+                    labelText: 'WhatsApp', hintText: '(11) 99999-9999', prefixIcon: Icon(Icons.phone_iphone_rounded)),
+                keyboardType: TextInputType.phone,
+                autofillHints: const [AutofillHints.telephoneNumber],
+                validator: (v) => (v ?? '').replaceAll(RegExp(r'\D'), '').length < 10 ? 'Telefone com DDD' : null,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _remember,
+                onChanged: (v) => setState(() => _remember = v),
+                title: const Text('Lembrar meus dados neste aparelho'),
+              ),
+              Row(children: [
+                const Icon(Icons.lock_outline_rounded, size: 16, color: Brand.muted),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('Seus dados vão apenas para ${salon.name}, para confirmar o horário.',
+                      style: text.bodySmall?.copyWith(color: Brand.muted)),
                 ),
               ]),
+            ]),
+          ),
+        ),
+      ],
+    ];
+  }
+
+  Widget _bottomBar() {
+    final text = Theme.of(context).textTheme;
+    final summary = _time == null
+        ? 'Escolha um horário'
+        : '${formatWeekdayShort(_day!)}, ${_day!.day} de ${formatMonthShort(_day!)} · $_time';
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 24, offset: const Offset(0, -6))],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+          child: Row(children: [
+            Expanded(
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_service!.name, style: text.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(summary, style: text.bodySmall?.copyWith(color: Brand.muted)),
+                Text(formatMoney(_service!.price), style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800)),
+              ]),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 170,
+              child: GradientButton(
+                label: 'Agendar',
+                icon: Icons.check_rounded,
+                loading: _busy,
+                onPressed: _time == null ? null : _book,
+              ),
             ),
           ]),
-      ],
+        ),
+      ),
     );
   }
 }
 
-class _Step extends StatelessWidget {
-  const _Step({required this.n, required this.title, required this.children});
+class _ProfessionalOption extends StatelessWidget {
+  const _ProfessionalOption({required this.name, required this.selected, required this.onTap, this.icon});
 
-  final int n;
-  final String title;
-  final List<Widget> children;
+  final String name;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              CircleAvatar(radius: 12, child: Text('$n', style: const TextStyle(fontSize: 12))),
-              const SizedBox(width: 8),
-              Text(title, style: Theme.of(context).textTheme.titleMedium),
-            ]),
-            const SizedBox(height: 8),
-            ...children,
-          ],
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: name,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 84,
+          margin: const EdgeInsets.only(right: 10),
+          child: Column(children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(shape: BoxShape.circle, gradient: selected ? Brand.gradient : null),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: InitialsAvatar(name, size: 58, icon: icon),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontWeight: selected ? FontWeight.w800 : FontWeight.w600, color: selected ? Brand.rose : null)),
+          ]),
         ),
-      );
+      ),
+    );
+  }
 }

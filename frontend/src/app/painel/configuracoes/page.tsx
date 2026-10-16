@@ -55,7 +55,7 @@ export default function SettingsPage() {
               Copiar
             </Button>
           </div>
-          <a href={publicUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-rose-600 hover:underline">
+          <a href={publicUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-brand-rose hover:underline">
             Abrir página do cliente →
           </a>
         </Card>
@@ -86,7 +86,7 @@ export default function SettingsPage() {
                     key={d.value}
                     onClick={() => toggleDay(d.value)}
                     className={`rounded-lg border px-3 py-1.5 text-sm ${
-                      days.includes(d.value) ? "border-rose-600 bg-rose-600 text-white" : "border-zinc-300 bg-white"
+                      days.includes(d.value) ? "border-brand-rose bg-brand-rose text-white" : "border-zinc-300 bg-white"
                     }`}
                   >
                     {d.label}
@@ -107,7 +107,7 @@ export default function SettingsPage() {
           <p className="mb-3 text-sm text-zinc-600">
             Excluir a conta remove seu acesso. Se você for o último dono, o salão e todos os dados são apagados.
           </p>
-          <a href="/excluir-conta" className="text-sm font-medium text-rose-700 hover:underline">
+          <a href="/excluir-conta" className="text-sm font-medium text-brand-rose hover:underline">
             Excluir conta →
           </a>
         </Card>

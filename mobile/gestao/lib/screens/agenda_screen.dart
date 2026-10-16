@@ -108,99 +108,284 @@ class _AgendaScreenState extends State<AgendaScreen> {
     );
   }
 
+  /// Semana (seg–dom) do dia selecionado, para a faixa de dias do cabeçalho.
+  List<DateTime> get _week {
+    final monday = _day.subtract(Duration(days: _day.weekday - 1));
+    return [for (var i = 0; i < 7; i++) monday.add(Duration(days: i))];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
     final items = _items;
     final professionals = {for (final a in items ?? <Appointment>[]) a.professional.id: a.professional.name};
     final visible = (items ?? []).where((a) => _professionalFilter == null || a.professional.id == _professionalFilter).toList();
-    final active = visible.where((a) => a.status != AppointmentStatus.canceled && a.status != AppointmentStatus.noShow);
+    final active = visible.where((a) => a.status != AppointmentStatus.canceled && a.status != AppointmentStatus.noShow).toList();
+    final firstName = widget.session.user.name.split(' ').first;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Agenda'),
-        actions: [
-          IconButton(tooltip: 'Dia anterior', onPressed: () => _go(-1), icon: const Icon(Icons.chevron_left)),
-          TextButton(onPressed: _pickDay, child: Text(formatDate(_day))),
-          IconButton(tooltip: 'Próximo dia', onPressed: () => _go(1), icon: const Icon(Icons.chevron_right)),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: _GradientFab(
         onPressed: () async {
           final ok = await showNewAppointmentSheet(context, api: _api, day: _day);
           if (ok) _load();
         },
-        icon: const Icon(Icons.add),
-        label: const Text('Agendar'),
       ),
-      body: _error != null
-          ? ErrorRetry(message: _error!, onRetry: _load)
-          : items == null
-              ? const Center(child: CircularProgressIndicator())
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                    children: [
-                      Text(formatWeekday(_day), style: Theme.of(context).textTheme.titleMedium),
-                      Text('${active.length} atendimento(s) · previsto ${formatMoney(active.fold(0.0, (s, a) => s + a.price))}'),
-                      if (professionals.length > 1) ...[
-                        const SizedBox(height: 8),
-                        Wrap(spacing: 8, children: [
-                          ChoiceChip(
-                            label: const Text('Todos'),
-                            selected: _professionalFilter == null,
-                            onSelected: (_) => setState(() => _professionalFilter = null),
-                          ),
-                          for (final p in professionals.entries)
-                            ChoiceChip(
-                              label: Text(p.value),
-                              selected: _professionalFilter == p.key,
-                              onSelected: (_) => setState(() => _professionalFilter = p.key),
-                            ),
-                        ]),
-                      ],
-                      const SizedBox(height: 8),
-                      if (visible.isEmpty)
-                        const Padding(padding: EdgeInsets.all(32), child: Center(child: Text('Nenhum agendamento neste dia.'))),
-                      for (final a in visible) _AppointmentTile(a, onTap: () => _actions(a)),
-                    ],
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 110),
+          children: [
+            GradientHeader(
+              gradient: Brand.nightGradient,
+              bottomPadding: 20,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('${greeting()}, $firstName', style: text.bodyMedium?.copyWith(color: Colors.white70)),
+                      Text(formatWeekday(_day), style: text.titleLarge?.copyWith(color: Colors.white)),
+                    ]),
                   ),
+                  _HeaderButton(icon: Icons.chevron_left_rounded, tooltip: 'Semana anterior', onTap: () => _go(-7)),
+                  const SizedBox(width: 6),
+                  _HeaderButton(icon: Icons.calendar_month_rounded, tooltip: 'Escolher data', onTap: _pickDay),
+                  const SizedBox(width: 6),
+                  _HeaderButton(icon: Icons.chevron_right_rounded, tooltip: 'Próxima semana', onTap: () => _go(7)),
+                ]),
+                const SizedBox(height: 16),
+                DayPicker(
+                  dark: true,
+                  days: _week,
+                  selected: _day,
+                  onSelected: (d) {
+                    setState(() {
+                      _day = d;
+                      _items = null;
+                    });
+                    _load();
+                  },
                 ),
-    );
-  }
-}
-
-class _AppointmentTile extends StatelessWidget {
-  const _AppointmentTile(this.a, {required this.onTap});
-
-  final Appointment a;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final faded = a.status == AppointmentStatus.canceled || a.status == AppointmentStatus.noShow;
-    return Opacity(
-      opacity: faded ? 0.55 : 1,
-      child: Card(
-        child: ListTile(
-          onTap: onTap,
-          leading: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(formatTime(a.startAt), style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(formatTime(a.endAt), style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ),
-          title: Text('${a.customer.name} · ${a.service.name}'),
-          subtitle: Text([
-            a.professional.name,
-            formatMoney(a.price),
-            if (a.online) 'online',
-            if (a.realMinutes != null) 'real ${a.realMinutes} min (prev. ${a.estimatedMinutes})',
-          ].join(' · ')),
-          trailing: StatusChip(a.status),
+                const SizedBox(height: 16),
+                Row(children: [
+                  _Kpi(label: 'Atendimentos', value: '${active.length}', icon: Icons.event_available_rounded),
+                  const SizedBox(width: 10),
+                  _Kpi(label: 'Previsto', value: formatMoney(active.fold(0.0, (s, a) => s + a.price)), icon: Icons.payments_outlined),
+                  const SizedBox(width: 10),
+                  _Kpi(label: 'Online', value: '${active.where((a) => a.online).length}', icon: Icons.smartphone_rounded),
+                ]),
+              ]),
+            ),
+            if (professionals.length > 1)
+              SizedBox(
+                height: 56,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  children: [
+                    _FilterChip(label: 'Todos', selected: _professionalFilter == null, onTap: () => setState(() => _professionalFilter = null)),
+                    for (final p in professionals.entries)
+                      _FilterChip(
+                        label: p.value,
+                        avatar: p.value,
+                        selected: _professionalFilter == p.key,
+                        onTap: () => setState(() => _professionalFilter = p.key),
+                      ),
+                  ],
+                ),
+              ),
+            if (_error != null)
+              ErrorRetry(message: _error!, onRetry: _load)
+            else if (items == null)
+              const Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator()))
+            else if (visible.isEmpty)
+              const EmptyState(
+                icon: Icons.event_note_rounded,
+                title: 'Agenda livre',
+                message: 'Nenhum agendamento neste dia. Toque em "Agendar" para marcar um horário.',
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Column(children: [
+                  for (var i = 0; i < visible.length; i++)
+                    _TimelineItem(visible[i], last: i == visible.length - 1, onTap: () => _actions(visible[i])),
+                ]),
+              ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _HeaderButton extends StatelessWidget {
+  const _HeaderButton({required this.icon, required this.tooltip, required this.onTap});
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.white.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onTap,
+            child: Padding(padding: const EdgeInsets.all(8), child: Icon(icon, color: Colors.white)),
+          ),
+        ),
+      );
+}
+
+class _Kpi extends StatelessWidget {
+  const _Kpi({required this.label, required this.value, required this.icon});
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(icon, color: const Color(0xFFFFA3C2), size: 20),
+            const SizedBox(height: 8),
+            FittedBox(
+              child: Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+            ),
+            Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      );
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({required this.label, required this.selected, required this.onTap, this.avatar});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final String? avatar;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: Semantics(
+          button: true,
+          selected: selected,
+          label: label,
+          excludeSemantics: true,
+          child: GestureDetector(
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: EdgeInsets.fromLTRB(avatar != null ? 4 : 14, 4, 14, 4),
+              decoration: BoxDecoration(
+                gradient: selected ? Brand.gradient : null,
+                color: selected ? null : Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: Brand.softShadow(),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (avatar != null) ...[InitialsAvatar(avatar!, size: 28), const SizedBox(width: 8)],
+                Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: selected ? Colors.white : Brand.ink)),
+              ]),
+            ),
+          ),
+        ),
+      );
+}
+
+class _TimelineItem extends StatelessWidget {
+  const _TimelineItem(this.a, {required this.last, required this.onTap});
+
+  final Appointment a;
+  final bool last;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final (bg, fg) = StatusChip.colors(a.status);
+    final faded = a.status == AppointmentStatus.canceled || a.status == AppointmentStatus.noShow;
+    return IntrinsicHeight(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SizedBox(
+          width: 52,
+          child: Column(children: [
+            const SizedBox(height: 16),
+            Text(formatTime(a.startAt), style: text.titleSmall),
+            Text(formatTime(a.endAt), style: text.bodySmall?.copyWith(color: Brand.muted)),
+          ]),
+        ),
+        SizedBox(
+          width: 20,
+          child: Column(children: [
+            const SizedBox(height: 20),
+            Container(width: 12, height: 12, decoration: BoxDecoration(color: fg, shape: BoxShape.circle, border: Border.all(color: bg, width: 3))),
+            if (!last) Expanded(child: Container(width: 2, color: Brand.line)),
+          ]),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Opacity(
+              opacity: faded ? 0.55 : 1,
+              child: SoftCard(
+                onTap: onTap,
+                padding: const EdgeInsets.all(14),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text(a.customer.name, style: text.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    StatusChip(a.status),
+                  ]),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    Icon(ServiceIcon.iconFor(a.service.name), size: 16, color: Brand.rose),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(a.service.name, style: text.bodyMedium?.copyWith(color: Brand.muted))),
+                    Text(formatMoney(a.price), style: text.titleSmall?.copyWith(color: Brand.rose)),
+                  ]),
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    InitialsAvatar(a.professional.name, size: 24),
+                    const SizedBox(width: 6),
+                    Text(a.professional.name, style: text.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                    const Spacer(),
+                    if (a.online) const Pill('online', icon: Icons.smartphone_rounded, color: Color(0xFFEDE9FE), textColor: Color(0xFF6D28D9)),
+                    if (a.realMinutes != null) ...[
+                      const SizedBox(width: 6),
+                      Pill('${a.realMinutes} min', icon: Icons.timer_outlined),
+                    ],
+                  ]),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+class _GradientFab extends StatelessWidget {
+  const _GradientFab({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: 150,
+        child: GradientButton(label: 'Agendar', icon: Icons.add_rounded, onPressed: onPressed),
+      );
 }

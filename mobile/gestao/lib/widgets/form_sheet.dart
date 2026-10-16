@@ -121,7 +121,7 @@ class _FormSheetState extends State<_FormSheet> {
                   ),
                 const SizedBox(height: 12),
               ],
-              FilledButton(onPressed: _busy ? null : _save, child: Text(_busy ? 'Salvando...' : 'Salvar')),
+              GradientButton(label: 'Salvar', icon: Icons.check_rounded, loading: _busy, onPressed: _save),
             ],
           ),
         ),

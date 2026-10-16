@@ -49,9 +49,9 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-8">
-      <Card className="w-full max-w-md p-6">
-        <Link href="/" className="text-lg font-bold text-rose-600">
+    <main className="bg-night flex min-h-screen items-center justify-center px-4 py-8">
+      <Card className="w-full max-w-md rounded-3xl p-7">
+        <Link href="/" className="text-brand text-lg font-extrabold">
           Salão Max
         </Link>
         <h1 className="mb-4 mt-2 text-xl font-semibold">Cadastre seu salão</h1>

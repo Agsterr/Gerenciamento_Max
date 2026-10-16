@@ -1,0 +1,1 @@
+salão,agenda,barbearia,gestão,estética,comissão,manicure,clientes,estoque,financeiro,beleza

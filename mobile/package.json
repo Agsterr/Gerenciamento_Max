@@ -1,0 +1,13 @@
+{
+  "name": "salao-max-mobile-tools",
+  "private": true,
+  "description": "Geração de ícones (brand/) e artes das lojas (store/)",
+  "type": "module",
+  "scripts": {
+    "icons": "node brand/render-icons.mjs",
+    "store": "node store/tools/compose.mjs store/tools/raw"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}

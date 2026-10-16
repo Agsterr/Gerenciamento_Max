@@ -3,7 +3,8 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { SlotPicker } from "@/components/agenda/SlotPicker";
-import { Button, Card, ErrorMessage, Field } from "@/components/ui";
+import { Icon, serviceIcon } from "@/components/Icon";
+import { ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";
 import { addDays, formatMoney, isoDate } from "@/lib/format";
 import type { Booking, PublicSalon, Slot } from "@/lib/types";
@@ -70,98 +71,157 @@ export default function PublicBookingPage() {
     }
   }
 
+  const initials = salon.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w, i, a) => (i === 0 || i === a.length - 1 ? w[0] : ""))
+    .join("")
+    .toUpperCase();
+
   return (
-    <main className="mx-auto max-w-xl px-4 py-8">
-      <header className="mb-6 text-center">
-        <h1 className="text-2xl font-bold text-zinc-900">{salon.name}</h1>
-        {salon.address && <p className="text-sm text-zinc-500">{salon.address}</p>}
-        <p className="mt-1 text-sm text-zinc-500">Agende seu horário online</p>
+    <main className="min-h-screen pb-40">
+      <header className="bg-brand relative overflow-hidden rounded-b-[2rem] px-4 pb-8 pt-8 text-white">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/20 blur-2xl" />
+        <div className="relative mx-auto flex max-w-xl items-center gap-4">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white text-xl font-extrabold text-brand-rose ring-4 ring-white/30">
+            {initials}
+          </div>
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-extrabold">{salon.name}</h1>
+            {salon.address && (
+              <p className="flex items-center gap-1 truncate text-sm text-white/80">
+                <Icon name="pin" className="h-4 w-4 shrink-0" /> {salon.address}
+              </p>
+            )}
+            <p className="mt-1 text-sm font-semibold text-white/90">Agende seu horário online</p>
+          </div>
+        </div>
       </header>
 
-      <Step n={1} title="Escolha o serviço">
-        <div className="space-y-2">
-          {salon.services.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setServiceId(s.id)}
-              className={`flex w-full items-center justify-between rounded-xl border p-3 text-left ${
-                serviceId === s.id ? "border-rose-600 bg-rose-50" : "border-zinc-200 bg-white hover:border-rose-300"
-              }`}
-            >
-              <span>
-                <span className="block font-medium">{s.name}</span>
-                <span className="text-sm text-zinc-500">{s.durationMinutes} min</span>
-              </span>
-              <span className="font-semibold">{formatMoney(s.price)}</span>
-            </button>
-          ))}
-          {salon.services.length === 0 && <p className="text-sm text-zinc-500">Nenhum serviço disponível no momento.</p>}
-        </div>
-      </Step>
-
-      {service && (
-        <Step n={2} title="Profissional">
-          <div className="flex flex-wrap gap-2">
-            {[{ id: null, name: "Sem preferência" }, ...salon.professionals].map((p) => (
-              <Chip key={p.id ?? 0} active={professionalId === p.id} onClick={() => setProfessionalId(p.id)}>
-                {p.name}
-              </Chip>
-            ))}
-          </div>
-        </Step>
-      )}
-
-      {service && (
-        <Step n={3} title="Dia e horário">
-          <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-            {days.map((d) => {
-              const dt = new Date(d + "T12:00:00");
+      <div className="mx-auto max-w-xl px-4">
+        <Step n={1} title="Escolha o serviço">
+          <div className="space-y-3">
+            {salon.services.map((s) => {
+              const active = serviceId === s.id;
               return (
                 <button
-                  key={d}
-                  onClick={() => setDate(d)}
-                  className={`min-w-14 rounded-xl border px-2 py-2 text-center ${
-                    date === d ? "border-rose-600 bg-rose-600 text-white" : "border-zinc-200 bg-white"
+                  key={s.id}
+                  onClick={() => setServiceId(s.id)}
+                  className={`shadow-soft flex w-full items-center gap-4 rounded-2xl border-2 bg-white p-4 text-left transition ${
+                    active ? "border-brand-rose" : "border-transparent hover:border-brand-pink/40"
                   }`}
                 >
-                  <span className="block text-xs capitalize">{dt.toLocaleDateString("pt-BR", { weekday: "short" })}</span>
-                  <span className="block text-lg font-semibold">{dt.getDate()}</span>
+                  <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${active ? "bg-brand text-white" : "bg-[#FFEAF2] text-brand-rose"}`}>
+                    <Icon name={serviceIcon(s.name)} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-extrabold">{s.name}</span>
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#F6EEF3] px-2 py-0.5 text-xs font-bold text-brand-muted">
+                      <Icon name="clock" className="h-3.5 w-3.5" /> {s.durationMinutes} min
+                    </span>
+                  </span>
+                  <span className="font-extrabold text-brand-rose">{formatMoney(s.price)}</span>
                 </button>
               );
             })}
+            {salon.services.length === 0 && <p className="text-sm text-brand-muted">Nenhum serviço disponível no momento.</p>}
           </div>
-          <SlotPicker slots={slots} loading={loading} value={time} onChange={setTime} />
         </Step>
-      )}
 
-      {time && (
-        <Step n={4} title="Seus dados">
-          <form onSubmit={book} className="space-y-3">
-            <Field label="Nome" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
-            <Field
-              label="WhatsApp"
-              required
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="(11) 99999-9999"
-              minLength={10}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-            <p className="text-xs text-zinc-500">
-              Ao agendar você concorda com a{" "}
-              <a href="/privacidade" className="underline">
-                Política de Privacidade
-              </a>
-              .
-            </p>
-            <ErrorMessage message={error} />
-            <Button className="w-full py-3" disabled={busy}>
-              {busy ? "Agendando..." : `Confirmar ${service?.name} às ${time}`}
-            </Button>
-          </form>
-        </Step>
+        {service && (
+          <Step n={2} title="Com quem?">
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {[{ id: null, name: "Qualquer um" }, ...salon.professionals].map((p) => {
+                const active = professionalId === p.id;
+                return (
+                  <button key={p.id ?? 0} onClick={() => setProfessionalId(p.id)} className="w-20 shrink-0 text-center">
+                    <span className={`mx-auto block w-fit rounded-full p-[3px] ${active ? "bg-brand" : ""}`}>
+                      <span className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-[#B794F6] to-[#7C3AED] font-extrabold text-white">
+                        {p.id === null ? <Icon name="shuffle" /> : p.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                      </span>
+                    </span>
+                    <span className={`mt-1 block truncate text-sm ${active ? "font-extrabold text-brand-rose" : "font-semibold"}`}>{p.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </Step>
+        )}
+
+        {service && (
+          <Step n={3} title="Quando?">
+            <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+              {days.map((d) => {
+                const dt = new Date(d + "T12:00:00");
+                const active = date === d;
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setDate(d)}
+                    className={`min-w-15 rounded-2xl px-2 py-2.5 text-center transition ${
+                      active ? "bg-brand shadow-glow text-white" : "border-2 border-[#F1E3EB] bg-white"
+                    }`}
+                  >
+                    <span className="block text-xs font-semibold capitalize opacity-80">{dt.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}</span>
+                    <span className="block text-xl font-extrabold">{dt.getDate()}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <SlotPicker slots={slots} loading={loading} value={time} onChange={setTime} />
+          </Step>
+        )}
+
+        {time && (
+          <Step n={4} title="Seus dados">
+            <form id="booking" onSubmit={book} className="shadow-soft space-y-3 rounded-2xl bg-white p-4">
+              <Field label="Nome" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+              <Field
+                label="WhatsApp"
+                required
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="(11) 99999-9999"
+                minLength={10}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              <p className="flex items-start gap-1.5 text-xs text-brand-muted">
+                <Icon name="shield" className="h-4 w-4 shrink-0" />
+                <span>
+                  Seus dados vão apenas para {salon.name}. Ao agendar você concorda com a{" "}
+                  <a href="/privacidade" className="underline">
+                    Política de Privacidade
+                  </a>
+                  .
+                </span>
+              </p>
+              <ErrorMessage message={error} />
+            </form>
+          </Step>
+        )}
+      </div>
+
+      {service && (
+        <div className="fixed inset-x-0 bottom-0 z-20 rounded-t-3xl bg-white/95 px-4 pb-5 pt-4 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur">
+          <div className="mx-auto flex max-w-xl items-center gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-extrabold">{service.name}</p>
+              <p className="text-sm text-brand-muted">
+                {time && date ? `${new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })} · ${time}` : "Escolha um horário"}
+              </p>
+              <p className="font-extrabold text-brand-rose">{formatMoney(service.price)}</p>
+            </div>
+            <button
+              form="booking"
+              disabled={!time || busy}
+              className="bg-brand shadow-glow rounded-2xl px-7 py-4 font-extrabold text-white transition disabled:opacity-50 disabled:shadow-none"
+            >
+              {busy ? "Agendando..." : "Agendar"}
+            </button>
+          </div>
+        </div>
       )}
     </main>
   );
@@ -169,24 +229,12 @@ export default function PublicBookingPage() {
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
-    <Card className="mb-4">
-      <h2 className="mb-3 flex items-center gap-2 font-semibold">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-xs text-white">{n}</span>
-        {title}
+    <section className="mt-7">
+      <h2 className="mb-3 text-lg font-extrabold">
+        {n}. {title}
       </h2>
       {children}
-    </Card>
-  );
-}
-
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-full border px-4 py-1.5 text-sm ${active ? "border-rose-600 bg-rose-600 text-white" : "border-zinc-300 bg-white"}`}
-    >
-      {children}
-    </button>
+    </section>
   );
 }
 

@@ -141,8 +141,10 @@ class _NewAppointmentSheetState extends State<_NewAppointmentSheet> {
             Text('Novo agendamento', style: text.titleLarge),
             const SizedBox(height: 16),
             if (_customer != null)
-              Card(
+              SoftCard(
+                padding: EdgeInsets.zero,
                 child: ListTile(
+                  leading: InitialsAvatar(_customer!.name, size: 40),
                   title: Text(_customer!.name),
                   subtitle: Text(formatPhone(_customer!.phone)),
                   trailing: TextButton(onPressed: () => setState(() => _customer = null), child: const Text('Trocar')),
@@ -278,9 +280,11 @@ class _NewAppointmentSheetState extends State<_NewAppointmentSheet> {
             const SizedBox(height: 12),
             TextField(controller: _notes, decoration: const InputDecoration(labelText: 'Observações')),
             const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _canSave && !_busy ? _save : null,
-              child: Text(_busy ? 'Salvando...' : (_time != null ? 'Agendar às $_time' : 'Escolha um horário')),
+            GradientButton(
+              label: _time != null ? 'Agendar às $_time' : 'Escolha um horário',
+              icon: Icons.event_available_rounded,
+              loading: _busy,
+              onPressed: _canSave ? _save : null,
             ),
           ],
         ),

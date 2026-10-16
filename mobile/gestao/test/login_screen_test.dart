@@ -5,6 +5,9 @@ import 'package:salao_gestao/session.dart';
 
 void main() {
   testWidgets('alterna entre login e cadastro e valida campos', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(MaterialApp(home: LoginScreen(session: Session())));
 
     expect(find.text('Entre na sua conta'), findsOneWidget);
@@ -12,6 +15,7 @@ void main() {
     await tester.pump();
     expect(find.text('Obrigatório'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Novo por aqui? Cadastre seu salão'));
     await tester.tap(find.text('Novo por aqui? Cadastre seu salão'));
     await tester.pumpAndSettle();
     expect(find.text('Cadastre seu salão'), findsOneWidget);

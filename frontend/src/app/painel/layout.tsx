@@ -32,15 +32,17 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen md:flex">
       <aside className="border-b border-zinc-200 bg-white md:sticky md:top-0 md:h-screen md:w-56 md:shrink-0 md:border-b-0 md:border-r">
         <div className="flex items-center justify-between px-4 py-3 md:block md:py-5">
-          <Link href="/painel" className="text-lg font-bold text-rose-600">
-            Salão Max
+          <Link href="/painel" className="flex items-center gap-2 text-lg font-extrabold">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon-gestao.png" alt="" className="h-8 w-8 rounded-lg" />
+            <span className="text-brand">Salão Max</span>
           </Link>
           <button
             onClick={() => {
               signOut();
               router.push("/login");
             }}
-            className="text-sm text-zinc-500 hover:text-rose-600 md:hidden"
+            className="text-sm text-zinc-500 hover:text-brand-rose md:hidden"
           >
             Sair
           </button>
@@ -52,8 +54,8 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               <Link
                 key={n.href}
                 href={n.href}
-                className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ${
-                  active ? "bg-rose-50 text-rose-700" : "text-zinc-600 hover:bg-zinc-100"
+                className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm font-bold ${
+                  active ? "bg-brand text-white shadow-glow" : "text-brand-muted hover:bg-[#FFF1F6]"
                 }`}
               >
                 {n.label}
@@ -68,7 +70,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
               signOut();
               router.push("/login");
             }}
-            className="text-zinc-500 hover:text-rose-600"
+            className="text-zinc-500 hover:text-brand-rose"
           >
             Sair
           </button>

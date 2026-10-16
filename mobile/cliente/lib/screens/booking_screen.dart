@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
+/// Comprovante do agendamento (estilo "ingresso").
 class BookingScreen extends StatefulWidget {
-  const BookingScreen({super.key, required this.slug, required this.token, required this.api, this.justBooked = false});
+  const BookingScreen({
+    super.key,
+    required this.slug,
+    required this.token,
+    required this.api,
+    this.salonName,
+    this.justBooked = false,
+  });
 
   final String slug;
   final String token;
   final ApiClient api;
+  final String? salonName;
   final bool justBooked;
 
   @override
@@ -48,54 +57,180 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   Widget build(BuildContext context) {
     final b = _booking;
+    if (_error != null) return Scaffold(appBar: AppBar(), body: ErrorRetry(message: _error!, onRetry: _load));
+    if (b == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
     final text = Theme.of(context).textTheme;
+    final canceled = b.status == AppointmentStatus.canceled;
+    final title = canceled
+        ? 'Agendamento cancelado'
+        : (widget.justBooked ? 'Tudo certo, ${b.customerName.split(' ').first}!' : 'Seu agendamento');
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Agendamento')),
-      body: _error != null
-          ? ErrorRetry(message: _error!, onRetry: _load)
-          : b == null
-              ? const Center(child: CircularProgressIndicator())
-              : ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    if (widget.justBooked && b.status != AppointmentStatus.canceled) ...[
-                      Icon(Icons.check_circle, size: 64, color: Colors.green.shade600),
-                      const SizedBox(height: 8),
-                      Text('Tudo certo, ${b.customerName.split(' ').first}!', textAlign: TextAlign.center, style: text.headlineSmall),
-                      const SizedBox(height: 24),
-                    ],
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            Text(b.serviceName, style: text.titleLarge),
-                            const SizedBox(height: 8),
-                            Text(formatWeekday(b.startAt)),
-                            Text(formatTime(b.startAt), style: text.displaySmall),
-                            Text('com ${b.professionalName}'),
-                            Text(formatMoney(b.price)),
-                            const SizedBox(height: 8),
-                            StatusChip(b.status),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (b.cancelable)
-                      OutlinedButton.icon(
-                        onPressed: _cancel,
-                        icon: const Icon(Icons.event_busy),
-                        label: const Text('Cancelar agendamento'),
-                      ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'O cancelamento pelo app é possível até 2 horas antes. Depois disso, fale com o salão.',
-                      style: text.bodySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          Stack(children: [
+            GradientHeader(
+              gradient: canceled ? const LinearGradient(colors: [Color(0xFF8E8AA3), Color(0xFF5B5670)]) : Brand.gradient,
+              bottomPadding: 120,
+              child: Column(children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    tooltip: 'Voltar',
+                    color: Colors.white,
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: () => Navigator.maybePop(context),
+                  ),
                 ),
+                Container(
+                  width: 84,
+                  height: 84,
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), shape: BoxShape.circle),
+                  child: Icon(canceled ? Icons.event_busy_rounded : Icons.check_rounded, color: Colors.white, size: 48),
+                ),
+                const SizedBox(height: 14),
+                Text(title, textAlign: TextAlign.center, style: text.headlineSmall?.copyWith(color: Colors.white)),
+                const SizedBox(height: 4),
+                Text(canceled ? 'Esperamos ver você em breve.' : 'Seu horário está reservado.',
+                    style: text.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.9))),
+              ]),
+            ),
+          ]),
+          Transform.translate(
+            offset: const Offset(0, -96),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(children: [
+                _Ticket(booking: b, salonName: widget.salonName, code: widget.token),
+                const SizedBox(height: 20),
+                if (b.cancelable)
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+                      onPressed: _cancel,
+                      icon: const Icon(Icons.close_rounded),
+                      label: const Text('Cancelar agendamento'),
+                    ),
+                  ),
+                const SizedBox(height: 10),
+                Text(
+                  'Cancelamento pelo app até 2 horas antes. Depois disso, fale com o salão.',
+                  style: text.bodySmall?.copyWith(color: Brand.muted),
+                  textAlign: TextAlign.center,
+                ),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Ticket extends StatelessWidget {
+  const _Ticket({required this.booking, required this.code, this.salonName});
+
+  final Booking booking;
+  final String code;
+  final String? salonName;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = booking;
+    final text = Theme.of(context).textTheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: Brand.violet.withValues(alpha: 0.18), blurRadius: 40, offset: const Offset(0, 16))],
+      ),
+      child: Column(children: [
+        Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(children: [
+            if (salonName != null)
+              Text(salonName!.toUpperCase(),
+                  style: text.labelMedium?.copyWith(color: Brand.rose, letterSpacing: 1.4, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 6),
+            Text(b.serviceName, style: text.titleLarge, textAlign: TextAlign.center),
+            const SizedBox(height: 18),
+            Row(children: [
+              Container(
+                width: 74,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(gradient: Brand.gradient, borderRadius: BorderRadius.circular(18)),
+                child: Column(children: [
+                  Text(formatMonthShort(b.startAt).toUpperCase(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+                  Text('${b.startAt.day}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 28)),
+                ]),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(formatWeekday(b.startAt), style: text.bodyMedium?.copyWith(color: Brand.muted)),
+                  Text('${formatTime(b.startAt)} – ${formatTime(b.endAt)}', style: text.headlineSmall),
+                ]),
+              ),
+            ]),
+          ]),
+        ),
+        const _DashedDivider(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
+          child: Row(children: [
+            InitialsAvatar(b.professionalName, size: 40),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Profissional', style: text.bodySmall?.copyWith(color: Brand.muted)),
+                Text(b.professionalName, style: text.titleSmall),
+              ]),
+            ),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(formatMoney(b.price), style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              StatusChip(b.status),
+            ]),
+          ]),
+        ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: const BoxDecoration(
+            color: Color(0xFFFFF1F6),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+          ),
+          child: Text('Código ${code.substring(0, 6).toUpperCase()}',
+              textAlign: TextAlign.center, style: text.labelLarge?.copyWith(color: Brand.rose, letterSpacing: 2)),
+        ),
+      ]),
+    );
+  }
+}
+
+class _DashedDivider extends StatelessWidget {
+  const _DashedDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+    return SizedBox(
+      height: 24,
+      child: Stack(alignment: Alignment.center, children: [
+        LayoutBuilder(builder: (context, c) {
+          final count = (c.maxWidth / 12).floor();
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(count, (_) => Container(width: 6, height: 2, color: Brand.line)),
+          );
+        }),
+        Positioned(left: -12, child: CircleAvatar(radius: 12, backgroundColor: bg)),
+        Positioned(right: -12, child: CircleAvatar(radius: 12, backgroundColor: bg)),
+      ]),
     );
   }
 }

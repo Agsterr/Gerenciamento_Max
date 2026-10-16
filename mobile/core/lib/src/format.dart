@@ -41,3 +41,11 @@ Future<void> openWhatsApp(String phone) async {
 }
 
 Future<void> openUrl(Uri uri) => launchUrl(uri, mode: LaunchMode.externalApplication);
+
+String formatMonthShort(DateTime d) => DateFormat('MMM', 'pt_BR').format(d).replaceAll('.', '');
+
+/// Saudação pelo horário do dia.
+String greeting([DateTime? now]) {
+  final h = (now ?? DateTime.now()).hour;
+  return h < 12 ? 'Bom dia' : (h < 18 ? 'Boa tarde' : 'Boa noite');
+}

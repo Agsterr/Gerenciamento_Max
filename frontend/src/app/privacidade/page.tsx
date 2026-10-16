@@ -58,7 +58,7 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Conta do salão:</strong> pode ser excluída a qualquer momento no app (Configurações → Excluir conta)
-          ou em <a className="text-rose-600 underline" href="/excluir-conta">/excluir-conta</a>. Se for o último dono, o
+          ou em <a className="text-brand-rose underline" href="/excluir-conta">/excluir-conta</a>. Se for o último dono, o
           salão e todos os seus dados são apagados imediatamente e de forma definitiva.
         </li>
         <li>

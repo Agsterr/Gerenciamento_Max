@@ -1,0 +1,39 @@
+O app completo para salões de beleza, barbearias, esmalterias e estúdios de estética. Organize a agenda, encante seus clientes e saiba exatamente quanto o seu salão lucra.
+
+📅 AGENDA INTELIGENTE
+• Agenda do dia por profissional, com linha do tempo e status coloridos
+• Horários livres calculados automaticamente — sem encaixes duplicados
+• Agendamento manual em qualquer horário, com duração personalizada
+• Encaixe: marque mesmo fora do expediente quando precisar
+• Confirmar, iniciar, finalizar, cancelar e marcar falta em um toque
+
+📲 AGENDAMENTO ONLINE
+• Seu salão ganha um link próprio para compartilhar no Instagram e WhatsApp
+• Clientes agendam sozinhos pelo app Salão Max ou pelo navegador
+• Os agendamentos online caem direto na sua agenda
+
+👥 CLIENTES
+• Cadastro automático de quem agenda online
+• Histórico de atendimentos e total gasto
+• Observações (alergias, preferências) e WhatsApp com um toque
+
+💰 FINANCEIRO DE VERDADE
+• Lucro do período, receita, custos e ticket médio
+• Comissão de cada profissional calculada automaticamente
+• Custo de material por serviço e margem de lucro
+• Despesas do salão (aluguel, energia, marketing...)
+• Ranking de profissionais e dos serviços que mais faturam
+
+⏱️ CONTROLE DE TEMPO
+• Compare o tempo previsto com o tempo real de cada atendimento
+
+📦 PRODUTOS E ESTOQUE
+• Entrada, venda e uso nos atendimentos
+• Alerta de estoque baixo
+
+👩‍💼 EQUIPE
+• Perfis de dono e funcionário — o financeiro fica só com o dono
+
+🔒 SEGURO
+• Dados de cada salão totalmente separados
+• Conexão criptografada e exclusão de conta a qualquer momento

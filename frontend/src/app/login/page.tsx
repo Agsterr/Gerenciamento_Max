@@ -34,9 +34,9 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm p-6">
-        <Link href="/" className="text-lg font-bold text-rose-600">
+    <main className="bg-night flex min-h-screen items-center justify-center px-4">
+      <Card className="w-full max-w-sm rounded-3xl p-7">
+        <Link href="/" className="text-brand text-lg font-extrabold">
           Salão Max
         </Link>
         <h1 className="mb-4 mt-2 text-xl font-semibold">Entrar no painel</h1>
@@ -50,7 +50,7 @@ export default function LoginPage() {
         </form>
         <p className="mt-4 text-center text-sm text-zinc-600">
           Novo por aqui?{" "}
-          <Link href="/cadastro" className="font-medium text-rose-600">
+          <Link href="/cadastro" className="font-bold text-brand-rose">
             Cadastre seu salão
           </Link>
         </p>

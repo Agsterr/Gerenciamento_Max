@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../booking_store.dart';
+import 'about_screen.dart';
 import 'salon_screen.dart';
 
 /// Busca o salão pelo nome ou pelo link compartilhado (…/s/nome-do-salao).
@@ -25,11 +26,20 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    widget.store.addListener(_refresh);
+  }
+
+  @override
   void dispose() {
+    widget.store.removeListener(_refresh);
     _debounce?.cancel();
     _query.dispose();
     super.dispose();
   }
+
+  void _refresh() => setState(() {});
 
   /// Aceita link completo, "/s/slug" ou o texto digitado.
   static String _normalize(String text) {
@@ -38,6 +48,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onChanged(String text) {
+    setState(() {});
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () => _search(_normalize(text)));
   }
@@ -69,59 +80,162 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
     final recent = {for (final b in widget.store.bookings) b.slug: b.salonName};
+    final typing = _query.text.trim().length >= 2;
+
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.zero,
       children: [
-        TextField(
-          controller: _query,
-          onChanged: _onChanged,
-          textInputAction: TextInputAction.search,
-          onSubmitted: (t) => _search(_normalize(t)),
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search),
-            labelText: 'Nome do salão ou link de agendamento',
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (_loading) const LinearProgressIndicator(),
-        if (_error != null) Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-        for (final s in _results)
-          Card(
-            child: ListTile(
-              leading: const CircleAvatar(child: Icon(Icons.content_cut)),
-              title: Text(s.name),
-              subtitle: s.address != null ? Text(s.address!) : null,
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _open(s),
-            ),
-          ),
-        if (!_loading && _results.isEmpty && _query.text.trim().length >= 2)
-          const Padding(padding: EdgeInsets.all(16), child: Text('Nenhum salão encontrado.')),
-        if (_query.text.isEmpty && recent.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 48, horizontal: 16),
-            child: Column(children: [
-              Icon(Icons.content_cut, size: 48),
-              SizedBox(height: 12),
-              Text(
-                'Digite o nome do seu salão ou cole o link de agendamento que ele enviou.',
-                textAlign: TextAlign.center,
+        GradientHeader(
+          bottomPadding: 24,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Text('Salão Max', style: text.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Sobre e privacidade',
+                color: Colors.white,
+                icon: const Icon(Icons.info_outline_rounded),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AboutScreen(store: widget.store))),
               ),
             ]),
-          ),
-        if (_query.text.isEmpty && recent.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text('Agendar de novo', style: Theme.of(context).textTheme.titleMedium),
-          for (final e in recent.entries)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.history),
-              title: Text(e.value),
-              onTap: () => _open(SalonSummary(name: e.value, slug: e.key)),
+            const SizedBox(height: 22),
+            Text('${greeting()}!', style: text.titleMedium?.copyWith(color: Colors.white.withValues(alpha: 0.9))),
+            const SizedBox(height: 4),
+            Text('Seu horário de beleza\nem 1 minuto',
+                style: text.headlineMedium?.copyWith(color: Colors.white, height: 1.15)),
+            const SizedBox(height: 22),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 24, offset: const Offset(0, 10))],
+              ),
+              child: TextField(
+                controller: _query,
+                onChanged: _onChanged,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (t) => _search(_normalize(t)),
+                decoration: InputDecoration(
+                  hintText: 'Nome do salão ou link',
+                  labelText: 'Buscar salão',
+                  floatingLabelBehavior: FloatingLabelBehavior.never,
+                  prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
+                  suffixIcon: _query.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Limpar',
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () {
+                            _query.clear();
+                            _onChanged('');
+                          }),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
+                ),
+              ),
             ),
-        ],
+          ]),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (_loading) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),
+            if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
+            if (typing) ...[
+              SectionTitle(_results.isEmpty && !_loading ? 'Nenhum salão encontrado' : 'Resultados'),
+              for (final s in _results) Padding(padding: const EdgeInsets.only(bottom: 12), child: _SalonCard(salon: s, onTap: () => _open(s))),
+            ] else ...[
+              if (recent.isNotEmpty) ...[
+                const SectionTitle('Agendar de novo'),
+                for (final e in recent.entries)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _SalonCard(salon: SalonSummary(name: e.value, slug: e.key), onTap: () => _open(SalonSummary(name: e.value, slug: e.key)), recent: true),
+                  ),
+              ],
+              const SectionTitle('Por que agendar pelo app'),
+              const _Benefit(icon: Icons.bolt_rounded, title: 'Rápido e sem cadastro', text: 'Só seu nome e WhatsApp. Pronto.'),
+              const _Benefit(icon: Icons.event_available_rounded, title: 'Horários em tempo real', text: 'Veja só o que está livre de verdade.'),
+              const _Benefit(icon: Icons.notifications_active_outlined, title: 'Tudo na palma da mão', text: 'Consulte e cancele quando precisar.'),
+            ],
+          ]),
+        ),
       ],
+    );
+  }
+}
+
+class _SalonCard extends StatelessWidget {
+  const _SalonCard({required this.salon, required this.onTap, this.recent = false});
+
+  final SalonSummary salon;
+  final VoidCallback onTap;
+  final bool recent;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return SoftCard(
+      onTap: onTap,
+      child: Row(children: [
+        InitialsAvatar(salon.name, size: 52),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(salon.name, style: text.titleMedium),
+            const SizedBox(height: 2),
+            Text(recent ? 'Você já agendou aqui' : (salon.address ?? 'Agendamento online'),
+                style: text.bodySmall?.copyWith(color: Brand.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+          ]),
+        ),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: const Color(0xFFFFEAF2), borderRadius: BorderRadius.circular(12)),
+          child: const Icon(Icons.arrow_forward_rounded, color: Brand.rose, size: 20),
+        ),
+      ]),
+    );
+  }
+}
+
+class _Benefit extends StatelessWidget {
+  const _Benefit({required this.icon, required this.title, required this.text});
+
+  final IconData icon;
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SoftCard(
+        child: Row(children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(gradient: Brand.gradient, borderRadius: BorderRadius.circular(14)),
+            child: Icon(icon, color: Colors.white),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: t.titleSmall),
+              Text(text, style: t.bodySmall?.copyWith(color: Brand.muted)),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 }

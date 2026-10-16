@@ -192,7 +192,7 @@ export function NewAppointmentModal({
                     setManual(value as boolean);
                     setTime(null);
                   }}
-                  className={`rounded-md px-3 py-1 ${manual === value ? "bg-rose-600 text-white" : "text-zinc-600"}`}
+                  className={`rounded-md px-3 py-1 ${manual === value ? "bg-brand-rose text-white" : "text-zinc-600"}`}
                 >
                   {label as string}
                 </button>
@@ -216,7 +216,7 @@ export function NewAppointmentModal({
                   <input type="checkbox" className="mt-1" checked={force} onChange={(e) => setForce(e.target.checked)} />
                   <span>
                     Encaixe — marcar mesmo com conflito ou fora do expediente
-                    {force && !professionalId && <span className="block text-xs text-rose-600">Escolha o profissional.</span>}
+                    {force && !professionalId && <span className="block text-xs text-brand-rose">Escolha o profissional.</span>}
                   </span>
                 </label>
               </div>

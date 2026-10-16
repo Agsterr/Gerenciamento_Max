@@ -37,7 +37,7 @@ export default function ProductsPage() {
           {
             label: "Estoque",
             render: (p) => (
-              <span className={p.lowStock ? "font-semibold text-rose-700" : ""}>
+              <span className={p.lowStock ? "font-semibold text-brand-rose" : ""}>
                 {p.stock} {p.unit} {p.lowStock && <Badge className="ml-1 bg-rose-100 text-rose-800">baixo</Badge>}
               </span>
             ),
