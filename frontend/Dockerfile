@@ -12,5 +12,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+# O modo standalone não inclui a pasta public (logo, telas dos apps): precisa copiar
+COPY --from=build /app/public ./public
 EXPOSE 3000
 CMD ["node", "server.js"]
