@@ -148,12 +148,16 @@ export default function Home() {
             <Link href="/cadastro" className="rounded-2xl bg-white px-6 py-4 font-bold text-brand-rose">
               Criar meu salão
             </Link>
+            <Link href="/baixar" className="rounded-2xl bg-white/15 px-6 py-4 font-bold ring-1 ring-white/30 hover:bg-white/20">
+              Baixar os apps (Android)
+            </Link>
           </div>
         </div>
       </section>
 
       <footer className="border-t border-black/5 py-8 text-center text-sm text-brand-muted">
         <div className="flex flex-wrap justify-center gap-5">
+          <Link href="/baixar">Baixar os apps</Link>
           <Link href="/privacidade">Privacidade</Link>
           <Link href="/termos">Termos de uso</Link>
           <Link href="/excluir-conta">Excluir conta</Link>

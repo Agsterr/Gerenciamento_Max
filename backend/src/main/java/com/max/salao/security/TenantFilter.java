@@ -18,8 +18,11 @@ class TenantFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         if (SecurityContextHolder.getContext().getAuthentication() instanceof JwtAuthenticationToken token) {
+            // Sem claim para o admin da plataforma: fica em TenantContext.NONE
             Number tenant = token.getToken().getClaim(JwtService.TENANT_CLAIM);
-            TenantContext.set(tenant.longValue());
+            if (tenant != null) {
+                TenantContext.set(tenant.longValue());
+            }
         }
         try {
             chain.doFilter(request, response);

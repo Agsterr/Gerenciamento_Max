@@ -11,6 +11,11 @@ spring:
       ddl-auto: validate
     properties:
       hibernate.jdbc.time_zone: ${APP_TIMEZONE:America/Sao_Paulo}
+  servlet:
+    multipart:
+      # APKs publicados pelo CI ou pelo painel da plataforma (vão para disco, não para a memória)
+      max-file-size: 150MB
+      max-request-size: 160MB
   jackson:
     serialization:
       write-dates-as-timestamps: false
@@ -34,3 +39,13 @@ app:
     ttl: 12h
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+  # Administrador da plataforma (bloqueio de salões/usuários, APKs). Vazio = não cria.
+  platform-admin:
+    email: ${PLATFORM_ADMIN_EMAIL:}
+    password: ${PLATFORM_ADMIN_PASSWORD:}
+  # APKs distribuídos fora da loja (atualização dentro do app)
+  releases:
+    storage-path: ${APP_RELEASES_PATH:/app/releases}
+    max-retained: ${APP_RELEASES_MAX_COUNT:2}
+    deploy-token: ${APP_RELEASE_DEPLOY_TOKEN:}
+    public-base-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}

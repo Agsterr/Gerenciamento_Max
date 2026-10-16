@@ -1,6 +1,7 @@
 package com.max.salao.salon;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.Arrays;
@@ -63,6 +64,15 @@ public class Salon {
 
     /** Custo fixo mensal informado; nulo = média das despesas dos últimos 3 meses. */
     private BigDecimal fixedMonthlyCost;
+
+    // ---- Bloqueio pela plataforma ----
+
+    private boolean blocked;
+    private String blockedReason;
+    private LocalDateTime blockedAt;
+
+    @Column(insertable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     public Set<DayOfWeek> workDaySet() {
         return Arrays.stream(workDays.split(","))
