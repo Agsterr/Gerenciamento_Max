@@ -13,6 +13,10 @@ dependencies:
   http: ^1.6.0
   intl: ^0.20.2
   url_launcher: ^6.3.3
+  # Atualização fora da loja (canal direct)
+  crypto: ^3.0.6
+  package_info_plus: ">=8.3.0 <11.0.0"
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

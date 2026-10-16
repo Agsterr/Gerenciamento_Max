@@ -26,6 +26,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # `flutter run` sem --flavor usa o canal da Play (veja mobile/README.md).
+  default-flavor: play
   assets:
     - assets/icon.png
 

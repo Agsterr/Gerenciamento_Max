@@ -1,19 +1,27 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:salao_core/salao_core.dart';
 
-enum SessionState { restoring, offline, signedOut, signedIn }
+enum SessionState { restoring, offline, signedOut, signedIn, blocked }
 
 /// Login do usuário do salão. O JWT fica no Keychain (iOS) / Keystore (Android).
 class Session extends ChangeNotifier {
+  Session({http.Client? httpClient}) : _httpClient = httpClient;
+
   static const _tokenKey = 'jwt';
   final _storage = const FlutterSecureStorage();
+  final http.Client? _httpClient;
 
   String? _token;
   User? _user;
   SessionState state = SessionState.restoring;
 
-  late final ApiClient api = ApiClient(token: () => _token, onUnauthorized: signOut);
+  /// Motivo do bloqueio (super-admin), quando [state] é [SessionState.blocked].
+  String? blockedReason;
+
+  late final ApiClient api =
+      ApiClient(token: () => _token, onUnauthorized: signOut, onAccountBlocked: _blocked, httpClient: _httpClient);
 
   User get user => _user!;
 
@@ -27,6 +35,8 @@ class Session extends ChangeNotifier {
       try {
         _user = User.fromJson(await api.get('/api/me') as Map<String, dynamic>);
         state = SessionState.signedIn;
+      } on AccountBlockedException {
+        return; // _blocked já trocou o estado e limpou a sessão.
       } on ApiException catch (e) {
         state = e.status == 0 ? SessionState.offline : SessionState.signedOut;
         if (state == SessionState.signedOut) await _storage.delete(key: _tokenKey);
@@ -52,9 +62,21 @@ class Session extends ChangeNotifier {
   Future<void> signOut() async {
     _token = null;
     _user = null;
+    blockedReason = null;
     await _storage.delete(key: _tokenKey);
     state = SessionState.signedOut;
     notifyListeners();
+  }
+
+  /// API respondeu 403 ACCOUNT_BLOCKED (qualquer requisição, inclusive o login): derruba a sessão
+  /// e mostra a tela de bloqueio até o usuário tocar em "Sair".
+  void _blocked(String reason) {
+    _token = null;
+    _user = null;
+    blockedReason = reason;
+    state = SessionState.blocked;
+    notifyListeners();
+    _storage.delete(key: _tokenKey).catchError((Object _) {});
   }
 
   /// Exclusão de conta (App Store 5.1.1(v) / Google Play). Retorna true se o salão foi apagado.

@@ -63,6 +63,10 @@ class AboutScreen extends StatelessWidget {
                 await store.clear();
                 if (context.mounted) showMessage(context, 'Dados apagados.');
               }, color: Theme.of(context).colorScheme.error),
+              const SoftCard(
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: AppVersionTile(app: 'cliente'),
+              ),
             ]),
           ),
         ],

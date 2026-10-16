@@ -234,6 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Column(children: [
                   tile(Icons.privacy_tip_outlined, 'Política de Privacidade', () => openUrl(AppConfig.privacyUrl)),
                   tile(Icons.description_outlined, 'Termos de Uso', () => openUrl(AppConfig.termsUrl)),
+                  const AppVersionTile(app: 'gestao'),
                   tile(Icons.logout_rounded, 'Sair', _session.signOut, color: Brand.muted),
                   tile(Icons.delete_forever_outlined, 'Excluir conta', _deleteAccount, color: Theme.of(context).colorScheme.error),
                 ]),
