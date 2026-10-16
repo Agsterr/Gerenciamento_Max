@@ -69,9 +69,24 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="relative mx-auto flex h-[30rem] w-full max-w-md items-end justify-center sm:h-[36rem]">
-              <PhoneFrame src="/screens/gestao-agenda.webp" top="#2A135C" alt="App Salão Max Gestão: agenda do dia" className="absolute -bottom-24 left-0 w-[58%] -rotate-6" />
-              <PhoneFrame src="/screens/cliente-horarios.webp" top="#E5267A" alt="App Salão Max: escolha de horário" className="absolute -bottom-10 right-0 w-[58%] rotate-3" />
+            {/* Celular: dois aparelhos inteiros lado a lado. Desktop: inclinados, "saindo" da faixa. */}
+            <div className="relative mx-auto w-full max-w-md pb-10 lg:h-[36rem] lg:pb-0">
+              <div className="flex items-end justify-center gap-3 lg:block">
+                <PhoneFrame
+                  src="/screens/gestao-agenda.webp"
+                  top="#2A135C"
+                  eager
+                  alt="App Salão Max Gestão: agenda do dia"
+                  className="w-[47%] -rotate-3 lg:absolute lg:-bottom-24 lg:left-0 lg:w-[58%] lg:-rotate-6"
+                />
+                <PhoneFrame
+                  src="/screens/cliente-horarios.webp"
+                  top="#E5267A"
+                  eager
+                  alt="App Salão Max: escolha de horário"
+                  className="mb-6 w-[47%] rotate-3 lg:absolute lg:-bottom-10 lg:right-0 lg:mb-0 lg:w-[58%]"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -116,7 +131,7 @@ export default function Home() {
               Criar meu salão <Icon name="arrow" />
             </Link>
           </div>
-          <div className="mx-auto flex max-w-sm gap-4">
+          <div className="mx-auto flex w-full max-w-sm gap-4">
             <PhoneFrame src="/screens/gestao-financeiro.webp" top="#271257" alt="Financeiro do salão" className="w-1/2 translate-y-8" />
             <PhoneFrame src="/screens/cliente-confirmado.webp" top="#EE3D85" alt="Agendamento confirmado" className="w-1/2" />
           </div>
