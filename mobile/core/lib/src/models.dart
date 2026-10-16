@@ -408,3 +408,72 @@ class Summary {
   int count(String key) => json[key] as int;
   double? minutes(String key) => (json[key] as num?)?.toDouble();
 }
+
+// ---------- Precificação ----------
+
+enum PricingHealth {
+  loss('LOSS', 'Prejuízo'),
+  low('LOW', 'Margem baixa'),
+  healthy('HEALTHY', 'Saudável'),
+  noPrice('NO_PRICE', 'Sem preço');
+
+  const PricingHealth(this.api, this.label);
+
+  final String api;
+  final String label;
+
+  static PricingHealth parse(String v) => values.firstWhere((h) => h.api == v);
+}
+
+class ServicePricing {
+  ServicePricing.fromJson(Map<String, dynamic> j)
+      : serviceId = j['serviceId'] as int,
+        name = j['name'] as String,
+        plannedMinutes = j['plannedMinutes'] as int,
+        realAverageMinutes = j['realAverageMinutes'] as int?,
+        currentPrice = _num(j['currentPrice']),
+        materialCost = _num(j['materialCost']),
+        fixedCostShare = _num(j['fixedCostShare']),
+        directCost = _num(j['directCost']),
+        variablePercent = _num(j['variablePercent']),
+        breakEvenPrice = (j['breakEvenPrice'] as num?)?.toDouble(),
+        suggestedPrice = (j['suggestedPrice'] as num?)?.toDouble(),
+        currentProfit = _num(j['currentProfit']),
+        currentMarginPercent = (j['currentMarginPercent'] as num?)?.toDouble(),
+        profitPerHour = _num(j['profitPerHour']),
+        health = PricingHealth.parse(j['health'] as String);
+
+  final int serviceId;
+  final String name;
+  final int plannedMinutes;
+  final int? realAverageMinutes;
+  final double currentPrice;
+  final double materialCost;
+  final double fixedCostShare;
+  final double directCost;
+  final double variablePercent;
+  final double? breakEvenPrice;
+  final double? suggestedPrice;
+  final double currentProfit;
+  final double? currentMarginPercent;
+  final double profitPerHour;
+  final PricingHealth health;
+
+  /// Lucro e margem (%) para um preço qualquer — mesma conta do backend.
+  ({double profit, double margin}) simulate(double price) {
+    final profit = price - directCost - price * variablePercent / 100;
+    return (profit: profit, margin: price > 0 ? profit / price * 100 : 0);
+  }
+}
+
+class Pricing {
+  Pricing.fromJson(Map<String, dynamic> j)
+      : basis = j['basis'] as Map<String, dynamic>,
+        services = (j['services'] as List).map((e) => ServicePricing.fromJson(e as Map<String, dynamic>)).toList();
+
+  final Map<String, dynamic> basis;
+  final List<ServicePricing> services;
+
+  Map<String, dynamic> get settings => basis['settings'] as Map<String, dynamic>;
+  double money(String key) => _num(basis[key]);
+}

@@ -24,6 +24,11 @@ O app completo para salões de beleza, barbearias, esmalterias e estúdios de es
 • Despesas do salão (aluguel, energia, marketing...)
 • Ranking de profissionais e dos serviços que mais faturam
 
+🏷️ PRECIFICAÇÃO INTELIGENTE
+• Preço mínimo e preço sugerido de cada serviço
+• Considera material, comissão, taxa do cartão e as despesas fixas do salão
+• Descubra quais serviços dão prejuízo e simule novos preços
+
 ⏱️ CONTROLE DE TEMPO
 • Compare o tempo previsto com o tempo real de cada atendimento
 

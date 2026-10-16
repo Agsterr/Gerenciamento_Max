@@ -3,6 +3,7 @@ package com.max.salao;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -162,6 +163,29 @@ class SalonFlowIntegrationTest {
         call(null, get("/api/public/salons/" + salon.slug), null, status().isNotFound());
         call(null, post("/api/auth/login"), Map.of("email", salon.slug + "@teste.com", "password", "123456"),
                 status().isUnauthorized());
+    }
+
+    @Test
+    void pricingSuggestsPriceFromCostsCommissionAndMargin() throws Exception {
+        Tenant salon = register();
+        call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 40, "active", true),
+                status().isCreated());
+        long service = id(call(salon, post("/api/services"),
+                Map.of("name", "Corte", "durationMinutes", 60, "price", 100, "cost", 10, "active", true),
+                status().isCreated()));
+        // 10h/dia × 5 dias × 4,33 semanas × 1 profissional × 70% = 151,7 h vendáveis → R$ 10,00/h
+        call(salon, put("/api/pricing/settings"), Map.of("cardFeePercent", 4, "targetMarginPercent", 20,
+                "occupancyPercent", 70, "fixedMonthlyCost", 1516.67), status().isOk());
+
+        JsonNode res = call(salon, get("/api/pricing"), null, status().isOk());
+        assertThat(res.at("/basis/fixedCostPerHour").decimalValue()).isEqualByComparingTo("10.00");
+        JsonNode corte = res.get("services").get(0);
+        assertThat(corte.get("serviceId").asLong()).isEqualTo(service);
+        assertThat(corte.get("directCost").decimalValue()).isEqualByComparingTo("20.00");      // 10 material + 10 fixo
+        assertThat(corte.get("breakEvenPrice").decimalValue()).isEqualByComparingTo("35.72");  // 20 / (1 - 0,44)
+        assertThat(corte.get("suggestedPrice").decimalValue()).isEqualByComparingTo("60.00");  // 20 / 0,36 = 55,56 → 60
+        assertThat(corte.get("currentProfit").decimalValue()).isEqualByComparingTo("36.00");   // 100 - 20 - 44
+        assertThat(corte.get("health").asText()).isEqualTo("HEALTHY");
     }
 
     private record Tenant(String slug, String token) {

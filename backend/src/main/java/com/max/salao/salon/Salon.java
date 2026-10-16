@@ -1,5 +1,6 @@
 package com.max.salao.salon;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.Arrays;
@@ -45,6 +46,23 @@ public class Salon {
 
     @Column(nullable = false)
     private int slotMinutes = 30;
+
+    // ---- Precificação ----
+
+    /** Taxa média de cartão/maquininha + impostos sobre o faturamento (%). */
+    @Column(nullable = false)
+    private BigDecimal cardFeePercent = BigDecimal.valueOf(4);
+
+    /** Lucro desejado sobre o preço (%). */
+    @Column(nullable = false)
+    private BigDecimal targetMarginPercent = BigDecimal.valueOf(20);
+
+    /** Quanto da agenda costuma estar ocupada (%). Divide o custo fixo pelas horas realmente vendidas. */
+    @Column(nullable = false)
+    private BigDecimal occupancyPercent = BigDecimal.valueOf(70);
+
+    /** Custo fixo mensal informado; nulo = média das despesas dos últimos 3 meses. */
+    private BigDecimal fixedMonthlyCost;
 
     public Set<DayOfWeek> workDaySet() {
         return Arrays.stream(workDays.split(","))

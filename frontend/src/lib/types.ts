@@ -164,3 +164,44 @@ export type Booking = {
   customerName: string;
   cancelable: boolean;
 };
+
+export type PricingHealth = "LOSS" | "LOW" | "HEALTHY" | "NO_PRICE";
+
+export type PricingSettings = {
+  cardFeePercent: number;
+  targetMarginPercent: number;
+  occupancyPercent: number;
+  fixedMonthlyCost: number | null;
+};
+
+export type ServicePricing = {
+  serviceId: number;
+  name: string;
+  plannedMinutes: number;
+  realAverageMinutes: number | null;
+  minutesUsed: number;
+  currentPrice: number;
+  materialCost: number;
+  fixedCostShare: number;
+  directCost: number;
+  variablePercent: number;
+  breakEvenPrice: number | null;
+  suggestedPrice: number | null;
+  currentProfit: number;
+  currentMarginPercent: number | null;
+  profitPerHour: number;
+  health: PricingHealth;
+};
+
+export type Pricing = {
+  basis: {
+    monthlyFixedCost: number;
+    fixedCostFromExpenses: boolean;
+    activeProfessionals: number;
+    sellableHoursPerMonth: number;
+    fixedCostPerHour: number;
+    averageCommissionPercent: number;
+    settings: PricingSettings;
+  };
+  services: ServicePricing[];
+};

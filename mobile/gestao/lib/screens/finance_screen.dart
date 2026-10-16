@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
+import 'pricing_screen.dart';
 
 class FinanceScreen extends StatefulWidget {
   const FinanceScreen({super.key, required this.session});
@@ -170,12 +171,34 @@ class _FinanceScreenState extends State<FinanceScreen> {
                 Text(s == null ? '—' : formatMoney(s.money('profit')),
                     style: text.displaySmall?.copyWith(color: Colors.white, fontSize: 40)),
                 const SizedBox(height: 16),
-                if (s != null)
+                if (s != null) ...[
                   Row(children: [
                     _HeaderStat(label: 'Receita', value: formatMoney(s.money('totalRevenue')), icon: Icons.trending_up_rounded, color: const Color(0xFF6EE7B7)),
                     const SizedBox(width: 10),
                     _HeaderStat(label: 'Custos', value: formatMoney(s.money('totalCosts')), icon: Icons.trending_down_rounded, color: const Color(0xFFFDA4AF)),
                   ]),
+                  const SizedBox(height: 10),
+                  Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PricingScreen(api: _api))),
+                      child: const Padding(
+                        padding: EdgeInsets.all(14),
+                        child: Row(children: [
+                          Icon(Icons.calculate_rounded, color: Brand.rose),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text('Precificação: descubra o preço certo de cada serviço',
+                                style: TextStyle(fontWeight: FontWeight.w800, color: Brand.ink)),
+                          ),
+                          Icon(Icons.arrow_forward_rounded, color: Brand.rose),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ],
               ]),
             ),
             if (_error != null)

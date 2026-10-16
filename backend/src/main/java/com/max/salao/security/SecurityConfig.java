@@ -41,7 +41,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/api/public/**", "/actuator/health").permitAll()
                         // Gestão financeira e cadastros estruturais: só o dono
-                        .requestMatchers("/api/reports/**", "/api/expenses/**", "/api/users/**").hasRole("OWNER")
+                        .requestMatchers("/api/reports/**", "/api/expenses/**", "/api/users/**", "/api/pricing/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/salon").hasRole("OWNER")
                         .requestMatchers(HttpMethod.POST, "/api/professionals/**", "/api/services/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/professionals/**", "/api/services/**").hasRole("OWNER")

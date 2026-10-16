@@ -20,6 +20,7 @@ e ganha uma página pública para os clientes agendarem pelo celular.
 - **Serviços** com duração, preço, custo de material e margem.
 - **Profissionais** com % de comissão (calculada no fechamento do atendimento).
 - **Produtos e estoque**: entrada, venda, uso em atendimento e perda, com alerta de estoque mínimo.
+- **Precificação**: para cada serviço calcula o custo direto (material + parte do custo fixo pelo tempo de cadeira, usando o tempo real quando é maior), o **preço mínimo** (lucro zero) e o **preço sugerido** para a margem desejada, já descontando comissão e taxa de cartão. Mostra quem dá prejuízo, simula qualquer preço e aplica o sugerido com um toque.
 - **Financeiro**: receita (serviços + produtos), custos (comissões, material, produtos, despesas), lucro, ticket médio, ranking por profissional/serviço e lançamento de despesas.
 - **Equipe**: perfis *Dono* (tudo) e *Funcionário* (sem financeiro/configurações).
 
@@ -101,6 +102,7 @@ repositório; regras de negócio ficam em services (`AppointmentService`, `Avail
 | POST | `/api/appointments` (`durationMinutes`, `force` para encaixe) · `/{id}/confirm` · `/start` · `/finish` · `/cancel` · `/no-show` | painel |
 | POST | `/api/products/{id}/movements` | painel |
 | GET | `/api/reports/summary?from=&to=` · CRUD `/api/expenses` | dono |
+| GET · PUT | `/api/pricing` · `/api/pricing/settings` (precificação) | dono |
 | GET | `/api/public/salons?q=` (busca) · `/api/public/salons/{slug}` · `/availability` | cliente |
 | POST/GET | `/api/public/salons/{slug}/bookings[/{token}[/cancel]]` | cliente |
 
