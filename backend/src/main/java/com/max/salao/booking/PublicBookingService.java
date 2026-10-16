@@ -87,8 +87,8 @@ public class PublicBookingService {
             c.setEmail(req.email());
             return customers.save(c);
         });
-        return appointmentService.book(new BookCommand(customer, req.professionalId(), req.serviceId(),
-                req.startAt(), req.notes(), Appointment.Source.ONLINE));
+        return appointmentService.book(BookCommand.online(customer, req.professionalId(), req.serviceId(),
+                req.startAt(), req.notes()));
     }
 
     @Transactional(readOnly = true)

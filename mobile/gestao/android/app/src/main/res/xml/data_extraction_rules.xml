@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- O token de acesso fica no Keystore e não deve ir para backup/transferência entre aparelhos. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="."/>
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="."/>
+    </device-transfer>
+</data-extraction-rules>

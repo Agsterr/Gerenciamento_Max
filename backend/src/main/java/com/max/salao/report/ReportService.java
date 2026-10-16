@@ -103,7 +103,7 @@ public class ReportService {
                 all.stream().filter(a -> a.getSource() == Appointment.Source.ONLINE).count(),
                 done.isEmpty() ? BigDecimal.ZERO
                         : servicesRevenue.divide(BigDecimal.valueOf(done.size()), 2, RoundingMode.HALF_UP),
-                avg(done.stream().map(a -> (long) a.getService().getDurationMinutes()).toList()),
+                avg(done.stream().map(a -> (long) a.plannedMinutes()).toList()),
                 avg(done.stream().map(Appointment::realMinutes).toList()),
                 ranking(done, a -> a.getProfessional().getName()),
                 ranking(done, a -> a.getService().getName()),

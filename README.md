@@ -7,11 +7,13 @@ e ganha uma página pública para os clientes agendarem pelo celular.
 |---|---|
 | **Backend** | Java 21 · Spring Boot 3.5 · Spring Security (JWT) · JPA/Hibernate · Flyway · PostgreSQL |
 | **Frontend** | Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 |
+| **Apps** | Flutter: **Salão Max** (cliente) e **Salão Max Gestão** (salão) — veja [mobile/](mobile/README.md) |
 
 ## Funcionalidades
 
 **Versão do salão (`/painel`)**
 - **Agenda do dia** por profissional: agendar, confirmar, iniciar, finalizar, cancelar, marcar falta. Link direto para o WhatsApp do cliente.
+- **Agendamento manual**: além da grade de horários livres, o salão pode marcar em qualquer horário, com duração própria, e fazer **encaixe** (ignora conflito e expediente).
 - **Horários livres calculados** a partir do expediente do salão e da agenda de cada profissional — sem encaixe duplicado (trava pessimista no profissional).
 - **Controle de tempo**: duração prevista do serviço × tempo real (iniciar → finalizar).
 - **Clientes** com busca por nome/telefone, observações e histórico (total gasto).
@@ -24,6 +26,12 @@ e ganha uma página pública para os clientes agendarem pelo celular.
 **Versão do cliente (`/s/{slug-do-salao}`)**
 - Escolhe serviço → profissional (ou "sem preferência") → dia e horário → nome e WhatsApp. Sem cadastro, sem senha.
 - Recebe um link para consultar ou cancelar (até 2h antes).
+
+**Apps para Android e iOS (`mobile/`)**
+- Mesmas funções do site em apps nativos Flutter, já configurados para os requisitos da Google Play e da
+  App Store (target SDK 36, privacy manifest, exclusão de conta, HTTPS). Checklist em [mobile/STORES.md](mobile/STORES.md).
+
+**Páginas legais** (exigidas pelas lojas): `/privacidade`, `/termos` e `/excluir-conta`.
 
 ## Rodando
 
@@ -87,12 +95,13 @@ repositório; regras de negócio ficam em services (`AppointmentService`, `Avail
 | Método | Rota | Quem |
 |---|---|---|
 | POST | `/api/auth/register`, `/api/auth/login` | público |
+| GET · POST | `/api/me` · `/api/me/delete` (exclusão de conta) | painel |
 | GET/POST/PUT | `/api/customers`, `/api/products`, `/api/services`, `/api/professionals` | painel |
 | GET | `/api/appointments?from=&to=` · `/api/appointments/availability` | painel |
-| POST | `/api/appointments` · `/{id}/confirm` · `/start` · `/finish` · `/cancel` · `/no-show` | painel |
+| POST | `/api/appointments` (`durationMinutes`, `force` para encaixe) · `/{id}/confirm` · `/start` · `/finish` · `/cancel` · `/no-show` | painel |
 | POST | `/api/products/{id}/movements` | painel |
 | GET | `/api/reports/summary?from=&to=` · CRUD `/api/expenses` | dono |
-| GET | `/api/public/salons/{slug}` · `/availability` | cliente |
+| GET | `/api/public/salons?q=` (busca) · `/api/public/salons/{slug}` · `/availability` | cliente |
 | POST/GET | `/api/public/salons/{slug}/bookings[/{token}[/cancel]]` | cliente |
 
 ## Variáveis de ambiente (API)
@@ -102,6 +111,8 @@ repositório; regras de negócio ficam em services (`AppointmentService`, `Avail
 | `JWT_SECRET` | segredo de desenvolvimento — **troque em produção** (≥ 32 caracteres) |
 | `CORS_ORIGINS` | `http://localhost:3000` |
 | `APP_TIMEZONE` | `America/Sao_Paulo` |
+
+Site: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_LEGAL_COMPANY` e `NEXT_PUBLIC_LEGAL_EMAIL` (aparecem na política de privacidade).
 
 ## Próximos passos sugeridos
 - Lembrete automático por WhatsApp/e-mail na véspera.

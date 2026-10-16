@@ -28,7 +28,14 @@ public class AppointmentService {
 
     /** Dados necessários para marcar um horário (vindos do painel ou da página pública). */
     public record BookCommand(Customer customer, Long professionalId, Long serviceId, LocalDateTime startAt,
-                              String notes, Appointment.Source source) {
+                              String notes, Appointment.Source source, Integer durationMinutes, boolean force) {
+
+        /** Agendamento feito pelo cliente: sempre na duração do serviço e sem encaixe. */
+        public static BookCommand online(Customer customer, Long professionalId, Long serviceId,
+                                         LocalDateTime startAt, String notes) {
+            return new BookCommand(customer, professionalId, serviceId, startAt, notes, Appointment.Source.ONLINE,
+                    null, false);
+        }
     }
 
     private final AppointmentRepository appointments;
@@ -75,7 +82,7 @@ public class AppointmentService {
         Customer customer = customers.findById(req.customerId())
                 .orElseThrow(() -> new NotFoundException("Cliente não encontrado"));
         return book(new BookCommand(customer, req.professionalId(), req.serviceId(), req.startAt(), req.notes(),
-                Appointment.Source.ADMIN));
+                Appointment.Source.ADMIN, req.durationMinutes(), req.force()));
     }
 
     @Transactional
@@ -85,18 +92,23 @@ public class AppointmentService {
                 .filter(ServiceItem::isActive)
                 .orElseThrow(() -> new NotFoundException("Serviço não encontrado"));
         LocalDateTime start = cmd.startAt().withSecond(0).withNano(0);
-        LocalDateTime end = start.plusMinutes(service.getDurationMinutes());
+        LocalDateTime end = start.plusMinutes(durationOf(service, cmd.durationMinutes()));
         if (start.isBefore(LocalDateTime.now(clock).minusMinutes(5)) && cmd.source() == Appointment.Source.ONLINE) {
             throw new BusinessException("Escolha um horário futuro");
         }
 
+        if (cmd.force() && cmd.professionalId() == null) {
+            throw new BusinessException("Escolha o profissional para fazer um encaixe");
+        }
         Long professionalId = cmd.professionalId() != null
                 ? cmd.professionalId()
-                : pickFreeProfessional(salon, service, start);
+                : pickFreeProfessional(salon, start, end);
         Professional professional = professionals.findByIdForUpdate(professionalId)
                 .filter(Professional::isActive)
                 .orElseThrow(() -> new NotFoundException("Profissional não encontrado"));
-        availability.assertBookable(salon, professional.getId(), start, end, null);
+        if (!cmd.force()) {
+            availability.assertBookable(salon, professional.getId(), start, end, null);
+        }
 
         Appointment a = new Appointment();
         a.setCustomer(cmd.customer());
@@ -123,8 +135,10 @@ public class AppointmentService {
         Professional professional = professionals.findByIdForUpdate(professionalId)
                 .orElseThrow(() -> new NotFoundException("Profissional não encontrado"));
         LocalDateTime start = req.startAt().withSecond(0).withNano(0);
-        LocalDateTime end = start.plusMinutes(service.getDurationMinutes());
-        availability.assertBookable(salonService.current(), professional.getId(), start, end, a.getId());
+        LocalDateTime end = start.plusMinutes(durationOf(service, req.durationMinutes()));
+        if (!req.force()) {
+            availability.assertBookable(salonService.current(), professional.getId(), start, end, a.getId());
+        }
 
         a.setService(service);
         a.setProfessional(professional);
@@ -166,12 +180,16 @@ public class AppointmentService {
         }
     }
 
-    private Long pickFreeProfessional(Salon salon, ServiceItem service, LocalDateTime start) {
-        return availability.slots(salon, service, professionals.findByActiveTrueOrderByName(), start.toLocalDate())
-                .stream()
-                .filter(s -> s.time().equals(start.toLocalTime()))
+    /** Primeiro profissional ativo sem conflito no intervalo (aceita qualquer minuto, não só a grade). */
+    private Long pickFreeProfessional(Salon salon, LocalDateTime start, LocalDateTime end) {
+        return professionals.findByActiveTrueOrderByName().stream()
+                .map(Professional::getId)
+                .filter(id -> availability.isBookable(salon, id, start, end))
                 .findFirst()
-                .map(s -> s.professionalIds().getFirst())
                 .orElseThrow(() -> new BusinessException("Nenhum profissional livre nesse horário"));
+    }
+
+    private static int durationOf(ServiceItem service, Integer manualMinutes) {
+        return manualMinutes != null ? manualMinutes : service.getDurationMinutes();
     }
 }

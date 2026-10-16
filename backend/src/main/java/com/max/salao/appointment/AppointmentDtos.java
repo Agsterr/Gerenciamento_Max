@@ -6,6 +6,8 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 public final class AppointmentDtos {
@@ -18,7 +20,9 @@ public final class AppointmentDtos {
             /* nulo = qualquer profissional livre */ Long professionalId,
             @NotNull Long serviceId,
             @NotNull LocalDateTime startAt,
-            String notes) {
+            String notes,
+            /* duração manual em minutos; nulo = duração do serviço */ @Min(5) @Max(720) Integer durationMinutes,
+            /* encaixe: ignora conflito de agenda e horário de funcionamento */ boolean force) {
     }
 
     public record ProductQuantity(@NotNull Long productId, @NotNull @DecimalMin("0.001") BigDecimal quantity) {
@@ -56,7 +60,7 @@ public final class AppointmentDtos {
                     new Ref(a.getCustomer().getId(), a.getCustomer().getName()), a.getCustomer().getPhone(),
                     new Ref(a.getProfessional().getId(), a.getProfessional().getName()),
                     new Ref(a.getService().getId(), a.getService().getName()),
-                    a.getService().getDurationMinutes(), a.realMinutes(), a.getPrice(), a.getCommissionAmount(),
+                    a.plannedMinutes(), a.realMinutes(), a.getPrice(), a.getCommissionAmount(),
                     a.getStartedAt(), a.getFinishedAt(), a.getNotes(), a.getSource());
         }
     }

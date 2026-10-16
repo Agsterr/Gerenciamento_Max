@@ -1,0 +1,36 @@
+name: salao_cliente
+description: "Salão Max — agende seu horário no salão."
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  salao_core:
+    path: ../core
+  intl: ^0.20.2
+  shared_preferences: ^2.5.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  http: ^1.6.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+# Ícones: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icon.png
+  remove_alpha_ios: true
+  adaptive_icon_background: "#E11D48"
+  adaptive_icon_foreground: assets/icon_foreground.png

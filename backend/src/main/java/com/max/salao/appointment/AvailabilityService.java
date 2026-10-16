@@ -64,19 +64,33 @@ public class AvailabilityService {
     /** Valida expediente e conflito. Chamar com o profissional já travado (FOR UPDATE). */
     public void assertBookable(Salon salon, Long professionalId, LocalDateTime start, LocalDateTime end,
                                Long ignoreAppointmentId) {
+        String problem = problem(salon, professionalId, start, end, ignoreAppointmentId);
+        if (problem != null) {
+            throw new BusinessException(problem);
+        }
+    }
+
+    public boolean isBookable(Salon salon, Long professionalId, LocalDateTime start, LocalDateTime end) {
+        return problem(salon, professionalId, start, end, null) == null;
+    }
+
+    /** Motivo pelo qual o horário não pode ser marcado, ou {@code null} se estiver livre. */
+    private String problem(Salon salon, Long professionalId, LocalDateTime start, LocalDateTime end,
+                           Long ignoreAppointmentId) {
+        if (!end.isAfter(start)) {
+            return "Duração inválida";
+        }
         if (!salon.workDaySet().contains(start.getDayOfWeek())) {
-            throw new BusinessException("O salão não funciona nesse dia");
+            return "O salão não funciona nesse dia";
         }
         if (start.toLocalTime().isBefore(salon.getOpenTime()) || end.toLocalTime().isAfter(salon.getCloseTime())
                 || !end.toLocalDate().equals(start.toLocalDate())) {
-            throw new BusinessException("Fora do horário de funcionamento");
+            return "Fora do horário de funcionamento";
         }
         boolean conflict = appointments.findBusy(start, end, AppointmentStatus.FREEING).stream()
                 .filter(a -> !a.getId().equals(ignoreAppointmentId))
                 .anyMatch(a -> overlaps(a, professionalId, start, end));
-        if (conflict) {
-            throw new BusinessException("Horário indisponível para este profissional");
-        }
+        return conflict ? "Horário indisponível para este profissional" : null;
     }
 
     private static boolean overlaps(Appointment a, Long professionalId, LocalDateTime start, LocalDateTime end) {

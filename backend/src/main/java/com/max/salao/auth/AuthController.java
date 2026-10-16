@@ -8,6 +8,7 @@ import com.max.salao.auth.AuthDtos.RegisterRequest;
 import com.max.salao.auth.AuthDtos.TokenResponse;
 import com.max.salao.auth.AuthDtos.UserResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -20,10 +21,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class AuthController {
 
-    private final AuthService service;
+    public record DeleteAccountRequest(@NotBlank String password) {
+    }
 
-    public AuthController(AuthService service) {
+    public record DeleteAccountResponse(boolean salonDeleted) {
+    }
+
+    private final AuthService service;
+    private final AccountDeletionService deletionService;
+
+    public AuthController(AuthService service, AccountDeletionService deletionService) {
         this.service = service;
+        this.deletionService = deletionService;
     }
 
     @PostMapping("/api/auth/register")
@@ -40,6 +49,12 @@ public class AuthController {
     @GetMapping("/api/me")
     public UserResponse me(@AuthenticationPrincipal Jwt jwt) {
         return service.me(Long.valueOf(jwt.getSubject()));
+    }
+
+    /** Exclui a conta do usuário logado (e o salão, se for o último dono). */
+    @PostMapping("/api/me/delete")
+    public DeleteAccountResponse deleteMe(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody DeleteAccountRequest req) {
+        return new DeleteAccountResponse(deletionService.delete(Long.valueOf(jwt.getSubject()), req.password()));
     }
 
     @GetMapping("/api/users")

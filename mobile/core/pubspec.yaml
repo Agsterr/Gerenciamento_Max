@@ -1,0 +1,20 @@
+name: salao_core
+description: Código compartilhado entre os apps Salão Max (cliente) e Salão Max Gestão.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.6.0
+  intl: ^0.20.2
+  url_launcher: ^6.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

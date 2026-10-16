@@ -26,6 +26,9 @@ export function NewAppointmentModal({
   const [professionalId, setProfessionalId] = useState("");
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState<string | null>(null);
+  const [manual, setManual] = useState(false);
+  const [duration, setDuration] = useState("");
+  const [force, setForce] = useState(false);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -36,7 +39,7 @@ export function NewAppointmentModal({
     open && query.length >= 2 && !customer ? `/api/customers?q=${encodeURIComponent(query)}` : null,
   );
   const slotsPath =
-    open && serviceId
+    open && serviceId && !manual
       ? `/api/appointments/availability?serviceId=${serviceId}&date=${date}` +
         (professionalId ? `&professionalId=${professionalId}` : "")
       : null;
@@ -50,7 +53,11 @@ export function NewAppointmentModal({
     }
   }, [open, initialDate]);
 
-  useEffect(() => setTime(null), [serviceId, professionalId, date]);
+  useEffect(() => {
+    if (!manual) setTime(null);
+  }, [serviceId, professionalId, date, manual]);
+
+  const selectedService = services?.find((s) => String(s.id) === serviceId);
 
   function reset() {
     setQuery("");
@@ -59,6 +66,9 @@ export function NewAppointmentModal({
     setServiceId("");
     setProfessionalId("");
     setNotes("");
+    setManual(false);
+    setDuration("");
+    setForce(false);
   }
 
   async function submit() {
@@ -75,6 +85,8 @@ export function NewAppointmentModal({
         professionalId: professionalId ? Number(professionalId) : null,
         startAt: `${date}T${time}:00`,
         notes: notes || null,
+        durationMinutes: manual && duration ? Number(duration) : null,
+        force: manual && force,
       });
       reset();
       onCreated();
@@ -166,11 +178,57 @@ export function NewAppointmentModal({
           <Field label="Data" type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
         </div>
 
-        {serviceId && <SlotPicker slots={slots} loading={loadingSlots} value={time} onChange={setTime} />}
+        {serviceId && (
+          <div>
+            <div className="mb-2 inline-flex rounded-lg border border-zinc-300 p-0.5 text-sm">
+              {[
+                [false, "Horários livres"],
+                [true, "Manual"],
+              ].map(([value, label]) => (
+                <button
+                  type="button"
+                  key={String(value)}
+                  onClick={() => {
+                    setManual(value as boolean);
+                    setTime(null);
+                  }}
+                  className={`rounded-md px-3 py-1 ${manual === value ? "bg-rose-600 text-white" : "text-zinc-600"}`}
+                >
+                  {label as string}
+                </button>
+              ))}
+            </div>
+            {manual ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Horário" type="time" value={time ?? ""} onChange={(e) => setTime(e.target.value || null)} />
+                  <Field
+                    label="Duração (min)"
+                    type="number"
+                    min={5}
+                    max={720}
+                    placeholder={String(selectedService?.durationMinutes ?? "")}
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                  />
+                </div>
+                <label className="flex items-start gap-2 text-sm text-zinc-700">
+                  <input type="checkbox" className="mt-1" checked={force} onChange={(e) => setForce(e.target.checked)} />
+                  <span>
+                    Encaixe — marcar mesmo com conflito ou fora do expediente
+                    {force && !professionalId && <span className="block text-xs text-rose-600">Escolha o profissional.</span>}
+                  </span>
+                </label>
+              </div>
+            ) : (
+              <SlotPicker slots={slots} loading={loadingSlots} value={time} onChange={setTime} />
+            )}
+          </div>
+        )}
 
         <Field label="Observações" value={notes} onChange={(e) => setNotes(e.target.value)} />
         <ErrorMessage message={error} />
-        <Button className="w-full" disabled={!hasCustomer || !time || busy} onClick={submit}>
+        <Button className="w-full" disabled={!hasCustomer || !time || busy || (manual && force && !professionalId)} onClick={submit}>
           {busy ? "Salvando..." : time ? `Agendar às ${time}` : "Escolha um horário"}
         </Button>
       </div>

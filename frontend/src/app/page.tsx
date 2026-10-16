@@ -44,6 +44,12 @@ export default function Home() {
           </div>
         ))}
       </section>
+
+      <footer className="mt-16 flex flex-wrap justify-center gap-4 text-sm text-zinc-500">
+        <Link href="/privacidade">Privacidade</Link>
+        <Link href="/termos">Termos de uso</Link>
+        <Link href="/excluir-conta">Excluir conta</Link>
+      </footer>
     </main>
   );
 }

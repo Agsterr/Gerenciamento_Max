@@ -101,6 +101,16 @@ export default function SettingsPage() {
         </Card>
 
         <Team />
+
+        <Card>
+          <h2 className="mb-1 font-semibold">Conta</h2>
+          <p className="mb-3 text-sm text-zinc-600">
+            Excluir a conta remove seu acesso. Se você for o último dono, o salão e todos os dados são apagados.
+          </p>
+          <a href="/excluir-conta" className="text-sm font-medium text-rose-700 hover:underline">
+            Excluir conta →
+          </a>
+        </Card>
       </div>
     </>
   );

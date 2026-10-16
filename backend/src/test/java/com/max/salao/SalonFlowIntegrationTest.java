@@ -124,6 +124,46 @@ class SalonFlowIntegrationTest {
         call(staff, get("/api/reports/summary?from=" + day + "&to=" + day), null, status().isForbidden());
     }
 
+    @Test
+    void manualBookingAllowsAnyTimeAndForcedFit() throws Exception {
+        Tenant salon = register();
+        long pro = id(call(salon, post("/api/professionals"),
+                Map.of("name", "Ana", "commissionPercent", 0, "active", true), status().isCreated()));
+        long service = id(call(salon, post("/api/services"),
+                Map.of("name", "Corte", "durationMinutes", 60, "price", 80, "cost", 0, "active", true),
+                status().isCreated()));
+        long customer = id(call(salon, post("/api/customers"), Map.of("name", "Lia", "phone", "11911112222"),
+                status().isCreated()));
+
+        // horário fora da grade (10:10) e duração manual de 45 min
+        JsonNode first = call(salon, post("/api/appointments"), Map.of("customerId", customer, "professionalId", pro,
+                "serviceId", service, "startAt", day + "T10:10:00", "durationMinutes", 45), status().isCreated());
+        assertThat(first.get("endAt").asText()).endsWith("10:55:00");
+        assertThat(first.get("estimatedMinutes").asInt()).isEqualTo(45);
+
+        var overlapping = Map.<String, Object>of("customerId", customer, "professionalId", pro,
+                "serviceId", service, "startAt", day + "T10:30:00");
+        call(salon, post("/api/appointments"), overlapping, status().isUnprocessableEntity());
+
+        var forced = new java.util.HashMap<>(overlapping);
+        forced.put("force", true);
+        call(salon, post("/api/appointments"), forced, status().isCreated());
+    }
+
+    @Test
+    void ownerCanDeleteAccountAndSalon() throws Exception {
+        Tenant salon = register();
+        assertThat(call(null, get("/api/public/salons?q=" + salon.slug), null, status().isOk())).hasSize(1);
+
+        call(salon, post("/api/me/delete"), Map.of("password", "errada"), status().isUnauthorized());
+        JsonNode res = call(salon, post("/api/me/delete"), Map.of("password", "123456"), status().isOk());
+        assertThat(res.get("salonDeleted").asBoolean()).isTrue();
+
+        call(null, get("/api/public/salons/" + salon.slug), null, status().isNotFound());
+        call(null, post("/api/auth/login"), Map.of("email", salon.slug + "@teste.com", "password", "123456"),
+                status().isUnauthorized());
+    }
+
     private record Tenant(String slug, String token) {
     }
 

@@ -114,6 +114,11 @@ public class Appointment extends TenantEntity {
         status = AppointmentStatus.NO_SHOW;
     }
 
+    /** Duração planejada (agenda). */
+    public int plannedMinutes() {
+        return (int) Duration.between(startAt, endAt).toMinutes();
+    }
+
     /** Duração real (início→fim do atendimento), quando registrada. */
     public Long realMinutes() {
         return startedAt != null && finishedAt != null ? Duration.between(startedAt, finishedAt).toMinutes() : null;

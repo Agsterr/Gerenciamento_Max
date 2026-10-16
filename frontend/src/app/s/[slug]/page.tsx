@@ -149,6 +149,13 @@ export default function PublicBookingPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
+            <p className="text-xs text-zinc-500">
+              Ao agendar você concorda com a{" "}
+              <a href="/privacidade" className="underline">
+                Política de Privacidade
+              </a>
+              .
+            </p>
             <ErrorMessage message={error} />
             <Button className="w-full py-3" disabled={busy}>
               {busy ? "Agendando..." : `Confirmar ${service?.name} às ${time}`}
