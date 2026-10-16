@@ -66,6 +66,13 @@
       "status": "#FFFFFF"
     },
     {
+      "file": "g7-precificacao.png",
+      "title": "Preço certo, mais lucro",
+      "subtitle": "Preço mínimo e sugerido de cada serviço",
+      "top": "#271256",
+      "status": "#FFFFFF"
+    },
+    {
       "file": "g4-cadastros.png",
       "title": "Serviços, equipe e estoque",
       "subtitle": "Margem de lucro e alerta de estoque baixo",
