@@ -25,7 +25,7 @@ export default function LoginPage() {
         password: form.get("password"),
       });
       signIn(res.token, res.user);
-      router.push("/painel");
+      router.push(res.user.role === "PLATFORM_ADMIN" ? "/plataforma" : "/painel");
     } catch (err) {
       setError((err as Error).message);
     } finally {

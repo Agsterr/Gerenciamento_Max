@@ -6,6 +6,7 @@ import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -33,21 +34,29 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AccountStatusService statuses, ObjectMapper json)
+            throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/api/public/**", "/actuator/health").permitAll()
+                        // APK fora da loja: consulta/download públicos; o deploy confere o X-Deploy-Token
+                        .requestMatchers(HttpMethod.GET, "/api/app/version", "/api/app/download/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/app/releases/deploy").permitAll()
+                        .requestMatchers("/api/platform/**").hasRole("PLATFORM_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/me").authenticated()
                         // Gestão financeira e cadastros estruturais: só o dono
                         .requestMatchers("/api/reports/**", "/api/expenses/**", "/api/users/**", "/api/pricing/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/salon").hasRole("OWNER")
                         .requestMatchers(HttpMethod.POST, "/api/professionals/**", "/api/services/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/professionals/**", "/api/services/**").hasRole("OWNER")
-                        .anyRequest().authenticated())
+                        // Demais rotas são do salão: o admin da plataforma não tem tenant
+                        .anyRequest().hasAnyRole("OWNER", "STAFF"))
                 .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
-                .addFilterAfter(new TenantFilter(), BearerTokenAuthenticationFilter.class)
+                .addFilterAfter(new AccountStatusFilter(statuses, json), BearerTokenAuthenticationFilter.class)
+                .addFilterAfter(new TenantFilter(), AccountStatusFilter.class)
                 .build();
     }
 

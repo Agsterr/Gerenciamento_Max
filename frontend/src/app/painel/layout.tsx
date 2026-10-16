@@ -23,9 +23,10 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (ready && !user) router.replace("/login");
+    if (user?.role === "PLATFORM_ADMIN") router.replace("/plataforma");
   }, [ready, user, router]);
 
-  if (!user) return <p className="p-8 text-center text-zinc-500">Carregando...</p>;
+  if (!user || user.role === "PLATFORM_ADMIN") return <p className="p-8 text-center text-zinc-500">Carregando...</p>;
 
   const items = NAV.filter((n) => !n.ownerOnly || user.role === "OWNER");
 

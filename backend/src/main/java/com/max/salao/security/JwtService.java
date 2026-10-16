@@ -26,15 +26,16 @@ public class JwtService {
 
     public String issue(AppUser user) {
         Instant now = Instant.now();
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
                 .subject(user.getId().toString())
                 .issuedAt(now)
                 .expiresAt(now.plus(props.ttl()))
-                .claim(TENANT_CLAIM, user.getSalonId())
                 .claim(ROLE_CLAIM, user.getRole().name())
-                .claim("name", user.getName())
-                .build();
+                .claim("name", user.getName());
+        if (user.getSalonId() != null) {
+            claims.claim(TENANT_CLAIM, user.getSalonId());
+        }
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
-        return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+        return encoder.encode(JwtEncoderParameters.from(header, claims.build())).getTokenValue();
     }
 }
