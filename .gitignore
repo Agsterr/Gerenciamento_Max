@@ -1,0 +1,16 @@
+# Java
+backend/target/
+*.class
+# Node / Next
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+*.tsbuildinfo
+# Env / IDE
+.env
+.env.local
+.idea/
+.vscode/
+*.iml
+.DS_Store
