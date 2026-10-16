@@ -1,0 +1,63 @@
+const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+export const formatMoney = (value: number | null | undefined) => money.format(value ?? 0);
+
+/** "2026-10-20T14:30:00" -> "14:30" */
+export const formatTime = (iso: string) => iso.slice(11, 16);
+
+/** "2026-10-20" -> "20/10/2026" */
+export const formatDate = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
+
+export const formatDateTime = (iso: string) => `${formatDate(iso)} ${formatTime(iso)}`;
+
+/** Data local no formato ISO (yyyy-mm-dd), sem conversão para UTC. */
+export function isoDate(d = new Date()) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+export function addDays(iso: string, days: number) {
+  const d = new Date(iso + "T12:00:00");
+  d.setDate(d.getDate() + days);
+  return isoDate(d);
+}
+
+export function weekdayLabel(iso: string) {
+  const label = new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+export const formatPhone = (phone: string) => {
+  const d = phone.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return phone;
+};
+
+export const STATUS_LABEL: Record<string, string> = {
+  SCHEDULED: "Agendado",
+  CONFIRMED: "Confirmado",
+  IN_PROGRESS: "Em atendimento",
+  DONE: "Finalizado",
+  CANCELED: "Cancelado",
+  NO_SHOW: "Faltou",
+};
+
+export const STATUS_COLOR: Record<string, string> = {
+  SCHEDULED: "bg-sky-100 text-sky-800",
+  CONFIRMED: "bg-indigo-100 text-indigo-800",
+  IN_PROGRESS: "bg-amber-100 text-amber-800",
+  DONE: "bg-emerald-100 text-emerald-800",
+  CANCELED: "bg-zinc-200 text-zinc-600",
+  NO_SHOW: "bg-rose-100 text-rose-800",
+};
+
+export const WEEKDAYS = [
+  { value: "1", label: "Seg" },
+  { value: "2", label: "Ter" },
+  { value: "3", label: "Qua" },
+  { value: "4", label: "Qui" },
+  { value: "5", label: "Sex" },
+  { value: "6", label: "Sáb" },
+  { value: "7", label: "Dom" },
+];

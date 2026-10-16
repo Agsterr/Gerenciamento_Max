@@ -1,0 +1,166 @@
+export type Role = "OWNER" | "STAFF";
+
+export type User = {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  salonId: number;
+  salonSlug: string;
+};
+
+export type Salon = {
+  id: number;
+  name: string;
+  slug: string;
+  phone: string | null;
+  address: string | null;
+  openTime: string;
+  closeTime: string;
+  workDays: string;
+  slotMinutes: number;
+};
+
+export type Professional = {
+  id: number;
+  name: string;
+  phone: string | null;
+  commissionPercent: number;
+  active: boolean;
+};
+
+export type Service = {
+  id: number;
+  name: string;
+  description: string | null;
+  durationMinutes: number;
+  price: number;
+  cost: number;
+  active: boolean;
+};
+
+export type Customer = {
+  id: number;
+  name: string;
+  phone: string;
+  email: string | null;
+  notes: string | null;
+  createdAt: string;
+};
+
+export type Product = {
+  id: number;
+  name: string;
+  costPrice: number;
+  salePrice: number;
+  stock: number;
+  minStock: number;
+  unit: string;
+  active: boolean;
+  lowStock: boolean;
+};
+
+export type MovementType = "IN" | "SALE" | "USE" | "LOSS";
+
+export type Movement = {
+  id: number;
+  productId: number;
+  productName: string;
+  type: MovementType;
+  quantity: number;
+  unitCost: number;
+  unitPrice: number | null;
+  appointmentId: number | null;
+  createdAt: string;
+};
+
+export type AppointmentStatus = "SCHEDULED" | "CONFIRMED" | "IN_PROGRESS" | "DONE" | "CANCELED" | "NO_SHOW";
+
+export type Ref = { id: number; name: string };
+
+export type Appointment = {
+  id: number;
+  startAt: string;
+  endAt: string;
+  status: AppointmentStatus;
+  customer: Ref;
+  customerPhone: string;
+  professional: Ref;
+  service: Ref;
+  estimatedMinutes: number;
+  realMinutes: number | null;
+  price: number;
+  commissionAmount: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  notes: string | null;
+  source: "ADMIN" | "ONLINE";
+};
+
+export type Slot = { time: string; professionalIds: number[] };
+
+export type Expense = {
+  id: number;
+  description: string;
+  category: string;
+  amount: number;
+  date: string;
+};
+
+export type Ranking = {
+  name: string;
+  count: number;
+  revenue: number;
+  commission: number;
+  avgRealMinutes: number | null;
+};
+
+export type Summary = {
+  from: string;
+  to: string;
+  servicesRevenue: number;
+  productSalesRevenue: number;
+  totalRevenue: number;
+  serviceMaterialCost: number;
+  productsUsedCost: number;
+  productsSoldCost: number;
+  commissions: number;
+  expenses: number;
+  totalCosts: number;
+  profit: number;
+  appointmentsDone: number;
+  appointmentsCanceled: number;
+  appointmentsNoShow: number;
+  onlineBookings: number;
+  averageTicket: number;
+  averageEstimatedMinutes: number | null;
+  averageRealMinutes: number | null;
+  byProfessional: Ranking[];
+  byService: Ranking[];
+  expensesByCategory: Record<string, number>;
+  lowStock: { id: number; name: string; stock: number; minStock: number; unit: string }[];
+};
+
+export type PublicSalon = {
+  name: string;
+  slug: string;
+  phone: string | null;
+  address: string | null;
+  openTime: string;
+  closeTime: string;
+  workDays: string;
+  services: { id: number; name: string; description: string | null; durationMinutes: number; price: number }[];
+  professionals: Ref[];
+};
+
+export type Booking = {
+  token: string;
+  startAt: string;
+  endAt: string;
+  status: AppointmentStatus;
+  serviceName: string;
+  professionalName: string;
+  price: number;
+  customerName: string;
+  cancelable: boolean;
+};
