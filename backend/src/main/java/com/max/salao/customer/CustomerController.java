@@ -1,5 +1,6 @@
 package com.max.salao.customer;
 
+import com.max.salao.plan.PlanService;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -39,8 +40,10 @@ public class CustomerController {
     private static final Limit MAX_RESULTS = Limit.of(100);
 
     private final CustomerRepository repository;
+    private final PlanService plans;
 
-    public CustomerController(CustomerRepository repository) {
+    public CustomerController(CustomerRepository repository, PlanService plans) {
+        this.plans = plans;
         this.repository = repository;
     }
 
@@ -60,6 +63,7 @@ public class CustomerController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CustomerResponse create(@Valid @RequestBody CustomerRequest req) {
+        plans.checkLimit(PlanService.Resource.CUSTOMERS);
         String phone = Customer.normalizePhone(req.phone());
         if (repository.findByPhone(phone).isPresent()) {
             throw new BusinessException("Já existe cliente com esse telefone");

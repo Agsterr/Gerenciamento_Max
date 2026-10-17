@@ -2,7 +2,10 @@ package com.max.salao.platform;
 
 import java.util.List;
 
+import com.max.salao.plan.PlatformSettings;
 import com.max.salao.platform.PlatformDtos.BlockRequest;
+import com.max.salao.platform.PlatformDtos.PlanRequest;
+import com.max.salao.platform.PlatformDtos.SettingsRequest;
 import com.max.salao.platform.PlatformDtos.PlatformUser;
 import com.max.salao.platform.PlatformDtos.SalonSummary;
 import com.max.salao.release.AppReleaseDtos.ForceUpdateRequest;
@@ -31,10 +34,12 @@ public class PlatformController {
 
     private final PlatformService service;
     private final AppReleaseService releases;
+    private final PlatformSettings settings;
 
-    public PlatformController(PlatformService service, AppReleaseService releases) {
+    public PlatformController(PlatformService service, AppReleaseService releases, PlatformSettings settings) {
         this.service = service;
         this.releases = releases;
+        this.settings = settings;
     }
 
     @GetMapping("/salons")
@@ -50,6 +55,23 @@ public class PlatformController {
     @PostMapping("/salons/{id}/unblock")
     public SalonSummary unblockSalon(@PathVariable Long id) {
         return service.unblockSalon(id);
+    }
+
+    @PostMapping("/salons/{id}/plan")
+    public SalonSummary setPlan(@PathVariable Long id, @Valid @RequestBody PlanRequest req) {
+        return service.setPlan(id, req);
+    }
+
+    /** Prazo e limites do teste grátis e contato para assinar (vale para todos os salões). */
+    @GetMapping("/settings")
+    public PlatformSettings.Values settings() {
+        return settings.get();
+    }
+
+    @PutMapping("/settings")
+    public PlatformSettings.Values saveSettings(@Valid @RequestBody SettingsRequest req) {
+        return settings.save(new PlatformSettings.Values(req.trialDays(), req.maxProfessionals(), req.maxServices(),
+                req.maxCustomers(), req.contactWhatsapp(), req.contactEmail()));
     }
 
     @GetMapping("/salons/{id}/users")

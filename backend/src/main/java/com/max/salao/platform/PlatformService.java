@@ -11,6 +11,8 @@ import com.max.salao.auth.AppUserRepository;
 import com.max.salao.auth.Role;
 import com.max.salao.platform.PlatformDtos.PlatformUser;
 import com.max.salao.platform.PlatformDtos.SalonSummary;
+import com.max.salao.plan.Plan;
+import com.max.salao.plan.PlanService;
 import com.max.salao.salon.Salon;
 import com.max.salao.salon.SalonRepository;
 import com.max.salao.security.AccountStatusService;
@@ -30,9 +32,11 @@ public class PlatformService {
     private final AppUserRepository users;
     private final AccountStatusService statuses;
     private final Clock clock;
+    private final PlanService plans;
 
     public PlatformService(SalonRepository salons, AppUserRepository users, AccountStatusService statuses,
-                           Clock clock) {
+                           Clock clock, PlanService plans) {
+        this.plans = plans;
         this.salons = salons;
         this.users = users;
         this.statuses = statuses;
@@ -106,9 +110,27 @@ public class PlatformService {
         return user;
     }
 
-    private static SalonSummary toSummary(Salon s, long userCount) {
+    private SalonSummary toSummary(Salon s, long userCount) {
         return new SalonSummary(s.getId(), s.getName(), s.getSlug(), s.getPhone(), s.getAddress(), s.getCreatedAt(),
-                userCount, s.isBlocked(), s.getBlockedReason(), s.getBlockedAt());
+                userCount, s.isBlocked(), s.getBlockedReason(), s.getBlockedAt(),
+                s.getPlan(), plans.status(s), s.getTrialEndsAt(), s.getPaidUntil());
+    }
+
+    /** Ativa o plano pago (com ou sem vencimento) ou volta/estende o teste grátis. */
+    @Transactional
+    public SalonSummary setPlan(Long id, PlatformDtos.PlanRequest req) {
+        Salon salon = salon(id);
+        salon.setPlan(req.plan());
+        if (req.plan() == Plan.PAID) {
+            salon.setPaidUntil(req.paidUntil());
+        } else {
+            if (req.trialEndsAt() == null) {
+                throw new BusinessException("Informe até quando vai o teste");
+            }
+            salon.setTrialEndsAt(req.trialEndsAt());
+            salon.setPaidUntil(null);
+        }
+        return toSummary(salon, users.findBySalonIdOrderByName(id).size());
     }
 
     private static PlatformUser toUser(AppUser u) {

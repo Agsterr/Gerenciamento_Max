@@ -1,5 +1,6 @@
 package com.max.salao.professional;
 
+import com.max.salao.plan.PlanService;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -38,8 +39,10 @@ public class ProfessionalController {
     }
 
     private final ProfessionalRepository repository;
+    private final PlanService plans;
 
-    public ProfessionalController(ProfessionalRepository repository) {
+    public ProfessionalController(ProfessionalRepository repository, PlanService plans) {
+        this.plans = plans;
         this.repository = repository;
     }
 
@@ -51,6 +54,7 @@ public class ProfessionalController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ProfessionalResponse create(@Valid @RequestBody ProfessionalRequest req) {
+        plans.checkLimit(PlanService.Resource.PROFESSIONALS);
         return ProfessionalResponse.from(repository.save(apply(new Professional(), req)));
     }
 

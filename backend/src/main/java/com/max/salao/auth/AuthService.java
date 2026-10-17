@@ -1,5 +1,6 @@
 package com.max.salao.auth;
 
+import com.max.salao.plan.PlanService;
 import java.util.List;
 
 import com.max.salao.auth.AuthDtos.CreateUserRequest;
@@ -26,9 +27,11 @@ public class AuthService {
     private final SalonRepository salons;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final PlanService plans;
 
     public AuthService(AppUserRepository users, SalonRepository salons, PasswordEncoder passwordEncoder,
-                       JwtService jwtService) {
+                       JwtService jwtService, PlanService plans) {
+        this.plans = plans;
         this.users = users;
         this.salons = salons;
         this.passwordEncoder = passwordEncoder;
@@ -46,6 +49,7 @@ public class AuthService {
         Salon salon = new Salon();
         salon.setName(req.salonName());
         salon.setSlug(req.slug());
+        plans.startTrial(salon);
         salon = salons.save(salon);
 
         AppUser owner = newUser(salon.getId(), req.ownerName(), req.email(), req.password(), Role.OWNER);

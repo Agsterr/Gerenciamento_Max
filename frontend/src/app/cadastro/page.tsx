@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Card, ErrorMessage, Field, NewPasswordFields } from "@/components/ui";
 import { api } from "@/lib/api";
+import { subscribeLink } from "@/components/PlanBanner";
 import { useAuth } from "@/lib/auth";
-import type { User } from "@/lib/types";
+import { useApi } from "@/lib/useApi";
+import type { TrialTerms, User } from "@/lib/types";
 
 const toSlug = (name: string) =>
   name
@@ -57,7 +59,8 @@ export default function RegisterPage() {
         <Link href="/" className="text-brand text-lg font-extrabold">
           Salão Max
         </Link>
-        <h1 className="mb-4 mt-2 text-xl font-semibold">Cadastre seu salão</h1>
+        <h1 className="mt-2 text-xl font-semibold">Cadastre seu salão</h1>
+        <TrialTermsBox />
         <form onSubmit={onSubmit} className="space-y-3">
           <Field
             label="Nome do salão"
@@ -90,5 +93,26 @@ export default function RegisterPage() {
         </form>
       </Card>
     </main>
+  );
+}
+
+/** Deixa claro antes do cadastro: é um teste grátis com prazo e limites; para continuar, fala-se com a gente. */
+function TrialTermsBox() {
+  const { data: t } = useApi<TrialTerms>("/api/public/plan");
+  if (!t) return <div className="mb-4" />;
+  const link = subscribeLink(t);
+  return (
+    <div className="mb-4 mt-3 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
+      <p className="font-extrabold">Teste grátis por {t.trialDays} dias, sem cartão</p>
+      <p className="mt-1">
+        No teste: até {t.maxProfessionals} profissionais, {t.maxServices} serviços e {t.maxCustomers} clientes. Depois do prazo
+        você continua vendo seus dados, mas para seguir usando é preciso ativar o plano com a gente.
+      </p>
+      {link && (
+        <a href={link} target="_blank" rel="noreferrer" className="mt-2 inline-block font-extrabold text-brand-rose underline">
+          Já quero o plano completo — falar com o Salão Max
+        </a>
+      )}
+    </div>
   );
 }

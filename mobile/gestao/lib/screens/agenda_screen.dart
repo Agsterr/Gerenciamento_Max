@@ -25,6 +25,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   int? _professionalFilter;
   int _unread = 0;
   Timer? _poll;
+  PlanInfo? _plan;
 
   ApiClient get _api => widget.session.api;
 
@@ -63,8 +64,20 @@ class _AgendaScreenState extends State<AgendaScreen> {
     _load();
   }
 
+  Future<void> _loadPlan() async {
+    try {
+      final plan = PlanInfo.fromJson(await _api.get('/api/salon/plan') as Map<String, dynamic>);
+      if (mounted) setState(() => _plan = plan);
+    } catch (_) {
+      // aviso do plano é opcional
+    }
+  }
+
   Future<void> _load({bool withUnread = true}) async {
-    if (withUnread) _loadUnread();
+    if (withUnread) {
+      _loadUnread();
+      _loadPlan();
+    }
     setState(() => _error = null);
     try {
       final json = await _api.get('/api/appointments?from=${isoDate(_day)}') as List;
@@ -231,6 +244,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                 ]),
               ]),
             ),
+            if (_plan != null && _plan!.status != 'ACTIVE') _PlanBanner(_plan!),
             if (professionals.length > 1)
               SizedBox(
                 height: 56,
@@ -447,6 +461,57 @@ class _TimelineItem extends StatelessWidget {
           ),
         ),
       ]),
+    );
+  }
+}
+
+/// Teste grátis (dias e limites) ou teste vencido, com atalho para assinar.
+class _PlanBanner extends StatelessWidget {
+  const _PlanBanner(this.plan);
+
+  final PlanInfo plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final expired = plan.expired;
+    final text = Theme.of(context).textTheme;
+    final hasContact = plan.contactWhatsapp.isNotEmpty || plan.contactEmail.isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: expired ? const Color(0xFFFFE4E6) : const Color(0xFFFFF7E6),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(
+            expired
+                ? 'Seu período de teste terminou'
+                : 'Teste grátis: ${plan.daysLeft == 1 ? 'falta 1 dia' : 'faltam ${plan.daysLeft} dias'}',
+            style: text.titleSmall,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            expired
+                ? 'Você ainda vê seus dados, mas não pode criar nem alterar nada, e o agendamento online está pausado.'
+                : '${plan.professionals.$1}/${plan.professionals.$2} profissionais · '
+                    '${plan.services.$1}/${plan.services.$2} serviços · ${plan.customers.$1}/${plan.customers.$2} clientes',
+            style: text.bodySmall,
+          ),
+          if (hasContact) ...[
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: Brand.rose),
+              onPressed: () => plan.contactWhatsapp.isNotEmpty
+                  ? openWhatsApp(plan.contactWhatsapp, text: 'Olá! Quero ativar o plano do Salão Max.')
+                  : openUrl(Uri.parse('mailto:${plan.contactEmail}?subject=Ativar%20plano%20Sal%C3%A3o%20Max')),
+              icon: const Icon(Icons.workspace_premium_outlined),
+              label: Text(expired ? 'Ativar meu plano' : 'Quero assinar'),
+            ),
+          ],
+        ]),
+      ),
     );
   }
 }

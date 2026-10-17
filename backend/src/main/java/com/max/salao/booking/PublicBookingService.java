@@ -1,5 +1,6 @@
 package com.max.salao.booking;
 
+import com.max.salao.plan.PlanService;
 import java.text.Normalizer;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -47,11 +48,13 @@ public class PublicBookingService {
     private final AvailabilityService availabilityService;
     private final Clock clock;
     private final NotificationService notifications;
+    private final PlanService plans;
 
     public PublicBookingService(SalonService salonService, ServiceItemRepository services,
                                 ProfessionalRepository professionals, CustomerRepository customers,
                                 AppointmentRepository appointments, AppointmentService appointmentService,
-                                AvailabilityService availabilityService, Clock clock, NotificationService notifications) {
+                                AvailabilityService availabilityService, Clock clock, NotificationService notifications, PlanService plans) {
+        this.plans = plans;
         this.salonService = salonService;
         this.services = services;
         this.professionals = professionals;
@@ -90,6 +93,11 @@ public class PublicBookingService {
     public Appointment book(BookingRequest req) {
         String phone = Customer.normalizePhone(req.phone());
         Customer customer = customers.findByPhone(phone).orElseGet(() -> {
+            try {
+                plans.checkLimit(PlanService.Resource.CUSTOMERS);
+            } catch (BusinessException e) {
+                throw new BusinessException("Agendamento online indisponível no momento. Fale direto com o salão.");
+            }
             Customer c = new Customer();
             c.setPhone(phone);
             c.setName(req.name().trim());

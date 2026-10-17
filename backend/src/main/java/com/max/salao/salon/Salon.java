@@ -1,6 +1,7 @@
 package com.max.salao.salon;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -12,7 +13,10 @@ import java.util.stream.Collectors;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import com.max.salao.plan.Plan;
 import jakarta.persistence.ElementCollection;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -73,6 +77,18 @@ public class Salon {
     private boolean blocked;
     private String blockedReason;
     private LocalDateTime blockedAt;
+
+    // ---- Plano (teste grátis / pago), ver PlanService ----
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Plan plan = Plan.TRIAL;
+
+    @Column(nullable = false)
+    private LocalDateTime trialEndsAt = LocalDateTime.now().plusDays(14);
+
+    /** Plano pago válido até esta data (inclusive); nulo = sem vencimento. */
+    private LocalDate paidUntil;
 
     @Column(insertable = false, updatable = false)
     private LocalDateTime createdAt;

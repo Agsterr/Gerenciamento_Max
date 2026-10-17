@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { PlanBanner } from "@/components/PlanBanner";
 import { InstallAppLink } from "@/components/InstallApp";
 import { useAuth } from "@/lib/auth";
 
@@ -84,7 +85,10 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="mx-auto w-full max-w-6xl flex-1 p-4 md:p-8">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 p-4 md:p-8">
+        <PlanBanner key={pathname} />
+        {children}
+      </main>
     </div>
   );
 }

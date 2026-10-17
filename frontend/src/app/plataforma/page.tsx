@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Button, Card, Empty, ErrorMessage, Field, Modal, PageHeader, PasswordField, Select } from "@/components/ui";
 import { api, appDownloadUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatDate, formatDateTime } from "@/lib/format";
-import type { AppRelease, MobileApp, PlatformSalon, PlatformUser, User } from "@/lib/types";
+import { formatDate, formatDateTime, isoDate } from "@/lib/format";
+import type { AppRelease, MobileApp, PlatformSalon, PlatformUser, TrialTerms, User } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 const APPS: { id: MobileApp; label: string }[] = [
@@ -17,7 +17,7 @@ const APPS: { id: MobileApp; label: string }[] = [
 /** Administração da plataforma: bloqueio de salões/usuários e versões dos apps fora da loja. */
 export default function PlatformPage() {
   const { user, ready, signOut } = useAuth();
-  const [tab, setTab] = useState<"salons" | "apps">("salons");
+  const [tab, setTab] = useState<"salons" | "trial" | "apps">("salons");
 
   if (!ready) return <p className="p-8 text-center text-zinc-500">Carregando...</p>;
   if (user?.role !== "PLATFORM_ADMIN") return <PlatformLogin loggedAsSalon={!!user} />;
@@ -36,6 +36,7 @@ export default function PlatformPage() {
             {(
               [
                 ["salons", "Salões"],
+                ["trial", "Teste grátis"],
                 ["apps", "Apps"],
               ] as const
             ).map(([id, label]) => (
@@ -58,7 +59,7 @@ export default function PlatformPage() {
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl p-4 md:p-8">{tab === "salons" ? <SalonsTab /> : <AppsTab />}</main>
+      <main className="mx-auto w-full max-w-6xl p-4 md:p-8">{tab === "salons" ? <SalonsTab /> : tab === "trial" ? <TrialTab /> : <AppsTab />}</main>
     </div>
   );
 }
@@ -129,6 +130,7 @@ function SalonsTab() {
   const [target, setTarget] = useState<BlockTarget | null>(null);
   const [actionError, setActionError] = useState<string>();
   const [usersVersion, setUsersVersion] = useState(0);
+  const [planFor, setPlanFor] = useState<PlatformSalon | null>(null);
 
   async function unblock(kind: BlockTarget["kind"], id: number) {
     setActionError(undefined);
@@ -173,7 +175,7 @@ function SalonsTab() {
                   {s.blocked ? (
                     <Badge className="bg-rose-100 text-brand-rose">Bloqueado</Badge>
                   ) : (
-                    <Badge className="bg-emerald-100 text-emerald-700">Ativo</Badge>
+                    <PlanBadge salon={s} />
                   )}
                 </p>
                 <p className="text-sm text-zinc-500">
@@ -188,7 +190,10 @@ function SalonsTab() {
                   </p>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setPlanFor(s)}>
+                  Plano
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setOpenSalon(openSalon === s.id ? null : s.id)}>
                   {openSalon === s.id ? "Ocultar usuários" : "Usuários"}
                 </Button>
@@ -214,6 +219,14 @@ function SalonsTab() {
           </Card>
         ))}
       </div>
+      <PlanModal
+        salon={planFor}
+        onClose={() => setPlanFor(null)}
+        onDone={() => {
+          setPlanFor(null);
+          reload();
+        }}
+      />
       <BlockModal
         target={target}
         onClose={() => setTarget(null)}
@@ -428,5 +441,154 @@ function UploadCard({ onDone }: { onDone: () => void }) {
         </div>
       </form>
     </Card>
+  );
+}
+
+function PlanBadge({ salon: s }: { salon: PlatformSalon }) {
+  if (s.planStatus === "ACTIVE")
+    return (
+      <Badge className="bg-emerald-100 text-emerald-700">Pago{s.paidUntil ? ` até ${formatDate(s.paidUntil)}` : ""}</Badge>
+    );
+  if (s.planStatus === "TRIAL") return <Badge className="bg-amber-100 text-amber-800">Teste até {formatDate(s.trialEndsAt)}</Badge>;
+  return <Badge className="bg-rose-100 text-brand-rose">{s.plan === "PAID" ? "Plano vencido" : "Teste vencido"}</Badge>;
+}
+
+/** Ativar o plano pago (com ou sem vencimento) ou dar/estender o teste grátis. */
+function PlanModal({ salon, onClose, onDone }: { salon: PlatformSalon | null; onClose: () => void; onDone: () => void }) {
+  const [mode, setMode] = useState<"PAID" | "TRIAL">("PAID");
+  const [paidUntil, setPaidUntil] = useState("");
+  const [trialEnds, setTrialEnds] = useState("");
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!salon) return;
+    setMode(salon.plan);
+    setPaidUntil(salon.paidUntil ?? "");
+    const base = new Date(Math.max(Date.now(), new Date(salon.trialEndsAt).getTime()));
+    base.setDate(base.getDate() + 7);
+    setTrialEnds(isoDate(base));
+    setError(undefined);
+  }, [salon]);
+
+  async function save() {
+    if (!salon) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await api.post(`/api/platform/salons/${salon.id}/plan`, {
+        plan: mode,
+        paidUntil: mode === "PAID" && paidUntil ? paidUntil : null,
+        trialEndsAt: mode === "TRIAL" ? `${trialEnds}T23:59:00` : null,
+      });
+      onDone();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title={`Plano · ${salon?.name ?? ""}`} open={!!salon} onClose={onClose}>
+      <div className="space-y-4">
+        <div className="inline-flex rounded-xl border border-zinc-300 p-0.5 text-sm">
+          {(
+            [
+              ["PAID", "Pago"],
+              ["TRIAL", "Teste grátis"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setMode(value)}
+              className={`rounded-lg px-4 py-1.5 font-bold ${mode === value ? "bg-brand text-white" : "text-zinc-600"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {mode === "PAID" ? (
+          <>
+            <Field label="Pago até (deixe vazio para sem vencimento)" type="date" value={paidUntil} onChange={(e) => setPaidUntil(e.target.value)} />
+            <p className="text-sm text-zinc-500">Sem limites de cadastro. Depois da data, o salão fica só para consulta até você renovar.</p>
+          </>
+        ) : (
+          <>
+            <Field label="Teste vai até" type="date" required value={trialEnds} onChange={(e) => setTrialEnds(e.target.value)} />
+            <p className="text-sm text-zinc-500">Com os limites do teste grátis (aba “Teste grátis”).</p>
+          </>
+        )}
+        <ErrorMessage message={error} />
+        <Button className="w-full" onClick={save} disabled={busy || (mode === "TRIAL" && !trialEnds)}>
+          {busy ? "Salvando..." : "Salvar"}
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+/** Prazo, limites do teste grátis e contato que aparece para quem quer assinar. */
+function TrialTab() {
+  const { data, error, reload } = useApi<TrialTerms>("/api/platform/settings");
+  const [form, setForm] = useState<TrialTerms | null>(null);
+  const [message, setMessage] = useState<string>();
+  const [saveError, setSaveError] = useState<string>();
+
+  useEffect(() => {
+    if (data) setForm(data);
+  }, [data]);
+
+  if (!form) return <ErrorMessage message={error} />;
+  const num = (key: keyof TrialTerms) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: Number(e.target.value) });
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setMessage(undefined);
+    setSaveError(undefined);
+    try {
+      await api.put("/api/platform/settings", form);
+      setMessage("Salvo! Vale para os próximos cadastros e para os limites de quem está em teste.");
+      reload();
+    } catch (err) {
+      setSaveError((err as Error).message);
+    }
+  }
+
+  return (
+    <>
+      <PageHeader title="Teste grátis" />
+      <Card className="max-w-xl">
+        <form onSubmit={save} className="space-y-3">
+          <p className="text-sm text-zinc-600">
+            Todo salão novo começa em teste. Quando o prazo acaba, ele só consulta os dados (não cria, não altera e o agendamento
+            online pausa) até você ativar o plano em <strong>Salões → Plano</strong>.
+          </p>
+          <Field label="Dias de teste" type="number" min={1} max={365} required value={form.trialDays} onChange={num("trialDays")} />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="Máx. profissionais" type="number" min={1} required value={form.maxProfessionals} onChange={num("maxProfessionals")} />
+            <Field label="Máx. serviços" type="number" min={1} required value={form.maxServices} onChange={num("maxServices")} />
+            <Field label="Máx. clientes" type="number" min={1} required value={form.maxCustomers} onChange={num("maxCustomers")} />
+          </div>
+          <Field
+            label="Seu WhatsApp para quem quer assinar"
+            inputMode="tel"
+            placeholder="(11) 99999-9999"
+            value={form.contactWhatsapp}
+            onChange={(e) => setForm({ ...form, contactWhatsapp: e.target.value })}
+          />
+          <Field
+            label="Ou e-mail de contato"
+            type="email"
+            value={form.contactEmail}
+            onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+          />
+          <ErrorMessage message={saveError} />
+          {message && <p className="text-sm text-emerald-700">{message}</p>}
+          <Button>Salvar</Button>
+        </form>
+      </Card>
+    </>
   );
 }

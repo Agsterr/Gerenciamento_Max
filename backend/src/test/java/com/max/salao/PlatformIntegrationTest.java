@@ -52,6 +52,78 @@ class PlatformIntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    // ---------------- teste grátis / plano ----------------
+
+    @Test
+    void trialHasLimitsAndExpiredSalonIsReadOnlyUntilAdminActivates() throws Exception {
+        String admin = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        Salon salon = register();
+
+        JsonNode plan = call(salon.token, get("/api/salon/plan"), null, status().isOk());
+        assertThat(plan.get("status").asText()).isEqualTo("TRIAL");
+        assertThat(plan.get("daysLeft").asLong()).isEqualTo(14);
+        assertThat(plan.get("professionals").get("max").asInt()).isEqualTo(2);
+
+        // limite de profissionais no teste
+        for (int i = 0; i < 2; i++) {
+            call(salon.token, post("/api/professionals"), Map.of("name", "P" + i, "commissionPercent", 0, "active", true),
+                    status().isCreated());
+        }
+        JsonNode limit = call(salon.token, post("/api/professionals"),
+                Map.of("name", "P3", "commissionPercent", 0, "active", true), status().isUnprocessableEntity());
+        assertThat(limit.get("detail").asText()).contains("limite é de 2 profissionais");
+        long service = call(salon.token, post("/api/services"),
+                Map.of("name", "Corte", "durationMinutes", 30, "price", 50, "cost", 0, "active", true),
+                status().isCreated()).get("id").asLong();
+
+        // teste venceu: consulta liberada, alterações e agendamento online barrados
+        jdbc.update("update salon set trial_ends_at = now() - interval '1 hour' where id = ?", salon.id);
+        call(salon.token, get("/api/customers"), null, status().isOk());
+        JsonNode expired = call(salon.token, post("/api/customers"), Map.of("name", "Ana", "phone", "11911112222"),
+                status().isPaymentRequired());
+        assertThat(expired.get("code").asText()).isEqualTo("PLAN_EXPIRED");
+        call(null, post("/api/public/salons/" + salon.slug + "/bookings"), Map.of("serviceId", service,
+                "startAt", java.time.LocalDate.now().plusDays(9) + "T10:00:00", "name", "Bia", "phone", "11922223333"),
+                status().isPaymentRequired());
+        assertThat(call(salon.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText())
+                .isEqualTo("EXPIRED");
+
+        // admin ativa o plano pago: volta tudo, sem limites
+        JsonNode listed = call(admin, post("/api/platform/salons/" + salon.id + "/plan"), Map.of("plan", "PAID"),
+                status().isOk());
+        assertThat(listed.get("planStatus").asText()).isEqualTo("ACTIVE");
+        call(salon.token, post("/api/professionals"), Map.of("name", "P3", "commissionPercent", 0, "active", true),
+                status().isCreated());
+        call(salon.token, post("/api/customers"), Map.of("name", "Ana", "phone", "11911112222"), status().isCreated());
+
+        // pago com vencimento no passado também vence
+        call(admin, post("/api/platform/salons/" + salon.id + "/plan"),
+                Map.of("plan", "PAID", "paidUntil", java.time.LocalDate.now().minusDays(1).toString()), status().isOk());
+        call(salon.token, post("/api/customers"), Map.of("name", "Lia", "phone", "11933334444"),
+                status().isPaymentRequired());
+    }
+
+    @Test
+    void adminConfiguresTrialAndPublicTermsFollow() throws Exception {
+        String admin = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        JsonNode original = call(admin, get("/api/platform/settings"), null, status().isOk());
+        try {
+            call(admin, put("/api/platform/settings"), Map.of("trialDays", 7, "maxProfessionals", 1, "maxServices", 5,
+                    "maxCustomers", 20, "contactWhatsapp", "(11) 98888-7777", "contactEmail", "vendas@salaomax.test"),
+                    status().isOk());
+            JsonNode terms = call(null, get("/api/public/plan"), null, status().isOk());
+            assertThat(terms.get("trialDays").asInt()).isEqualTo(7);
+            assertThat(terms.get("contactWhatsapp").asText()).isEqualTo("11988887777");
+            Salon salon = register();
+            assertThat(call(salon.token, get("/api/salon/plan"), null, status().isOk()).get("daysLeft").asLong())
+                    .isEqualTo(7);
+            // só o admin da plataforma mexe nisso
+            call(salon.token, get("/api/platform/settings"), null, status().isForbidden());
+        } finally {
+            call(admin, put("/api/platform/settings"), json.convertValue(original, Map.class), status().isOk());
+        }
+    }
+
     // ---------------- bloqueio ----------------
 
     @Test

@@ -564,3 +564,44 @@ class Inbox {
   final int unread;
   final List<AppNotification> items;
 }
+
+// ---------- Plano (teste grátis / pago) ----------
+
+class PlanInfo {
+  const PlanInfo({
+    required this.status,
+    this.daysLeft,
+    required this.professionals,
+    required this.services,
+    required this.customers,
+    required this.contactWhatsapp,
+    required this.contactEmail,
+  });
+
+  factory PlanInfo.fromJson(Map<String, dynamic> j) {
+    (int, int) usage(Object? u) => ((u as Map)['used'] as int, u['max'] as int);
+    return PlanInfo(
+      status: j['status'] as String,
+      daysLeft: j['daysLeft'] as int?,
+      professionals: usage(j['professionals']),
+      services: usage(j['services']),
+      customers: usage(j['customers']),
+      contactWhatsapp: j['contactWhatsapp'] as String? ?? '',
+      contactEmail: j['contactEmail'] as String? ?? '',
+    );
+  }
+
+  /// TRIAL, ACTIVE ou EXPIRED.
+  final String status;
+  final int? daysLeft;
+
+  /// (usados, máximo) no teste grátis.
+  final (int, int) professionals;
+  final (int, int) services;
+  final (int, int) customers;
+  final String contactWhatsapp;
+  final String contactEmail;
+
+  bool get expired => status == 'EXPIRED';
+  bool get trial => status == 'TRIAL';
+}

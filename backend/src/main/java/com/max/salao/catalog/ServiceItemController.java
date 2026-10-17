@@ -1,5 +1,6 @@
 package com.max.salao.catalog;
 
+import com.max.salao.plan.PlanService;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -43,8 +44,10 @@ public class ServiceItemController {
     }
 
     private final ServiceItemRepository repository;
+    private final PlanService plans;
 
-    public ServiceItemController(ServiceItemRepository repository) {
+    public ServiceItemController(ServiceItemRepository repository, PlanService plans) {
+        this.plans = plans;
         this.repository = repository;
     }
 
@@ -56,6 +59,7 @@ public class ServiceItemController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ServiceResponse create(@Valid @RequestBody ServiceRequest req) {
+        plans.checkLimit(PlanService.Resource.SERVICES);
         return ServiceResponse.from(repository.save(apply(new ServiceItem(), req)));
     }
 

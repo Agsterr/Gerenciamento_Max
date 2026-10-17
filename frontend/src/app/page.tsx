@@ -54,14 +54,14 @@ export default function Home() {
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link href="/cadastro" className="bg-brand shadow-glow inline-flex items-center gap-2 rounded-2xl px-6 py-4 font-bold">
-                  Criar meu salão <Icon name="arrow" />
+                  Testar grátis <Icon name="arrow" />
                 </Link>
                 <Link href="/login" className="rounded-2xl bg-white/10 px-6 py-4 font-bold ring-1 ring-white/20 hover:bg-white/15">
                   Já tenho conta
                 </Link>
               </div>
               <div className="mt-8 flex flex-wrap gap-6 text-sm text-white/70">
-                {["Sem instalação", "Cliente agenda sem cadastro", "Dados protegidos (LGPD)"].map((t) => (
+                {["Teste grátis, sem cartão", "Cliente agenda sem cadastro", "Dados protegidos (LGPD)"].map((t) => (
                   <span key={t} className="inline-flex items-center gap-1.5">
                     <Icon name="check" className="h-4 w-4 text-emerald-300" /> {t}
                   </span>

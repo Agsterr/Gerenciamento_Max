@@ -25,6 +25,10 @@ export type PlatformSalon = {
   blocked: boolean;
   blockedReason: string | null;
   blockedAt: string | null;
+  plan: Plan;
+  planStatus: PlanStatus;
+  trialEndsAt: string;
+  paidUntil: string | null;
 };
 
 export type PlatformUser = {
@@ -273,4 +277,34 @@ export type Pricing = {
     settings: PricingSettings;
   };
   services: ServicePricing[];
+};
+
+// ---- Plano (teste grátis / pago) ----
+
+export type Plan = "TRIAL" | "PAID";
+export type PlanStatus = "TRIAL" | "ACTIVE" | "EXPIRED";
+
+export type Usage = { used: number; max: number };
+
+export type PlanInfo = {
+  status: PlanStatus;
+  plan: Plan;
+  trialEndsAt: string;
+  paidUntil: string | null;
+  daysLeft: number | null;
+  professionals: Usage;
+  services: Usage;
+  customers: Usage;
+  contactWhatsapp: string;
+  contactEmail: string;
+};
+
+/** Condições do teste grátis (página de cadastro) e configuração da plataforma. */
+export type TrialTerms = {
+  trialDays: number;
+  maxProfessionals: number;
+  maxServices: number;
+  maxCustomers: number;
+  contactWhatsapp: string;
+  contactEmail: string;
 };
