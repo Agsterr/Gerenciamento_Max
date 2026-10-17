@@ -330,7 +330,7 @@ class SalonFlowIntegrationTest {
 
     @Test
     void customerSignsInWithNameAndPhoneAcrossSalons() throws Exception {
-        String phone = "119" + String.valueOf(System.nanoTime()).substring(5, 13);
+        String phone = "119" + String.format("%08d", java.util.concurrent.ThreadLocalRandom.current().nextInt(100_000_000));
         for (Tenant salon : List.of(register(), register())) {
             call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
                     status().isCreated());
