@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { SlotPicker } from "@/components/agenda/SlotPicker";
+import { AppPromo } from "@/components/AppPromo";
 import { Icon, serviceIcon } from "@/components/Icon";
 import { ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -203,6 +204,8 @@ export default function PublicBookingPage() {
             </form>
           </Step>
         )}
+
+        <AppPromo className="mt-10" />
       </div>
 
       {service && (

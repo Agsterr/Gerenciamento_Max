@@ -15,14 +15,14 @@ const APPS = [
     icon: "/icon-gestao.png",
     name: "Salão Max Gestão",
     who: "Para o salão",
-    text: "Agenda, clientes, produtos e financeiro do seu salão no celular.",
+    text: "Agenda, clientes, produtos e financeiro do seu salão no celular. Entre com o mesmo e-mail e senha do painel.",
   },
   {
     id: "cliente" as const,
     icon: "/icon-cliente.png",
     name: "Salão Max",
     who: "Para clientes",
-    text: "Encontre seu salão e agende em 1 minuto, sem ligar nem mandar mensagem.",
+    text: "Encontre seu salão e agende em 1 minuto. Para ver seus horários, entre com seu nome e WhatsApp — sem senha.",
   },
 ];
 

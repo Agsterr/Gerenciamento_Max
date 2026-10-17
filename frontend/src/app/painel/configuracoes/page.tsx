@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Card, ErrorMessage, Field, PageHeader, Select } from "@/components/ui";
-import { api } from "@/lib/api";
+import { api, appDownloadUrl } from "@/lib/api";
 import { WeeklyHoursEditor, normalizeHours } from "@/components/WeeklyHoursEditor";
 import type { Role, Salon, User } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -60,6 +60,8 @@ export default function SettingsPage() {
             Abrir página do cliente →
           </a>
         </Card>
+
+        <AppsCard publicUrl={publicUrl} salonName={form.name} />
 
         <Card>
           <h2 className="mb-3 font-extrabold">Dados e horário de funcionamento</h2>
@@ -142,6 +144,48 @@ function Team() {
         <ErrorMessage message={error} />
         <Button className="sm:col-span-2">Adicionar acesso</Button>
       </form>
+    </Card>
+  );
+}
+
+/** Links dos apps: gestão (mesmo login do painel) e cliente (entra com nome e WhatsApp). */
+function AppsCard({ publicUrl, salonName }: { publicUrl: string; salonName: string }) {
+  const [copied, setCopied] = useState(false);
+  const message =
+    `Agende seu horário no ${salonName} pelo link: ${publicUrl}\n` +
+    `Ou pelo app Salão Max (Android): ${appDownloadUrl("cliente")}\n` +
+    `Para ver, remarcar ou cancelar, é só entrar com seu nome e WhatsApp.`;
+  return (
+    <Card>
+      <h2 className="mb-1 font-semibold">Apps no celular (Android)</h2>
+      <div className="mt-3 space-y-4 text-sm">
+        <div>
+          <p className="font-bold text-brand-ink">Salão Max Gestão — para você e a equipe</p>
+          <p className="text-zinc-600">Entre com o mesmo e-mail e senha deste painel.</p>
+          <a href={appDownloadUrl("gestao")} className="mt-1 inline-block font-bold text-brand-rose hover:underline">
+            Baixar app do salão →
+          </a>
+        </div>
+        <div>
+          <p className="font-bold text-brand-ink">Salão Max — para seus clientes</p>
+          <p className="text-zinc-600">O cliente entra com o nome e o WhatsApp que usou ao agendar, sem senha.</p>
+          <div className="mt-1 flex flex-wrap gap-3">
+            <a href={appDownloadUrl("cliente")} className="font-bold text-brand-rose hover:underline">
+              Baixar app do cliente →
+            </a>
+            <button
+              type="button"
+              className="font-bold text-emerald-700 hover:underline"
+              onClick={() => {
+                navigator.clipboard.writeText(message);
+                setCopied(true);
+              }}
+            >
+              {copied ? "Mensagem copiada!" : "Copiar mensagem para clientes"}
+            </button>
+          </div>
+        </div>
+      </div>
     </Card>
   );
 }

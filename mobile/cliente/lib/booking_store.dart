@@ -49,10 +49,14 @@ class BookingStore extends ChangeNotifier {
 
   /// Guarda agendamentos (ex.: encontrados pela busca por nome e WhatsApp), sem duplicar.
   Future<void> addAll(List<SavedBooking> items) async {
+    if (items.isEmpty) return;
     final tokens = items.map((b) => b.token).toSet();
     await _save([...items, ...bookings.where((b) => !tokens.contains(b.token))]);
     notifyListeners();
   }
+
+  /// Cliente "entrou" com nome e WhatsApp: o app busca os horários dele em todos os salões.
+  bool get signedIn => (name ?? '').isNotEmpty && (phone ?? '').isNotEmpty;
 
   /// Registra que o cliente viu esta versão do agendamento (não recarrega a lista).
   Future<void> markSeen(String token, String signature) =>
@@ -70,11 +74,13 @@ class BookingStore extends ChangeNotifier {
   Future<void> rememberCustomer(String name, String phone) async {
     await _prefs.setString(_nameKey, name);
     await _prefs.setString(_phoneKey, phone);
+    notifyListeners();
   }
 
   Future<void> forgetCustomer() async {
     await _prefs.remove(_nameKey);
     await _prefs.remove(_phoneKey);
+    notifyListeners();
   }
 
   /// "Apagar dados do aparelho".

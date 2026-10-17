@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../booking_store.dart';
+import '../customer_sync.dart';
 import 'booking_screen.dart';
+import 'find_bookings_sheet.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key, required this.store, required this.api, required this.onBookNow});
@@ -30,7 +32,25 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   void initState() {
     super.initState();
     widget.store.addListener(_load);
-    _load();
+    _refresh();
+  }
+
+  /// Puxar para atualizar: se o cliente entrou, traz também horários novos feitos pelo site ou em outro celular.
+  Future<void> _refresh() async {
+    final store = widget.store;
+    if (store.signedIn) {
+      try {
+        await syncCustomerBookings(widget.api, store, name: store.name!, phone: store.phone!);
+      } catch (_) {
+        // sem rede ou limite de tentativas: mostra o que já está salvo
+      }
+    }
+    await _load();
+  }
+
+  Future<void> _signOut() async {
+    if (!await confirmDialog(context, 'Sair? Os horários salvos continuam neste aparelho.', confirm: 'Sair')) return;
+    await widget.store.forgetCustomer();
   }
 
   @override
@@ -80,7 +100,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final past = withDetails.where((e) => !upcoming.contains(e)).toList()..sort((a, b) => b.$2.startAt.compareTo(a.$2.startAt));
 
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: _refresh,
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
@@ -96,6 +116,35 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             ]),
           ),
           if (_loading && saved.isNotEmpty) const LinearProgressIndicator(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: widget.store.signedIn
+                ? Row(children: [
+                    InitialsAvatar(widget.store.name!, size: 36),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text('${widget.store.name} · ${formatPhone(widget.store.phone!)}',
+                          style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                    TextButton(onPressed: _signOut, child: const Text('Sair')),
+                  ])
+                : SoftCard(
+                    padding: const EdgeInsets.all(14),
+                    onTap: () => showFindBookingsSheet(context, api: widget.api, store: widget.store).then((_) => _load()),
+                    child: Row(children: [
+                      const Icon(Icons.login_rounded, color: Brand.rose),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('Entrar com nome e WhatsApp', style: text.titleSmall),
+                          Text('Veja todos os seus horários, até os marcados pelo site.',
+                              style: text.bodySmall?.copyWith(color: Brand.muted)),
+                        ]),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, color: Brand.muted),
+                    ]),
+                  ),
+          ),
           if (saved.any(_changed))
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -116,7 +165,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               icon: Icons.confirmation_number_outlined,
               title: 'Nada por aqui ainda',
               message: 'Quando você agendar, seus horários aparecem aqui para consultar, remarcar ou cancelar.\n'
-                  'Já agendou pelo site ou em outro celular? Abra o salão e toque em "Já agendou?".',
+                  'Já agendou pelo site ou em outro celular? Toque em "Entrar com nome e WhatsApp".',
               action: SizedBox(width: 220, child: GradientButton(label: 'Agendar agora', icon: Icons.search_rounded, onPressed: widget.onBookNow)),
             )
           else

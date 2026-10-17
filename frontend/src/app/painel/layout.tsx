@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { appDownloadUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 const NAV = [
@@ -70,6 +71,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
         <div className="hidden px-4 py-4 text-sm md:absolute md:bottom-0 md:block">
+          <a href={appDownloadUrl("gestao")} className="mb-3 block font-bold text-brand-rose hover:underline">
+            Baixar app do salão
+          </a>
           <p className="font-medium text-zinc-800">{user.name}</p>
           <button
             onClick={() => {

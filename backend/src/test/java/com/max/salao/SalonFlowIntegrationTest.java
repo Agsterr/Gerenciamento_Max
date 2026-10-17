@@ -328,6 +328,28 @@ class SalonFlowIntegrationTest {
                 Map.of("name", "Ana", "phone", "11900000099"), status().isTooManyRequests());
     }
 
+    @Test
+    void customerSignsInWithNameAndPhoneAcrossSalons() throws Exception {
+        String phone = "119" + String.valueOf(System.nanoTime()).substring(5, 13);
+        for (Tenant salon : List.of(register(), register())) {
+            call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                    status().isCreated());
+            long service = id(call(salon, post("/api/services"),
+                    Map.of("name", "Corte", "durationMinutes", 30, "price", 50, "cost", 0, "active", true),
+                    status().isCreated()));
+            call(null, post("/api/public/salons/" + salon.slug + "/bookings"), Map.of("serviceId", service,
+                    "startAt", day + "T11:00:00", "name", "Bianca Lopes", "phone", phone), status().isCreated());
+        }
+        String ip = UUID.randomUUID().toString();
+        JsonNode all = call(null, post("/api/public/my-bookings").header("X-Forwarded-For", ip),
+                Map.of("name", "Bianca", "phone", phone), status().isOk());
+        assertThat(all).hasSize(2);
+        assertThat(all.get(0).get("salonSlug").asText()).isNotEqualTo(all.get(1).get("salonSlug").asText());
+        assertThat(all.get(0).get("booking").get("cancelable").asBoolean()).isTrue();
+        assertThat(call(null, post("/api/public/my-bookings").header("X-Forwarded-For", ip),
+                Map.of("name", "Outra", "phone", phone), status().isOk())).isEmpty();
+    }
+
     private record Tenant(String slug, String token) {
     }
 

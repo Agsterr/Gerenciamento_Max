@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { AppPromo } from "@/components/AppPromo";
 import { RescheduleBooking } from "@/components/booking/RescheduleBooking";
 import { Badge, Button, Card, ErrorMessage } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -80,6 +81,7 @@ export default function BookingPage() {
           </Link>
         </div>
       </Card>
+      <AppPromo className="mt-6" />
     </main>
   );
 }

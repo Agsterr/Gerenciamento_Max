@@ -65,6 +65,13 @@ public class PublicBookingController {
     public record BookingResponse(String token, LocalDateTime startAt, LocalDateTime endAt, AppointmentStatus status,
                                   Long serviceId, String serviceName, Long professionalId, String professionalName,
                                   BigDecimal price, String customerName, boolean cancelable) {
+
+        static BookingResponse of(Appointment a, boolean cancelable) {
+            return new BookingResponse(a.getPublicToken(), a.getStartAt(), a.getEndAt(), a.getStatus(),
+                    a.getService().getId(), a.getService().getName(),
+                    a.getProfessional().getId(), a.getProfessional().getName(), a.getPrice(),
+                    a.getCustomer().getName(), cancelable);
+        }
     }
 
     private final PublicBookingService service;
@@ -76,10 +83,7 @@ public class PublicBookingController {
     }
 
     private BookingResponse toResponse(Appointment a) {
-        return new BookingResponse(a.getPublicToken(), a.getStartAt(), a.getEndAt(), a.getStatus(),
-                a.getService().getId(), a.getService().getName(),
-                a.getProfessional().getId(), a.getProfessional().getName(), a.getPrice(),
-                a.getCustomer().getName(), service.canChange(a));
+        return BookingResponse.of(a, service.canChange(a));
     }
 
     @GetMapping

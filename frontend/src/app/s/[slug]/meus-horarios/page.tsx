@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AppPromo } from "@/components/AppPromo";
 import { Icon } from "@/components/Icon";
 import { Badge, ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -91,6 +92,7 @@ export default function MyBookingsPage() {
         )}
         {upcoming.length > 0 && <List title="Próximos" items={upcoming} slug={slug} />}
         {past.length > 0 && <List title="Anteriores" items={past} slug={slug} />}
+        <AppPromo className="mt-10" />
       </div>
     </main>
   );
