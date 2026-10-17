@@ -1,0 +1,170 @@
+name: App (APK fora da loja)
+
+# push na main mexendo em mobile/** → builda o APK do canal "direct" de cada app e publica na API.
+# Os apps instalados por fora checam /api/app/version e mostram o aviso de atualização.
+# (A versão da Play Store sai do flavor "play" e é enviada pelo Play Console.)
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-release.yml"
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: "Atualização obrigatória (bloqueia o app até atualizar)"
+        type: boolean
+        default: false
+      apps:
+        description: "Quais apps publicar"
+        type: choice
+        default: ambos
+        options: [ambos, gestao, cliente]
+
+concurrency:
+  group: mobile-release-salao-max
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  API_URL: https://salaomax.focodev.com.br
+  SITE_URL: https://salaomax.focodev.com.br
+
+jobs:
+  release:
+    name: APK ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        app: [gestao, cliente]
+    steps:
+      - name: Filtrar app
+        id: skip
+        run: |
+          SEL="${{ github.event.inputs.apps || 'ambos' }}"
+          if [ "$SEL" != "ambos" ] && [ "$SEL" != "${{ matrix.app }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.skip.outputs.skip != 'true'
+
+      - name: Aguardar API
+        if: steps.skip.outputs.skip != 'true'
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS "${API_URL}/actuator/health" >/dev/null && exit 0
+            echo "Aguardando API (${i}/30)..."; sleep 15
+          done
+          echo "API indisponível."; exit 1
+
+      - name: Definir versão
+        if: steps.skip.outputs.skip != 'true'
+        id: version
+        working-directory: mobile/${{ matrix.app }}
+        run: |
+          set -euo pipefail
+          LINE=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          NAME="${LINE%%+*}"
+          CODE="${LINE##*+}"
+          PUBLISHED=0
+          if RESP=$(curl -fsS "${API_URL}/api/app/version?app=${{ matrix.app }}" 2>/dev/null); then
+            PUBLISHED=$(echo "$RESP" | sed -n 's/.*"versionCode"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -n1)
+            PUBLISHED="${PUBLISHED:-0}"
+          fi
+          # O APK novo precisa de versionCode maior que o instalado para instalar por cima.
+          if [ "$CODE" -le "$PUBLISHED" ]; then CODE=$((PUBLISHED + 1)); fi
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+          echo "code=${CODE}" >> "$GITHUB_OUTPUT"
+          echo "Versão ${NAME}+${CODE} (publicada: ${PUBLISHED})"
+
+      - uses: actions/setup-java@v4
+        if: steps.skip.outputs.skip != 'true'
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        if: steps.skip.outputs.skip != 'true'
+        with:
+          channel: stable
+          cache: true
+
+      - name: Assinatura
+        if: steps.skip.outputs.skip != 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "Configure os secrets ANDROID_KEYSTORE_* (veja docs/DEPLOY.md)."; exit 1
+          fi
+          DIR="mobile/${{ matrix.app }}/android"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$DIR/app/upload-keystore.jks"
+          cat > "$DIR/key.properties" <<EOF
+          storePassword=${KEYSTORE_PASSWORD}
+          keyPassword=${KEY_PASSWORD}
+          keyAlias=${KEY_ALIAS}
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Build APK (canal direct)
+        if: steps.skip.outputs.skip != 'true'
+        working-directory: mobile/${{ matrix.app }}
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build apk --release --flavor direct \
+            --build-name=${{ steps.version.outputs.name }} \
+            --build-number=${{ steps.version.outputs.code }} \
+            --dart-define=DISTRIBUTION=direct \
+            --dart-define=API_URL=${API_URL} \
+            --dart-define=SITE_URL=${SITE_URL}
+
+      - name: Publicar na API
+        if: steps.skip.outputs.skip != 'true'
+        working-directory: mobile/${{ matrix.app }}
+        env:
+          DEPLOY_TOKEN: ${{ secrets.APP_RELEASE_DEPLOY_TOKEN }}
+          FORCE: ${{ github.event.inputs.force_update || 'false' }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          [ -n "$DEPLOY_TOKEN" ] || { echo "Defina o secret APP_RELEASE_DEPLOY_TOKEN."; exit 1; }
+          APK=build/app/outputs/flutter-apk/app-direct-release.apk
+          NOTES=$(printf '%s' "${COMMIT_MSG:-Nova versão}" | head -n1 | cut -c1-180)
+          for i in $(seq 1 6); do
+            if curl -fsS -X POST "${API_URL}/api/app/releases/deploy" \
+                -H "X-Deploy-Token: ${DEPLOY_TOKEN}" \
+                -F "file=@${APK}" \
+                -F "app=${{ matrix.app }}" \
+                -F "versionName=${{ steps.version.outputs.name }}" \
+                -F "versionCode=${{ steps.version.outputs.code }}" \
+                -F "releaseNotes=${NOTES}" \
+                -F "forceUpdate=${FORCE}"; then
+              echo; break
+            fi
+            [ "$i" -eq 6 ] && { echo "Falha ao publicar."; exit 1; }
+            echo "Tentativa ${i} falhou; aguardando 20s..."; sleep 20
+          done
+          RESP=$(curl -fsS "${API_URL}/api/app/version?app=${{ matrix.app }}")
+          echo "$RESP" | grep -q "\"versionCode\":${{ steps.version.outputs.code }}" \
+            || { echo "Versão publicada não confere: $RESP"; exit 1; }
+          echo "### ${{ matrix.app }} ${{ steps.version.outputs.name }}+${{ steps.version.outputs.code }} publicado" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar APK
+        if: steps.skip.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: salao-max-${{ matrix.app }}-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
+          path: mobile/${{ matrix.app }}/build/app/outputs/flutter-apk/app-direct-release.apk
+          retention-days: 30
