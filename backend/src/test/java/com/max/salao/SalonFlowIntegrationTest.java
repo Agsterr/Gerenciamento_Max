@@ -232,6 +232,38 @@ class SalonFlowIntegrationTest {
         assertThat(info.get("workDays").asText()).isEqualTo("2,6");
     }
 
+    @Autowired
+    org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Test
+    void databaseStoresTheSalonLocalTimeAsIs() throws Exception {
+        Tenant salon = register();
+        call(salon, put("/api/salon"), Map.of("name", "Salão", "slotMinutes", 30, "hours", List.of(
+                Map.of("dayOfWeek", 2, "openTime", "08:00", "closeTime", "18:00", "breakStart", "12:00", "breakEnd", "13:00"))),
+                status().isOk());
+        long pro = id(call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                status().isCreated()));
+        long service = id(call(salon, post("/api/services"),
+                Map.of("name", "Corte", "durationMinutes", 60, "price", 50, "cost", 0, "active", true), status().isCreated()));
+        long customer = id(call(salon, post("/api/customers"), Map.of("name", "Lia", "phone", "11922223333"), status().isCreated()));
+        long appointment = id(call(salon, post("/api/appointments"), Map.of("customerId", customer, "professionalId", pro,
+                "serviceId", service, "startAt", day + "T10:00:00"), status().isCreated()));
+
+        // o que o usuário digitou é exatamente o que fica no banco (sem deslocamento de fuso)
+        assertThat(jdbc.queryForObject("select to_char(start_at, 'HH24:MI') from appointment where id = ?", String.class,
+                appointment)).isEqualTo("10:00");
+        Long salonId = jdbc.queryForObject("select id from salon where slug = ?", Long.class, salon.slug);
+        assertThat(jdbc.queryForObject("select to_char(open_time, 'HH24:MI') || '-' || to_char(break_start, 'HH24:MI') "
+                + "from opening_hours where salon_id = ?", String.class, salonId)).isEqualTo("08:00-12:00");
+
+        // datas automáticas (Java e banco) usam a hora do salão, não UTC
+        var now = java.time.LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo"));
+        var javaSide = jdbc.queryForObject("select created_at from customer where id = ?", java.time.LocalDateTime.class, customer);
+        var dbSide = jdbc.queryForObject("select created_at from salon where id = ?", java.time.LocalDateTime.class, salonId);
+        assertThat(java.time.Duration.between(javaSide, now).abs().toMinutes()).isLessThan(2);
+        assertThat(java.time.Duration.between(dbSide, now).abs().toMinutes()).isLessThan(2);
+    }
+
     private record Tenant(String slug, String token) {
     }
 

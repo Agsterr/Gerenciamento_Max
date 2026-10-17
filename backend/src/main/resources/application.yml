@@ -9,8 +9,8 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
-    properties:
-      hibernate.jdbc.time_zone: ${APP_TIMEZONE:America/Sao_Paulo}
+    # Sem hibernate.jdbc.time_zone: a JVM já roda no fuso do salão (TimeZoneEnvironmentPostProcessor)
+    # e as datas são gravadas exatamente como a hora local.
   servlet:
     multipart:
       # APKs publicados pelo CI ou pelo painel da plataforma (vão para disco, não para a memória)
