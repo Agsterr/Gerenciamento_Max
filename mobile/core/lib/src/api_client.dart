@@ -64,6 +64,7 @@ class ApiClient {
     final jwt = token?.call();
     if (jwt != null) request.headers['Authorization'] = 'Bearer $jwt';
     request.headers['Accept'] = 'application/json';
+    request.headers['X-App-Channel'] = AppConfig.apiChannel;
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);

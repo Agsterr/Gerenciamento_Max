@@ -23,6 +23,12 @@ class AppConfig {
   static String get distribution =>
       _distributionDefine.isNotEmpty ? _distributionDefine : (appFlavor ?? 'play');
 
+  /// Build das lojas (Google Play / App Store): nada de mandar assinar ou pagar por fora da loja.
+  static bool get storeBuild => distribution != 'direct' && !kIsWeb;
+
+  /// Mandado à API no header `X-App-Channel`: com `play`, ela responde sem falar de assinatura.
+  static String get apiChannel => storeBuild ? 'play' : (kIsWeb ? 'web' : 'direct');
+
   /// Atualização pelo próprio app (download do APK) — só Android no canal `direct`.
   static bool get selfUpdateEnabled =>
       distribution == 'direct' && !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
