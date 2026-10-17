@@ -10,6 +10,7 @@ import com.max.salao.customer.CustomerRepository;
 import com.max.salao.professional.ProfessionalRepository;
 import com.max.salao.salon.Salon;
 import com.max.salao.salon.SalonService;
+import com.max.salao.shared.AppChannel;
 import com.max.salao.shared.BusinessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,6 +94,9 @@ public class PlanService {
         if (status(salons.current()) == PlanStatus.EXPIRED) {
             throw new PlanExpiredException(publicBooking
                     ? "Agendamento online indisponível no momento. Fale direto com o salão."
+                    : AppChannel.isStoreApp()
+                    ? "Seu período de teste terminou. Você ainda pode consultar tudo, mas não pode cadastrar "
+                      + "nem receber agendamentos."
                     : "Seu período de teste terminou. Você ainda pode consultar tudo; para voltar a cadastrar e "
                       + "receber agendamentos, fale com o Salão Max e ative seu plano.");
         }
@@ -114,7 +118,7 @@ public class PlanService {
         }
         if (used >= max) {
             throw new BusinessException("No teste grátis o limite é de " + max + " " + resource.label
-                    + ". Para cadastrar mais, ative o plano com o Salão Max.");
+                    + (AppChannel.isStoreApp() ? "." : ". Para cadastrar mais, ative o plano com o Salão Max."));
         }
     }
 }

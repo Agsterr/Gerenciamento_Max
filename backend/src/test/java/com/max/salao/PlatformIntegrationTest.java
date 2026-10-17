@@ -71,7 +71,12 @@ class PlatformIntegrationTest {
         }
         JsonNode limit = call(salon.token, post("/api/professionals"),
                 Map.of("name", "P3", "commissionPercent", 0, "active", true), status().isUnprocessableEntity());
-        assertThat(limit.get("detail").asText()).contains("limite é de 2 profissionais");
+        assertThat(limit.get("detail").asText()).contains("limite é de 2 profissionais").contains("ative o plano");
+        // app das lojas: sem mandar assinar por fora (regra de pagamentos da Play/App Store)
+        JsonNode storeLimit = call(salon.token, post("/api/professionals").header("X-App-Channel", "play"),
+                Map.of("name", "P3", "commissionPercent", 0, "active", true), status().isUnprocessableEntity());
+        assertThat(storeLimit.get("detail").asText()).contains("limite é de 2 profissionais")
+                .doesNotContain("plano").doesNotContain("Salão Max");
         long service = call(salon.token, post("/api/services"),
                 Map.of("name", "Corte", "durationMinutes", 30, "price", 50, "cost", 0, "active", true),
                 status().isCreated()).get("id").asLong();
@@ -82,6 +87,11 @@ class PlatformIntegrationTest {
         JsonNode expired = call(salon.token, post("/api/customers"), Map.of("name", "Ana", "phone", "11911112222"),
                 status().isPaymentRequired());
         assertThat(expired.get("code").asText()).isEqualTo("PLAN_EXPIRED");
+        assertThat(expired.get("detail").asText()).contains("ative seu plano");
+        JsonNode storeExpired = call(salon.token, post("/api/customers").header("X-App-Channel", "play"),
+                Map.of("name", "Ana", "phone", "11911112222"), status().isPaymentRequired());
+        assertThat(storeExpired.get("code").asText()).isEqualTo("PLAN_EXPIRED");
+        assertThat(storeExpired.get("detail").asText()).doesNotContain("plano").doesNotContain("Salão Max");
         call(null, post("/api/public/salons/" + salon.slug + "/bookings"), Map.of("serviceId", service,
                 "startAt", java.time.LocalDate.now().plusDays(9) + "T10:00:00", "name", "Bia", "phone", "11922223333"),
                 status().isPaymentRequired());

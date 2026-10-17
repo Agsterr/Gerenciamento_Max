@@ -108,7 +108,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text('Salão Max Gestão',
                         textAlign: TextAlign.center, style: text.headlineMedium?.copyWith(color: Colors.white)),
                     const SizedBox(height: 6),
-                    Text(_register ? 'Teste grátis, sem cartão. Depois, é só ativar o plano.' : 'Agenda, clientes e lucro na palma da mão',
+                    Text(
+                        _register
+                            ? (AppConfig.storeBuild ? 'Teste grátis, sem cartão.' : 'Teste grátis, sem cartão. Depois, é só ativar o plano.')
+                            : 'Agenda, clientes e lucro na palma da mão',
                         textAlign: TextAlign.center,
                         style: text.bodyLarge?.copyWith(color: Colors.white.withValues(alpha: 0.75))),
                     const SizedBox(height: 28),

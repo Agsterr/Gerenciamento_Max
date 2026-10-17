@@ -475,7 +475,8 @@ class _PlanBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final expired = plan.expired;
     final text = Theme.of(context).textTheme;
-    final hasContact = plan.contactWhatsapp.isNotEmpty || plan.contactEmail.isNotEmpty;
+    // Versão das lojas: sem atalho para assinar por fora (regra de pagamentos da Play/App Store).
+    final hasContact = !AppConfig.storeBuild && (plan.contactWhatsapp.isNotEmpty || plan.contactEmail.isNotEmpty);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Container(
