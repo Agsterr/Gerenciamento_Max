@@ -27,7 +27,9 @@ class PublicTenantInterceptor implements HandlerInterceptor {
         var vars = (Map<String, String>) request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE);
         String slug = vars != null ? vars.get("slug") : null;
         if (slug != null) {
+            // Salão bloqueado some das páginas públicas
             Long salonId = salons.findBySlug(slug)
+                    .filter(s -> !s.isBlocked())
                     .orElseThrow(() -> new NotFoundException("Salão não encontrado"))
                     .getId();
             TenantContext.set(salonId);

@@ -106,6 +106,16 @@ repositório; regras de negócio ficam em services (`AppointmentService`, `Avail
 | GET · PUT | `/api/pricing` · `/api/pricing/settings` (precificação) | dono |
 | GET | `/api/public/salons?q=` (busca) · `/api/public/salons/{slug}` · `/availability` | cliente |
 | POST/GET | `/api/public/salons/{slug}/bookings[/{token}[/cancel]]` | cliente |
+| GET | `/api/app/version?app=gestao\|cliente` → `{versionName, versionCode, downloadUrl, releaseNotes, forceUpdate, sha256}` (404 sem versão) | público |
+| GET | `/api/app/download/latest?app=…` · `/api/app/download/{id}` (o `.apk`) | público |
+| POST | `/api/app/releases/deploy` (multipart `file`, `app`, `versionName`, `versionCode`, `releaseNotes?`, `forceUpdate?`; header `X-Deploy-Token`) | CI |
+| GET | `/api/platform/salons?q=` · `/api/platform/salons/{id}/users` | plataforma |
+| POST | `/api/platform/salons/{id}/block` (`{reason}`) · `/unblock` · `/api/platform/users/{id}/block` · `/unblock` | plataforma |
+| GET · PUT · POST | `/api/platform/releases?app=` · `/api/platform/releases/{id}/force-update` (`{forceUpdate}`) · `/api/platform/releases` (upload manual, multipart) | plataforma |
+
+**Bloqueio:** qualquer requisição autenticada de usuário bloqueado (ou de salão bloqueado) — inclusive com token já emitido — e o login dele recebem **HTTP 403** com ProblemDetail `{"code": "ACCOUNT_BLOCKED", "detail": "<motivo>"}`. As páginas públicas de salão bloqueado respondem 404. O administrador da plataforma (papel `PLATFORM_ADMIN`, sem salão) entra pelo mesmo `/api/auth/login` e usa o painel em `/plataforma`.
+
+**APK fora da loja:** guardamos só as `APP_RELEASES_MAX_COUNT` versões mais novas de cada app; `versionCode` é único por app. Uma versão nova herda `forceUpdate` da anterior. Página pública de download: `/baixar`.
 
 ## Variáveis de ambiente (API)
 | Variável | Padrão |
@@ -114,6 +124,13 @@ repositório; regras de negócio ficam em services (`AppointmentService`, `Avail
 | `JWT_SECRET` | segredo de desenvolvimento — **troque em produção** (≥ 32 caracteres) |
 | `CORS_ORIGINS` | `http://localhost:3000` |
 | `APP_TIMEZONE` | `America/Sao_Paulo` |
+| `PLATFORM_ADMIN_EMAIL` / `PLATFORM_ADMIN_PASSWORD` | vazios (sem admin). Definidos, criam/atualizam o admin da plataforma no boot (senha ≥ 8 caracteres) |
+| `APP_RELEASES_PATH` | `/app/releases` (pasta dos APKs) |
+| `APP_RELEASE_DEPLOY_TOKEN` | vazio (deploy de APK desligado, responde 503) |
+| `APP_RELEASES_MAX_COUNT` | `2` (versões mantidas por app) |
+| `APP_PUBLIC_URL` | `https://salaomax.focodev.com.br` (base do `downloadUrl`) |
+
+Upload de APK aceita até 150 MB.
 
 Site: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_LEGAL_COMPANY` e `NEXT_PUBLIC_LEGAL_EMAIL` (aparecem na política de privacidade).
 

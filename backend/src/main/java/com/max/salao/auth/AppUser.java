@@ -1,5 +1,7 @@
 package com.max.salao.auth;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,7 +27,7 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    /** Nulo só para {@link Role#PLATFORM_ADMIN}. */
     private Long salonId;
 
     @Column(nullable = false)
@@ -42,4 +44,9 @@ public class AppUser {
     private Role role;
 
     private boolean active = true;
+
+    /** Bloqueado pelo administrador da plataforma. */
+    private boolean blocked;
+    private String blockedReason;
+    private LocalDateTime blockedAt;
 }

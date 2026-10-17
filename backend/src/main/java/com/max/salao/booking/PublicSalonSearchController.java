@@ -3,6 +3,7 @@ package com.max.salao.booking;
 import java.util.List;
 
 import com.max.salao.salon.SalonRepository;
+import org.springframework.data.domain.Limit;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,7 +27,7 @@ public class PublicSalonSearchController {
         if (term.length() < 2) {
             return List.of();
         }
-        return salons.findTop20ByNameContainingIgnoreCaseOrSlugContainingIgnoreCaseOrderByName(term, term).stream()
+        return salons.searchPublic(term, Limit.of(20)).stream()
                 .map(s -> new SalonSummary(s.getName(), s.getSlug(), s.getAddress()))
                 .toList();
     }

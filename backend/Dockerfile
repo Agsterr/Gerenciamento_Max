@@ -8,5 +8,7 @@ RUN mvn -q -B package -DskipTests
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/target/salao-api-*.jar app.jar
+# APKs publicados fora da loja (volume em produção)
+RUN mkdir -p /app/releases
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

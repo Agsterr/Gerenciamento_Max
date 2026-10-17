@@ -1,12 +1,55 @@
-export type Role = "OWNER" | "STAFF";
+export type Role = "OWNER" | "STAFF" | "PLATFORM_ADMIN";
 
 export type User = {
   id: number;
   name: string;
   email: string;
   role: Role;
-  salonId: number;
-  salonSlug: string;
+  /** Nulo para o administrador da plataforma. */
+  salonId: number | null;
+  salonSlug: string | null;
+};
+
+// ---- Administração da plataforma ----
+
+export type MobileApp = "gestao" | "cliente";
+
+export type PlatformSalon = {
+  id: number;
+  name: string;
+  slug: string;
+  phone: string | null;
+  address: string | null;
+  createdAt: string | null;
+  userCount: number;
+  blocked: boolean;
+  blockedReason: string | null;
+  blockedAt: string | null;
+};
+
+export type PlatformUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  active: boolean;
+  blocked: boolean;
+  blockedReason: string | null;
+  blockedAt: string | null;
+};
+
+export type AppRelease = {
+  id: number;
+  app: MobileApp;
+  versionName: string;
+  versionCode: number;
+  fileName: string;
+  fileSizeBytes: number;
+  sha256: string;
+  releaseNotes: string | null;
+  forceUpdate: boolean;
+  downloadUrl: string;
+  createdAt: string;
 };
 
 /** Horário de um dia da semana (1 = segunda ... 7 = domingo); horas no formato "HH:mm" ou "HH:mm:ss". */
