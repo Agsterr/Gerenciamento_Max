@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AppPromo } from "@/components/AppPromo";
+import { AppPromo } from "@/components/InstallApp";
 import { Icon } from "@/components/Icon";
 import { Badge, ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";

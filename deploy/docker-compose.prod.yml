@@ -53,6 +53,8 @@ services:
     environment:
       HOSTNAME: 0.0.0.0
       NODE_OPTIONS: --max-old-space-size=128
+      # nome do salão no ícone do app instalado (PWA): o site consulta a API pela rede interna
+      API_INTERNAL_URL: http://api:8080
     mem_limit: 192m
 
   nginx:

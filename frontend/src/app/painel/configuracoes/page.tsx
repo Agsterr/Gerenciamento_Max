@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Card, ErrorMessage, Field, NewPasswordFields, PageHeader, Select } from "@/components/ui";
+import { InstallAppLink } from "@/components/InstallApp";
 import { api, appDownloadUrl } from "@/lib/api";
 import { WeeklyHoursEditor, normalizeHours } from "@/components/WeeklyHoursEditor";
 import type { Role, Salon, User } from "@/lib/types";
@@ -161,25 +162,34 @@ function AppsCard({ publicUrl, salonName }: { publicUrl: string; salonName: stri
   const [copied, setCopied] = useState(false);
   const message =
     `Agende seu horário no ${salonName} pelo link: ${publicUrl}\n` +
-    `Ou pelo app Salão Max (Android): ${appDownloadUrl("cliente")}\n` +
+    `Para ter no celular (Android e iPhone), abra o link e toque em "Instalar".\n` +
     `Para ver, remarcar ou cancelar, é só entrar com seu nome e WhatsApp.`;
   return (
     <Card>
-      <h2 className="mb-1 font-semibold">Apps no celular (Android)</h2>
+      <h2 className="mb-1 font-semibold">Apps no celular</h2>
+      <p className="text-sm text-zinc-600">
+        Funcionam no Android e no iPhone: instale direto pelo site (sem loja). No Android também há o APK.
+      </p>
       <div className="mt-3 space-y-4 text-sm">
         <div>
           <p className="font-bold text-brand-ink">Salão Max Gestão — para você e a equipe</p>
           <p className="text-zinc-600">Entre com o mesmo e-mail e senha deste painel.</p>
-          <a href={appDownloadUrl("gestao")} className="mt-1 inline-block font-bold text-brand-rose hover:underline">
-            Baixar app do salão →
-          </a>
+          <div className="mt-1 flex flex-wrap gap-3">
+            <InstallAppLink app="gestao" className="font-bold text-brand-rose hover:underline" />
+            <a href={appDownloadUrl("gestao")} className="font-bold text-zinc-600 hover:underline">
+              APK Android
+            </a>
+          </div>
         </div>
         <div>
           <p className="font-bold text-brand-ink">Salão Max — para seus clientes</p>
-          <p className="text-zinc-600">O cliente entra com o nome e o WhatsApp que usou ao agendar, sem senha.</p>
+          <p className="text-zinc-600">
+            O cliente abre o seu link de agendamento e toca em &quot;Instalar&quot;: o ícone do seu salão fica na tela do celular.
+            Ele entra com o nome e o WhatsApp que usou ao agendar, sem senha.
+          </p>
           <div className="mt-1 flex flex-wrap gap-3">
             <a href={appDownloadUrl("cliente")} className="font-bold text-brand-rose hover:underline">
-              Baixar app do cliente →
+              APK do cliente (Android)
             </a>
             <button
               type="button"

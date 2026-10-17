@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { SlotPicker } from "@/components/agenda/SlotPicker";
-import { AppPromo } from "@/components/AppPromo";
+import { AppPromo } from "@/components/InstallApp";
 import { Icon, serviceIcon } from "@/components/Icon";
 import { ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";

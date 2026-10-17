@@ -65,6 +65,11 @@ export default function DownloadPage() {
             <li>Se o Android pedir, permita instalar apps desta fonte (só na primeira vez).</li>
             <li>Toque em “Instalar”. Pronto!</li>
           </ol>
+          <p className="mt-3 font-bold text-white">iPhone ou sem baixar nada</p>
+          <p className="mt-1">
+            Os dois apps também instalam direto pelo site (PWA). No Android, toque em “Instalar app”. No iPhone, abra no Safari,
+            toque em Compartilhar e em “Adicionar à Tela de Início” — o salão no painel, e o cliente no link de agendamento do salão.
+          </p>
           <p className="mt-3">Prefere usar no computador? O painel funciona direto no navegador.</p>
         </div>
       </div>
