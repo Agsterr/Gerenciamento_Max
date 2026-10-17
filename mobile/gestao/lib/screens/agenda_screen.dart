@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
+import 'appointment_sheets.dart';
 import 'finish_sheet.dart';
 import 'new_appointment_sheet.dart';
+import 'notifications_screen.dart';
 
 class AgendaScreen extends StatefulWidget {
   const AgendaScreen({super.key, required this.session});
@@ -19,6 +23,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
   List<Appointment>? _items;
   String? _error;
   int? _professionalFilter;
+  int _unread = 0;
+  Timer? _poll;
 
   ApiClient get _api => widget.session.api;
 
@@ -26,9 +32,39 @@ class _AgendaScreenState extends State<AgendaScreen> {
   void initState() {
     super.initState();
     _load();
+    // confere avisos novos (agendamento/cancelamento/remarcação online) enquanto o app está aberto
+    _poll = Timer.periodic(const Duration(minutes: 1), (_) => _loadUnread());
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadUnread() async {
+    try {
+      final inbox = Inbox.fromJson(await _api.get('/api/notifications') as Map<String, dynamic>);
+      if (!mounted) return;
+      if (inbox.unread > _unread && inbox.items.isNotEmpty && !inbox.items.first.read) {
+        final n = inbox.items.first;
+        showMessage(context, '${n.title}: ${n.message}');
+        if (_unread > 0 || _items != null) _load(withUnread: false);
+      }
+      setState(() => _unread = inbox.unread);
+    } catch (_) {
+      // sem rede: tenta no próximo ciclo
+    }
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(api: _api)));
+    if (mounted) setState(() => _unread = 0);
+    _load();
+  }
+
+  Future<void> _load({bool withUnread = true}) async {
+    if (withUnread) _loadUnread();
     setState(() => _error = null);
     try {
       final json = await _api.get('/api/appointments?from=${isoDate(_day)}') as List;
@@ -65,6 +101,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
       if (ok) _load();
       return;
     }
+    if (action == 'reschedule') {
+      if (await showStaffRescheduleSheet(context, api: _api, appointment: a)) _load();
+      return;
+    }
+    if (action == 'notes') {
+      if (await showServiceNotesSheet(context, api: _api, appointment: a)) _load();
+      return;
+    }
     if (action == 'cancel' && !await confirmDialog(context, 'Cancelar o horário de ${a.customer.name}?', danger: true)) return;
     try {
       await _api.post('/api/appointments/${a.id}/$action');
@@ -79,6 +123,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
+      isScrollControlled: true,
       builder: (context) {
         Widget item(IconData icon, String label, String action) => ListTile(
               leading: Icon(icon),
@@ -88,7 +133,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                 _act(a, action);
               },
             );
-        return Wrap(children: [
+        return SingleChildScrollView(child: Wrap(children: [
           ListTile(
             title: Text('${a.customer.name} · ${a.service.name}'),
             subtitle: Text('${formatTime(a.startAt)}–${formatTime(a.endAt)} com ${a.professional.name}'),
@@ -96,14 +141,23 @@ class _AgendaScreenState extends State<AgendaScreen> {
           ListTile(
             leading: const Icon(Icons.chat_outlined),
             title: Text('WhatsApp ${formatPhone(a.customerPhone)}'),
-            onTap: () => openWhatsApp(a.customerPhone),
+            onTap: () => openWhatsApp(
+              a.customerPhone,
+              text: open
+                  ? 'Olá, ${a.customer.name.split(' ').first}! Passando para lembrar do seu horário de ${a.service.name} '
+                      '${formatShortDateTime(a.startAt)}.'
+                  : null,
+            ),
           ),
           if (a.status == AppointmentStatus.scheduled) item(Icons.check, 'Confirmar', 'confirm'),
           if (open) item(Icons.play_arrow, 'Iniciar atendimento', 'start'),
           if (open || a.status == AppointmentStatus.inProgress) item(Icons.done_all, 'Finalizar', 'finish'),
+          if (open) item(Icons.event_repeat_rounded, 'Remarcar', 'reschedule'),
+          if (a.status != AppointmentStatus.canceled)
+            item(Icons.edit_note_rounded, a.serviceNotes == null ? 'Anotações (tinta, corte...)' : 'Editar anotações', 'notes'),
           if (open) item(Icons.person_off_outlined, 'Faltou', 'no-show'),
           if (open) item(Icons.close, 'Cancelar', 'cancel'),
-        ]);
+        ]));
       },
     );
   }
@@ -146,6 +200,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
                       Text(formatWeekday(_day), style: text.titleLarge?.copyWith(color: Colors.white)),
                     ]),
                   ),
+                  _Bell(unread: _unread, onTap: _openNotifications),
+                  const SizedBox(width: 6),
                   _HeaderButton(icon: Icons.chevron_left_rounded, tooltip: 'Semana anterior', onTap: () => _go(-7)),
                   const SizedBox(width: 6),
                   _HeaderButton(icon: Icons.calendar_month_rounded, tooltip: 'Escolher data', onTap: _pickDay),
@@ -368,6 +424,23 @@ class _TimelineItem extends StatelessWidget {
                       Pill('${a.realMinutes} min', icon: Icons.timer_outlined),
                     ],
                   ]),
+                  if (a.serviceNotes != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: const Color(0xFFFFF7E6), borderRadius: BorderRadius.circular(12)),
+                      child: Text.rich(
+                        TextSpan(children: [
+                          const TextSpan(text: 'Anotações: ', style: TextStyle(fontWeight: FontWeight.w800)),
+                          TextSpan(text: a.serviceNotes),
+                        ]),
+                        style: text.bodySmall?.copyWith(color: const Color(0xFF7C4A03)),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ]),
               ),
             ),
@@ -376,6 +449,25 @@ class _TimelineItem extends StatelessWidget {
       ]),
     );
   }
+}
+
+class _Bell extends StatelessWidget {
+  const _Bell({required this.unread, required this.onTap});
+
+  final int unread;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Badge(
+        isLabelVisible: unread > 0,
+        label: Text(unread > 9 ? '9+' : '$unread'),
+        backgroundColor: Brand.rose,
+        child: _HeaderButton(
+          icon: unread > 0 ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
+          tooltip: unread > 0 ? '$unread notificações novas' : 'Notificações',
+          onTap: onTap,
+        ),
+      );
 }
 
 class _GradientFab extends StatelessWidget {

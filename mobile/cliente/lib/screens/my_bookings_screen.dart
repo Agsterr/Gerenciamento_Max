@@ -20,6 +20,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   Map<String, Booking?> _details = {};
   bool _loading = true;
 
+  /// Agendamentos que o salão mudou (horário, profissional ou cancelamento) desde a última vez que o cliente viu.
+  bool _changed(SavedBooking s) {
+    final b = _details[s.token];
+    return b != null && s.seen != null && s.seen != b.signature;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +53,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       if (mounted) showError(context, e);
       return <MapEntry<String, Booking?>>[];
     });
+    // primeira vez que vê este agendamento: guarda a versão atual como referência
+    for (final s in widget.store.bookings) {
+      final b = entries.where((e) => e.key == s.token).firstOrNull?.value;
+      if (b != null && s.seen == null) await widget.store.markSeen(s.token, b.signature);
+    }
     if (mounted) {
       setState(() {
         _details = Map.fromEntries(entries);
@@ -85,11 +96,27 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             ]),
           ),
           if (_loading && saved.isNotEmpty) const LinearProgressIndicator(),
+          if (saved.any(_changed))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: SoftCard(
+                padding: const EdgeInsets.all(14),
+                child: Row(children: [
+                  const Icon(Icons.notifications_active_rounded, color: Brand.rose),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('O salão alterou ${saved.where(_changed).length == 1 ? 'um horário seu' : 'horários seus'}. Toque para ver.',
+                        style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  ),
+                ]),
+              ),
+            ),
           if (saved.isEmpty)
             EmptyState(
               icon: Icons.confirmation_number_outlined,
               title: 'Nada por aqui ainda',
-              message: 'Quando você agendar, seus horários aparecem aqui para consultar ou cancelar.',
+              message: 'Quando você agendar, seus horários aparecem aqui para consultar, remarcar ou cancelar.\n'
+                  'Já agendou pelo site ou em outro celular? Abra o salão e toque em "Já agendou?".',
               action: SizedBox(width: 220, child: GradientButton(label: 'Agendar agora', icon: Icons.search_rounded, onPressed: widget.onBookNow)),
             )
           else
@@ -127,11 +154,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         child: SoftCard(
           padding: const EdgeInsets.all(12),
           onTap: () async {
+            await widget.store.markSeen(s.token, b.signature);
+            if (!mounted) return;
             await Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => BookingScreen(slug: s.slug, token: s.token, api: widget.api, salonName: s.salonName)),
             );
-            _load();
+            await _load();
+            final updated = _details[s.token];
+            // mudanças feitas pelo próprio cliente (remarcar/cancelar) não contam como aviso
+            if (updated != null) await widget.store.markSeen(s.token, updated.signature);
+            if (mounted) setState(() {});
           },
           child: Row(children: [
             Container(
@@ -156,7 +189,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                 Text('${formatTime(b.startAt)} · ${s.salonName}',
                     style: text.bodySmall?.copyWith(color: Brand.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 6),
-                StatusChip(b.status),
+                Wrap(spacing: 6, runSpacing: 4, children: [
+                  StatusChip(b.status),
+                  if (_changed(s)) const Pill('Alterado pelo salão', icon: Icons.notifications_active_rounded, color: Color(0xFFFFE4EC), textColor: Brand.rose),
+                ]),
               ]),
             ),
             const Icon(Icons.chevron_right_rounded, color: Brand.muted),

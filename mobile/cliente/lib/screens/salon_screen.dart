@@ -3,6 +3,7 @@ import 'package:salao_core/salao_core.dart';
 
 import '../booking_store.dart';
 import 'booking_screen.dart';
+import 'find_bookings_sheet.dart';
 
 /// Agendamento: serviço → profissional → dia/horário → nome e WhatsApp.
 class SalonScreen extends StatefulWidget {
@@ -167,6 +168,14 @@ class _SalonScreenState extends State<SalonScreen> {
       expandedHeight: 200,
       backgroundColor: Brand.rose,
       foregroundColor: Colors.white,
+      actions: [
+        TextButton.icon(
+          style: TextButton.styleFrom(foregroundColor: Colors.white),
+          onPressed: () => showFindBookingsSheet(context, api: widget.api, store: widget.store, slug: widget.slug, salonName: salon.name),
+          icon: const Icon(Icons.manage_search_rounded),
+          label: const Text('Já agendou?'),
+        ),
+      ],
       title: AnimatedOpacity(
         opacity: _collapsed ? 1 : 0,
         duration: const Duration(milliseconds: 150),

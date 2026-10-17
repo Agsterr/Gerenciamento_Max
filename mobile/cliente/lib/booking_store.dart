@@ -4,16 +4,25 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SavedBooking {
-  const SavedBooking({required this.slug, required this.token, required this.salonName});
+  const SavedBooking({required this.slug, required this.token, required this.salonName, this.seen});
 
-  factory SavedBooking.fromJson(Map<String, dynamic> j) =>
-      SavedBooking(slug: j['slug'] as String, token: j['token'] as String, salonName: j['salonName'] as String);
+  factory SavedBooking.fromJson(Map<String, dynamic> j) => SavedBooking(
+        slug: j['slug'] as String,
+        token: j['token'] as String,
+        salonName: j['salonName'] as String,
+        seen: j['seen'] as String?,
+      );
 
   final String slug;
   final String token;
   final String salonName;
 
-  Map<String, dynamic> toJson() => {'slug': slug, 'token': token, 'salonName': salonName};
+  /// Última versão do agendamento que o cliente viu ([Booking.signature]); diferente = o salão mudou algo.
+  final String? seen;
+
+  SavedBooking withSeen(String? value) => SavedBooking(slug: slug, token: token, salonName: salonName, seen: value);
+
+  Map<String, dynamic> toJson() => {'slug': slug, 'token': token, 'salonName': salonName, 'seen': seen};
 }
 
 /// Dados guardados só no aparelho: agendamentos feitos e (opcionalmente) nome/telefone.
@@ -36,11 +45,21 @@ class BookingStore extends ChangeNotifier {
   String? get name => _prefs.getString(_nameKey);
   String? get phone => _prefs.getString(_phoneKey);
 
-  Future<void> add(SavedBooking booking) async {
-    final list = [booking, ...bookings.where((b) => b.token != booking.token)];
-    await _prefs.setStringList(_bookingsKey, list.map((b) => jsonEncode(b.toJson())).toList());
+  Future<void> add(SavedBooking booking) => addAll([booking]);
+
+  /// Guarda agendamentos (ex.: encontrados pela busca por nome e WhatsApp), sem duplicar.
+  Future<void> addAll(List<SavedBooking> items) async {
+    final tokens = items.map((b) => b.token).toSet();
+    await _save([...items, ...bookings.where((b) => !tokens.contains(b.token))]);
     notifyListeners();
   }
+
+  /// Registra que o cliente viu esta versão do agendamento (não recarrega a lista).
+  Future<void> markSeen(String token, String signature) =>
+      _save([for (final b in bookings) b.token == token ? b.withSeen(signature) : b]);
+
+  Future<void> _save(List<SavedBooking> list) =>
+      _prefs.setStringList(_bookingsKey, list.map((b) => jsonEncode(b.toJson())).toList());
 
   Future<void> remove(String token) async {
     final list = bookings.where((b) => b.token != token);

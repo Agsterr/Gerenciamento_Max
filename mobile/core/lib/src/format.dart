@@ -35,9 +35,17 @@ String formatQuantity(num v) => v == v.roundToDouble() ? v.toInt().toString() : 
 DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
 /// Abre conversa no WhatsApp (número brasileiro).
-Future<void> openWhatsApp(String phone) async {
+/// [text] vira a mensagem já digitada na conversa.
+Future<void> openWhatsApp(String phone, {String? text}) async {
   final digits = phone.replaceAll(RegExp(r'\D'), '');
-  await launchUrl(Uri.parse('https://wa.me/55$digits'), mode: LaunchMode.externalApplication);
+  final query = text == null ? '' : '?text=${Uri.encodeComponent(text)}';
+  await launchUrl(Uri.parse('https://wa.me/55$digits$query'), mode: LaunchMode.externalApplication);
+}
+
+/// "Ter, 20/10 às 14:30"
+String formatShortDateTime(DateTime d) {
+  final day = DateFormat("EEE, dd/MM", 'pt_BR').format(d).replaceAll('.', '');
+  return '${day[0].toUpperCase()}${day.substring(1)} às ${formatTime(d)}';
 }
 
 Future<void> openUrl(Uri uri) => launchUrl(uri, mode: LaunchMode.externalApplication);

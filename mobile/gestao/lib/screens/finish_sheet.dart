@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
+import 'appointment_sheets.dart' show ServiceNotesField;
+
 /// Fechamento: valor final + produtos usados/vendidos (baixa no estoque).
 Future<bool> showFinishSheet(BuildContext context, {required ApiClient api, required Appointment appointment}) async {
   final ok = await showModalBottomSheet<bool>(
@@ -30,6 +32,7 @@ class _FinishSheet extends StatefulWidget {
 
 class _FinishSheetState extends State<_FinishSheet> {
   late final _price = TextEditingController(text: formatQuantity(widget.appointment.price));
+  late final _notes = TextEditingController(text: widget.appointment.serviceNotes);
   List<Product> _products = [];
   final List<_Line> _lines = [];
   bool _busy = false;
@@ -50,6 +53,7 @@ class _FinishSheetState extends State<_FinishSheet> {
   @override
   void dispose() {
     _price.dispose();
+    _notes.dispose();
     super.dispose();
   }
 
@@ -67,6 +71,7 @@ class _FinishSheetState extends State<_FinishSheet> {
     try {
       await widget.api.post('/api/appointments/${widget.appointment.id}/finish', {
         'price': _priceValue,
+        'serviceNotes': _notes.text,
         'usedProducts': _items(false),
         'soldProducts': _items(true),
       });
@@ -147,6 +152,8 @@ class _FinishSheetState extends State<_FinishSheet> {
             ),
             Text('Toque no ícone para alternar entre uso (tesoura) e venda (etiqueta).',
                 style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 16),
+            ServiceNotesField(controller: _notes),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(16),

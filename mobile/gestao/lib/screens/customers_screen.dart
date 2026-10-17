@@ -195,7 +195,9 @@ class _CustomerDetail extends StatelessWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(a.service.name),
-                  subtitle: Text('${formatDate(a.startAt)} ${formatTime(a.startAt)} · ${a.professional.name} · ${formatMoney(a.price)}'),
+                  subtitle: Text('${formatDate(a.startAt)} ${formatTime(a.startAt)} · ${a.professional.name} · ${formatMoney(a.price)}'
+                      '${a.serviceNotes != null ? '\n📝 ${a.serviceNotes}' : ''}'),
+                  isThreeLine: a.serviceNotes != null,
                   trailing: StatusChip(a.status),
                 ),
             ],

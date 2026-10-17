@@ -110,7 +110,9 @@ class Booking {
     required this.startAt,
     required this.endAt,
     required this.status,
+    required this.serviceId,
     required this.serviceName,
+    required this.professionalId,
     required this.professionalName,
     required this.price,
     required this.customerName,
@@ -122,7 +124,9 @@ class Booking {
         startAt: _date(j['startAt']),
         endAt: _date(j['endAt']),
         status: AppointmentStatus.parse(j['status'] as String),
+        serviceId: j['serviceId'] as int? ?? 0,
         serviceName: j['serviceName'] as String,
+        professionalId: j['professionalId'] as int? ?? 0,
         professionalName: j['professionalName'] as String,
         price: _num(j['price']),
         customerName: j['customerName'] as String,
@@ -133,11 +137,18 @@ class Booking {
   final DateTime startAt;
   final DateTime endAt;
   final AppointmentStatus status;
+  final int serviceId;
   final String serviceName;
+  final int professionalId;
   final String professionalName;
   final double price;
   final String customerName;
+
+  /// Cliente ainda pode cancelar ou remarcar sozinho (até 2h antes).
   final bool cancelable;
+
+  /// Assinatura do que importa para o cliente: muda se o salão remarcar, trocar o profissional ou cancelar.
+  String get signature => '${startAt.toIso8601String()}|$professionalId|${status.name}';
 }
 
 // ---------- Painel (app do salão) ----------
@@ -351,6 +362,7 @@ class Appointment {
     this.realMinutes,
     required this.price,
     this.notes,
+    this.serviceNotes,
     required this.online,
   });
 
@@ -367,6 +379,7 @@ class Appointment {
         realMinutes: j['realMinutes'] as int?,
         price: _num(j['price']),
         notes: j['notes'] as String?,
+        serviceNotes: j['serviceNotes'] as String?,
         online: j['source'] == 'ONLINE',
       );
 
@@ -382,6 +395,9 @@ class Appointment {
   final int? realMinutes;
   final double price;
   final String? notes;
+
+  /// Anotações internas do atendimento (tinta usada, corte feito...). Só a equipe vê.
+  final String? serviceNotes;
   final bool online;
 }
 
@@ -504,4 +520,47 @@ class Pricing {
 
   Map<String, dynamic> get settings => basis['settings'] as Map<String, dynamic>;
   double money(String key) => _num(basis[key]);
+}
+
+// ---------- Notificações do salão ----------
+
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.message,
+    required this.createdAt,
+    required this.read,
+  });
+
+  factory AppNotification.fromJson(Map<String, dynamic> j) => AppNotification(
+        id: j['id'] as int,
+        type: j['type'] as String,
+        title: j['title'] as String,
+        message: j['message'] as String,
+        createdAt: _date(j['createdAt']),
+        read: j['read'] as bool,
+      );
+
+  final int id;
+
+  /// BOOKED, CANCELED ou RESCHEDULED.
+  final String type;
+  final String title;
+  final String message;
+  final DateTime createdAt;
+  final bool read;
+}
+
+class Inbox {
+  const Inbox(this.unread, this.items);
+
+  factory Inbox.fromJson(Map<String, dynamic> j) => Inbox(
+        j['unread'] as int,
+        (j['items'] as List).map((e) => AppNotification.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+
+  final int unread;
+  final List<AppNotification> items;
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
+import 'reschedule_sheet.dart';
+
 /// Comprovante do agendamento (estilo "ingresso").
 class BookingScreen extends StatefulWidget {
   const BookingScreen({
@@ -51,6 +53,14 @@ class _BookingScreenState extends State<BookingScreen> {
       if (mounted) setState(() => _booking = b);
     } catch (e) {
       if (mounted) showError(context, e);
+    }
+  }
+
+  Future<void> _reschedule() async {
+    final updated = await showRescheduleSheet(context, api: widget.api, slug: widget.slug, booking: _booking!);
+    if (updated != null && mounted) {
+      setState(() => _booking = updated);
+      showMessage(context, 'Remarcado para ${formatShortDateTime(updated.startAt)}. O salão já foi avisado.');
     }
   }
 
@@ -105,6 +115,10 @@ class _BookingScreenState extends State<BookingScreen> {
               child: Column(children: [
                 _Ticket(booking: b, salonName: widget.salonName, code: widget.token),
                 const SizedBox(height: 20),
+                if (b.cancelable) ...[
+                  GradientButton(label: 'Remarcar horário', icon: Icons.event_repeat_rounded, onPressed: _reschedule),
+                  const SizedBox(height: 10),
+                ],
                 if (b.cancelable)
                   SizedBox(
                     width: double.infinity,
@@ -117,7 +131,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                 const SizedBox(height: 10),
                 Text(
-                  'Cancelamento pelo app até 2 horas antes. Depois disso, fale com o salão.',
+                  'Remarcar ou cancelar pelo app até 2 horas antes. Depois disso, fale com o salão.',
                   style: text.bodySmall?.copyWith(color: Brand.muted),
                   textAlign: TextAlign.center,
                 ),
