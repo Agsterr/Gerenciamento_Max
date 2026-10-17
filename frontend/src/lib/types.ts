@@ -9,14 +9,22 @@ export type User = {
   salonSlug: string;
 };
 
+/** Horário de um dia da semana (1 = segunda ... 7 = domingo); horas no formato "HH:mm" ou "HH:mm:ss". */
+export type DayHours = {
+  dayOfWeek: number;
+  openTime: string;
+  closeTime: string;
+  breakStart: string | null;
+  breakEnd: string | null;
+};
+
 export type Salon = {
   id: number;
   name: string;
   slug: string;
   phone: string | null;
   address: string | null;
-  openTime: string;
-  closeTime: string;
+  hours: DayHours[];
   workDays: string;
   slotMinutes: number;
 };
@@ -146,9 +154,8 @@ export type PublicSalon = {
   slug: string;
   phone: string | null;
   address: string | null;
-  openTime: string;
-  closeTime: string;
   workDays: string;
+  hours: DayHours[];
   services: { id: number; name: string; description: string | null; durationMinutes: number; price: number }[];
   professionals: Ref[];
 };

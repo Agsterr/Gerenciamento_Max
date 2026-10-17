@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
+import '../widgets/weekly_hours_editor.dart';
+
 /// Agendamento pelo salão: horários livres ou manual (qualquer horário, duração e encaixe).
 Future<bool> showNewAppointmentSheet(BuildContext context, {required ApiClient api, required DateTime day}) async {
   final ok = await showModalBottomSheet<bool>(
@@ -95,8 +97,8 @@ class _NewAppointmentSheetState extends State<_NewAppointmentSheet> {
   }
 
   Future<void> _pickTime() async {
-    final t = await showTimePicker(context: context, initialTime: const TimeOfDay(hour: 9, minute: 0));
-    if (t != null) setState(() => _time = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}');
+    final t = await pickTime(context, _time ?? '09:00', help: 'Horário do agendamento');
+    if (t != null) setState(() => _time = t);
   }
 
   bool get _hasCustomer =>

@@ -14,6 +14,7 @@ e ganha uma página pública para os clientes agendarem pelo celular.
 **Versão do salão (`/painel`)**
 - **Agenda do dia** por profissional: agendar, confirmar, iniciar, finalizar, cancelar, marcar falta. Link direto para o WhatsApp do cliente.
 - **Agendamento manual**: além da grade de horários livres, o salão pode marcar em qualquer horário, com duração própria, e fazer **encaixe** (ignora conflito e expediente).
+- **Horário por dia da semana** (ex.: sábado reduzido, domingo fechado) com **pausa opcional** (almoço) — nas pausas ninguém agenda online.
 - **Horários livres calculados** a partir do expediente do salão e da agenda de cada profissional — sem encaixe duplicado (trava pessimista no profissional).
 - **Controle de tempo**: duração prevista do serviço × tempo real (iniciar → finalizar).
 - **Clientes** com busca por nome/telefone, observações e histórico (total gasto).

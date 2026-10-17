@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
+import '../widgets/weekly_hours_editor.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.session});
@@ -14,8 +15,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const _weekdays = {1: 'Seg', 2: 'Ter', 3: 'Qua', 4: 'Qui', 5: 'Sex', 6: 'Sáb', 7: 'Dom'};
-
   Salon? _salon;
   String? _error;
 
@@ -44,17 +43,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (mounted) showError(context, e);
     }
-  }
-
-  Future<void> _pickTime(bool open) async {
-    final current = (open ? _salon!.openTime : _salon!.closeTime).split(':');
-    final t = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: int.parse(current[0]), minute: int.parse(current[1])),
-    );
-    if (t == null) return;
-    final v = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-    setState(() => open ? _salon!.openTime = v : _salon!.closeTime = v);
   }
 
   Future<void> _deleteAccount() async {
@@ -194,28 +182,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SectionTitle('Funcionamento'),
                 SoftCard(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Row(children: [
-                      Expanded(child: _TimeBox(label: 'Abre', value: salon.openTime, onTap: () => _pickTime(true))),
-                      const SizedBox(width: 10),
-                      Expanded(child: _TimeBox(label: 'Fecha', value: salon.closeTime, onTap: () => _pickTime(false))),
-                    ]),
-                    const SizedBox(height: 14),
-                    Text('Dias de atendimento', style: text.labelLarge),
-                    const SizedBox(height: 8),
-                    Row(children: [
-                      for (final d in _weekdays.entries)
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            child: _DayToggle(
-                              label: d.value,
-                              selected: salon.workDays.contains(d.key),
-                              onTap: () => setState(() =>
-                                  salon.workDays.contains(d.key) ? salon.workDays.remove(d.key) : salon.workDays.add(d.key)),
-                            ),
-                          ),
-                        ),
-                    ]),
+                    Text('Cada dia pode ter um horário diferente e uma pausa, como o almoço. '
+                        'Nas pausas e nos dias fechados ninguém consegue agendar online.',
+                        style: text.bodySmall?.copyWith(color: Brand.muted)),
+                    const SizedBox(height: 12),
+                    WeeklyHoursEditor(hours: salon.hours, onChanged: (h) => setState(() => salon.hours = h)),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<int>(
                       initialValue: salon.slotMinutes,
@@ -224,7 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (v) => setState(() => salon.slotMinutes = v!),
                     ),
                     const SizedBox(height: 14),
-                    GradientButton(label: 'Salvar funcionamento', icon: Icons.save_outlined, onPressed: salon.workDays.isEmpty ? null : _saveSalon),
+                    GradientButton(label: 'Salvar funcionamento', icon: Icons.save_outlined, onPressed: salon.hours.isEmpty ? null : _saveSalon),
                   ]),
                 ),
               ],
@@ -244,60 +215,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-}
-
-class _TimeBox extends StatelessWidget {
-  const _TimeBox({required this.label, required this.value, required this.onTap});
-
-  final String label;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-        color: const Color(0xFFFFF1F6),
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label, style: const TextStyle(color: Brand.muted, fontWeight: FontWeight.w600)),
-              Text(value, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Brand.ink)),
-            ]),
-          ),
-        ),
-      );
-}
-
-class _DayToggle extends StatelessWidget {
-  const _DayToggle({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        selected: selected,
-        label: label,
-        excludeSemantics: true,
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            height: 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: selected ? Brand.gradient : null,
-              color: selected ? null : const Color(0xFFF6EEF3),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(label,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: selected ? Colors.white : Brand.muted)),
-          ),
-        ),
-      );
 }

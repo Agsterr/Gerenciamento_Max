@@ -164,15 +164,47 @@ class User {
   bool get isOwner => role == Role.owner;
 }
 
+/// Horário de um dia da semana (1 = segunda ... 7 = domingo), horas "HH:mm".
+class DayHours {
+  DayHours({required this.dayOfWeek, required this.openTime, required this.closeTime, this.breakStart, this.breakEnd});
+
+  factory DayHours.fromJson(Map<String, dynamic> j) => DayHours(
+        dayOfWeek: j['dayOfWeek'] as int,
+        openTime: _hhmm(j['openTime'])!,
+        closeTime: _hhmm(j['closeTime'])!,
+        breakStart: _hhmm(j['breakStart']),
+        breakEnd: _hhmm(j['breakEnd']),
+      );
+
+  final int dayOfWeek;
+  String openTime;
+  String closeTime;
+  String? breakStart;
+  String? breakEnd;
+
+  bool get hasBreak => breakStart != null && breakEnd != null;
+
+  DayHours copyFor(int day) =>
+      DayHours(dayOfWeek: day, openTime: openTime, closeTime: closeTime, breakStart: breakStart, breakEnd: breakEnd);
+
+  Map<String, dynamic> toJson() => {
+        'dayOfWeek': dayOfWeek,
+        'openTime': openTime,
+        'closeTime': closeTime,
+        'breakStart': breakStart,
+        'breakEnd': breakEnd,
+      };
+
+  static String? _hhmm(Object? v) => v == null ? null : (v as String).substring(0, 5);
+}
+
 class Salon {
   Salon({
     required this.name,
     required this.slug,
     this.phone,
     this.address,
-    required this.openTime,
-    required this.closeTime,
-    required this.workDays,
+    required this.hours,
     required this.slotMinutes,
   });
 
@@ -181,9 +213,7 @@ class Salon {
         slug: j['slug'] as String,
         phone: j['phone'] as String?,
         address: j['address'] as String?,
-        openTime: (j['openTime'] as String).substring(0, 5),
-        closeTime: (j['closeTime'] as String).substring(0, 5),
-        workDays: (j['workDays'] as String).split(',').where((s) => s.isNotEmpty).map(int.parse).toSet(),
+        hours: (j['hours'] as List).map((e) => DayHours.fromJson(e as Map<String, dynamic>)).toList(),
         slotMinutes: j['slotMinutes'] as int,
       );
 
@@ -191,18 +221,16 @@ class Salon {
   final String slug;
   String? phone;
   String? address;
-  String openTime;
-  String closeTime;
-  Set<int> workDays;
+
+  /// Somente os dias em que o salão abre, ordenados.
+  List<DayHours> hours;
   int slotMinutes;
 
   Map<String, dynamic> toJson() => {
         'name': name,
         'phone': phone,
         'address': address,
-        'openTime': openTime,
-        'closeTime': closeTime,
-        'workDays': (workDays.toList()..sort()).join(','),
+        'hours': [for (final h in hours) h.toJson()],
         'slotMinutes': slotMinutes,
       };
 }

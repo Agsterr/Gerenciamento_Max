@@ -3,13 +3,13 @@ package com.max.salao.booking;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 
 import com.max.salao.appointment.Appointment;
 import com.max.salao.appointment.AppointmentStatus;
 import com.max.salao.appointment.AvailabilityService.Slot;
 import com.max.salao.salon.Salon;
+import com.max.salao.salon.SalonDtos;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -37,8 +37,8 @@ public class PublicBookingController {
     public record PublicProfessional(Long id, String name) {
     }
 
-    public record SalonInfo(String name, String slug, String phone, String address, LocalTime openTime,
-                            LocalTime closeTime, String workDays, List<PublicService> services,
+    public record SalonInfo(String name, String slug, String phone, String address, String workDays,
+                            List<SalonDtos.DayHoursDto> hours, List<PublicService> services,
                             List<PublicProfessional> professionals) {
     }
 
@@ -72,8 +72,8 @@ public class PublicBookingController {
     @GetMapping
     public SalonInfo info() {
         Salon s = service.salon();
-        return new SalonInfo(s.getName(), s.getSlug(), s.getPhone(), s.getAddress(), s.getOpenTime(),
-                s.getCloseTime(), s.getWorkDays(),
+        return new SalonInfo(s.getName(), s.getSlug(), s.getPhone(), s.getAddress(), s.workDays(),
+                SalonDtos.hours(s),
                 service.activeServices().stream()
                         .map(x -> new PublicService(x.getId(), x.getName(), x.getDescription(),
                                 x.getDurationMinutes(), x.getPrice()))

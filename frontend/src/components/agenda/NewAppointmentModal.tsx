@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SlotPicker } from "@/components/agenda/SlotPicker";
+import { TimeSelect } from "@/components/TimeSelect";
 import { Button, ErrorMessage, Field, Modal, Select } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatMoney, formatPhone } from "@/lib/format";
@@ -201,7 +202,7 @@ export function NewAppointmentModal({
             {manual ? (
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Horário" type="time" value={time ?? ""} onChange={(e) => setTime(e.target.value || null)} />
+                  <TimeSelect label="Horário" value={time} onChange={setTime} />
                   <Field
                     label="Duração (min)"
                     type="number"

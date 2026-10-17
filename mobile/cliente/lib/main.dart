@@ -29,6 +29,13 @@ class ClienteApp extends StatelessWidget {
       locale: const Locale('pt', 'BR'),
       supportedLocales: const [Locale('pt', 'BR')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      // respeita a fonte grande do celular, mas sem deixar botões e diálogos saírem da tela
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.3),
+        ),
+        child: child!,
+      ),
       home: HomeScreen(store: store, api: api),
     );
   }

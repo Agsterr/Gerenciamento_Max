@@ -3,7 +3,6 @@ package com.max.salao.pricing;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -19,6 +18,7 @@ import com.max.salao.expense.Expense;
 import com.max.salao.expense.ExpenseRepository;
 import com.max.salao.professional.Professional;
 import com.max.salao.professional.ProfessionalRepository;
+import com.max.salao.salon.DayHours;
 import com.max.salao.salon.Salon;
 import com.max.salao.salon.SalonService;
 import org.springframework.stereotype.Service;
@@ -120,8 +120,8 @@ public class PricingService {
                 : salon.getFixedMonthlyCost();
 
         List<Professional> active = professionals.findByActiveTrueOrderByName();
-        double hoursPerDay = Duration.between(salon.getOpenTime(), salon.getCloseTime()).toMinutes() / 60.0;
-        double sellable = hoursPerDay * salon.workDaySet().size() * WEEKS_PER_MONTH * Math.max(active.size(), 1)
+        double hoursPerWeek = salon.getHours().stream().mapToLong(DayHours::workMinutes).sum() / 60.0;
+        double sellable = hoursPerWeek * WEEKS_PER_MONTH * Math.max(active.size(), 1)
                 * salon.getOccupancyPercent().doubleValue() / 100;
         BigDecimal sellableHours = BigDecimal.valueOf(sellable).setScale(1, RoundingMode.HALF_UP);
         BigDecimal fixedPerHour = sellable > 0

@@ -3,15 +3,22 @@ package com.max.salao.salon;
 import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderBy;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -34,15 +41,11 @@ public class Salon {
     private String phone;
     private String address;
 
-    @Column(nullable = false)
-    private LocalTime openTime = LocalTime.of(9, 0);
-
-    @Column(nullable = false)
-    private LocalTime closeTime = LocalTime.of(19, 0);
-
-    /** Dias de funcionamento, ISO (1 = segunda ... 7 = domingo), separados por vírgula. */
-    @Column(nullable = false)
-    private String workDays = "2,3,4,5,6";
+    /** Horário de cada dia em que o salão abre (dias ausentes = fechado). */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "opening_hours", joinColumns = @JoinColumn(name = "salon_id"))
+    @OrderBy("dayOfWeek")
+    private List<DayHours> hours = defaultHours();
 
     @Column(nullable = false)
     private int slotMinutes = 30;
@@ -64,11 +67,25 @@ public class Salon {
     /** Custo fixo mensal informado; nulo = média das despesas dos últimos 3 meses. */
     private BigDecimal fixedMonthlyCost;
 
+    /** Padrão de um salão novo: terça a sábado, 9h às 19h. */
+    public static List<DayHours> defaultHours() {
+        List<DayHours> list = new ArrayList<>();
+        for (int d = 2; d <= 6; d++) {
+            list.add(new DayHours(d, LocalTime.of(9, 0), LocalTime.of(19, 0), null, null));
+        }
+        return list;
+    }
+
+    public Optional<DayHours> hoursFor(DayOfWeek day) {
+        return hours.stream().filter(h -> h.getDayOfWeek() == day.getValue()).findFirst();
+    }
+
     public Set<DayOfWeek> workDaySet() {
-        return Arrays.stream(workDays.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .map(s -> DayOfWeek.of(Integer.parseInt(s)))
-                .collect(Collectors.toSet());
+        return hours.stream().map(h -> DayOfWeek.of(h.getDayOfWeek())).collect(Collectors.toSet());
+    }
+
+    /** Dias de funcionamento no formato "2,3,4,5,6" (compatibilidade com os apps). */
+    public String workDays() {
+        return hours.stream().map(h -> String.valueOf(h.getDayOfWeek())).sorted().collect(Collectors.joining(","));
     }
 }

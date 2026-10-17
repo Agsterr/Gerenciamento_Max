@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -186,6 +187,49 @@ class SalonFlowIntegrationTest {
         assertThat(corte.get("suggestedPrice").decimalValue()).isEqualByComparingTo("60.00");  // 20 / 0,36 = 55,56 → 60
         assertThat(corte.get("currentProfit").decimalValue()).isEqualByComparingTo("36.00");   // 100 - 20 - 44
         assertThat(corte.get("health").asText()).isEqualTo("HEALTHY");
+    }
+
+    @Test
+    void eachDayHasItsOwnHoursAndLunchBreak() throws Exception {
+        Tenant salon = register();
+        call(salon, put("/api/salon"), Map.of("name", "Salão", "slotMinutes", 30, "hours", List.of(
+                Map.of("dayOfWeek", 2, "openTime", "08:00", "closeTime", "18:00", "breakStart", "12:00", "breakEnd", "13:00"),
+                Map.of("dayOfWeek", 6, "openTime", "08:00", "closeTime", "14:00"))), status().isOk());
+        long pro = id(call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                status().isCreated()));
+        long service = id(call(salon, post("/api/services"),
+                Map.of("name", "Corte", "durationMinutes", 60, "price", 50, "cost", 0, "active", true), status().isCreated()));
+        String base = "/api/public/salons/" + salon.slug;
+
+        // terça: sem horários que encostam no almoço (12h–13h)
+        JsonNode tuesday = call(null, get(base + "/availability?serviceId=" + service + "&date=" + day), null, status().isOk());
+        List<String> times = new java.util.ArrayList<>();
+        tuesday.forEach(s -> times.add(s.get("time").asText().substring(0, 5)));
+        assertThat(times).contains("08:00", "11:00", "13:00", "17:00").doesNotContain("11:30", "12:00", "12:30", "17:30");
+
+        // sábado: horário reduzido, último às 13h
+        LocalDate saturday = day.with(TemporalAdjusters.next(DayOfWeek.SATURDAY));
+        JsonNode sat = call(null, get(base + "/availability?serviceId=" + service + "&date=" + saturday), null, status().isOk());
+        assertThat(sat.get(sat.size() - 1).get("time").asText()).startsWith("13:00");
+
+        // segunda: fechado
+        LocalDate monday = day.with(TemporalAdjusters.next(DayOfWeek.MONDAY));
+        assertThat(call(null, get(base + "/availability?serviceId=" + service + "&date=" + monday), null, status().isOk())).isEmpty();
+
+        // marcar no almoço só com encaixe
+        long customer = id(call(salon, post("/api/customers"), Map.of("name", "Lia", "phone", "11911113333"), status().isCreated()));
+        var lunch = new java.util.HashMap<String, Object>(Map.of("customerId", customer, "professionalId", pro,
+                "serviceId", service, "startAt", day + "T12:00:00"));
+        call(salon, post("/api/appointments"), lunch, status().isUnprocessableEntity());
+        lunch.put("force", true);
+        call(salon, post("/api/appointments"), lunch, status().isCreated());
+
+        // pausa fora do expediente é recusada
+        call(salon, put("/api/salon"), Map.of("name", "Salão", "slotMinutes", 30, "hours", List.of(
+                Map.of("dayOfWeek", 2, "openTime", "08:00", "closeTime", "12:00", "breakStart", "11:00", "breakEnd", "13:00"))),
+                status().isUnprocessableEntity());
+        JsonNode info = call(null, get(base), null, status().isOk());
+        assertThat(info.get("workDays").asText()).isEqualTo("2,6");
     }
 
     private record Tenant(String slug, String token) {

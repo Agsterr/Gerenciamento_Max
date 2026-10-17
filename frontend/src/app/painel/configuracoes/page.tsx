@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button, Card, ErrorMessage, Field, PageHeader, Select } from "@/components/ui";
 import { api } from "@/lib/api";
-import { WEEKDAYS } from "@/lib/format";
+import { WeeklyHoursEditor, normalizeHours } from "@/components/WeeklyHoursEditor";
 import type { Role, Salon, User } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
@@ -16,16 +16,11 @@ export default function SettingsPage() {
 
   useEffect(() => setOrigin(window.location.origin), []);
   useEffect(() => {
-    if (salon) setForm({ ...salon, openTime: salon.openTime.slice(0, 5), closeTime: salon.closeTime.slice(0, 5) });
+    if (salon) setForm({ ...salon, hours: normalizeHours(salon.hours) });
   }, [salon]);
 
   if (!form) return <p className="text-zinc-500">Carregando...</p>;
 
-  const days = form.workDays.split(",").filter(Boolean);
-  const toggleDay = (d: string) => {
-    const next = days.includes(d) ? days.filter((x) => x !== d) : [...days, d];
-    setForm({ ...form, workDays: next.sort().join(",") });
-  };
   const publicUrl = `${origin}/s/${form.slug}`;
 
   async function save(e: React.FormEvent) {
@@ -34,7 +29,13 @@ export default function SettingsPage() {
     setError(undefined);
     setMessage(undefined);
     try {
-      await api.put("/api/salon", { ...form, slotMinutes: Number(form.slotMinutes) });
+      await api.put("/api/salon", {
+        name: form.name,
+        phone: form.phone,
+        address: form.address,
+        hours: form.hours,
+        slotMinutes: Number(form.slotMinutes),
+      });
       setMessage("Salvo!");
       reload();
     } catch (err) {
@@ -61,42 +62,25 @@ export default function SettingsPage() {
         </Card>
 
         <Card>
-          <h2 className="mb-3 font-semibold">Dados e horário de funcionamento</h2>
+          <h2 className="mb-3 font-extrabold">Dados e horário de funcionamento</h2>
           <form onSubmit={save} className="space-y-3">
             <Field label="Nome do salão" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <Field label="Telefone" value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             <Field label="Endereço" value={form.address ?? ""} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Abre" type="time" required value={form.openTime} onChange={(e) => setForm({ ...form, openTime: e.target.value })} />
-              <Field label="Fecha" type="time" required value={form.closeTime} onChange={(e) => setForm({ ...form, closeTime: e.target.value })} />
-              <Select label="Intervalo" value={form.slotMinutes} onChange={(e) => setForm({ ...form, slotMinutes: Number(e.target.value) })}>
-                {[10, 15, 20, 30, 45, 60].map((m) => (
-                  <option key={m} value={m}>
-                    {m} min
-                  </option>
-                ))}
-              </Select>
+            <div className="pt-2">
+              <p className="mb-2 font-bold text-brand-ink">Horário de funcionamento</p>
+              <WeeklyHoursEditor value={form.hours} onChange={(hours) => setForm({ ...form, hours })} />
             </div>
-            <div>
-              <p className="mb-1 text-sm font-medium text-zinc-700">Dias de funcionamento</p>
-              <div className="flex flex-wrap gap-1.5">
-                {WEEKDAYS.map((d) => (
-                  <button
-                    type="button"
-                    key={d.value}
-                    onClick={() => toggleDay(d.value)}
-                    className={`rounded-lg border px-3 py-1.5 text-sm ${
-                      days.includes(d.value) ? "border-brand-rose bg-brand-rose text-white" : "border-zinc-300 bg-white"
-                    }`}
-                  >
-                    {d.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <Select label="Intervalo entre horários na agenda" value={form.slotMinutes} onChange={(e) => setForm({ ...form, slotMinutes: Number(e.target.value) })}>
+              {[10, 15, 20, 30, 45, 60].map((m) => (
+                <option key={m} value={m}>
+                  {m} min
+                </option>
+              ))}
+            </Select>
             <ErrorMessage message={error} />
             {message && <p className="text-sm text-emerald-700">{message}</p>}
-            <Button>Salvar</Button>
+            <Button className="w-full sm:w-auto" disabled={form.hours.length === 0}>Salvar</Button>
           </form>
         </Card>
 

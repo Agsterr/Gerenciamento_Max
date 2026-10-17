@@ -9,6 +9,7 @@ import java.util.List;
 
 import com.max.salao.catalog.ServiceItem;
 import com.max.salao.professional.Professional;
+import com.max.salao.salon.DayHours;
 import com.max.salao.salon.Salon;
 import com.max.salao.shared.BusinessException;
 import org.springframework.stereotype.Service;
@@ -31,11 +32,12 @@ public class AvailabilityService {
 
     @Transactional(readOnly = true)
     public List<Slot> slots(Salon salon, ServiceItem service, List<Professional> professionals, LocalDate date) {
-        if (!salon.workDaySet().contains(date.getDayOfWeek()) || professionals.isEmpty()) {
+        DayHours hours = salon.hoursFor(date.getDayOfWeek()).orElse(null);
+        if (hours == null || professionals.isEmpty()) {
             return List.of();
         }
-        LocalDateTime dayStart = date.atTime(salon.getOpenTime());
-        LocalDateTime dayEnd = date.atTime(salon.getCloseTime());
+        LocalDateTime dayStart = date.atTime(hours.getOpenTime());
+        LocalDateTime dayEnd = date.atTime(hours.getCloseTime());
         List<Appointment> busy = appointments.findBusy(dayStart, dayEnd, AppointmentStatus.FREEING);
         LocalDateTime now = LocalDateTime.now(clock);
 
@@ -43,11 +45,11 @@ public class AvailabilityService {
         for (LocalDateTime t = dayStart;
              !t.plusMinutes(service.getDurationMinutes()).isAfter(dayEnd);
              t = t.plusMinutes(salon.getSlotMinutes())) {
-            if (t.isBefore(now)) {
-                continue;
-            }
             LocalDateTime start = t;
             LocalDateTime end = t.plusMinutes(service.getDurationMinutes());
+            if (start.isBefore(now) || !hours.fits(start.toLocalTime(), end.toLocalTime())) {
+                continue;
+            }
             List<Long> free = new ArrayList<>();
             for (Professional p : professionals) {
                 if (busy.stream().noneMatch(a -> overlaps(a, p.getId(), start, end))) {
@@ -80,12 +82,12 @@ public class AvailabilityService {
         if (!end.isAfter(start)) {
             return "Duração inválida";
         }
-        if (!salon.workDaySet().contains(start.getDayOfWeek())) {
+        DayHours hours = salon.hoursFor(start.getDayOfWeek()).orElse(null);
+        if (hours == null) {
             return "O salão não funciona nesse dia";
         }
-        if (start.toLocalTime().isBefore(salon.getOpenTime()) || end.toLocalTime().isAfter(salon.getCloseTime())
-                || !end.toLocalDate().equals(start.toLocalDate())) {
-            return "Fora do horário de funcionamento";
+        if (!end.toLocalDate().equals(start.toLocalDate()) || !hours.fits(start.toLocalTime(), end.toLocalTime())) {
+            return hours.hasBreak() ? "Fora do horário de funcionamento ou no horário de pausa" : "Fora do horário de funcionamento";
         }
         boolean conflict = appointments.findBusy(start, end, AppointmentStatus.FREEING).stream()
                 .filter(a -> !a.getId().equals(ignoreAppointmentId))
