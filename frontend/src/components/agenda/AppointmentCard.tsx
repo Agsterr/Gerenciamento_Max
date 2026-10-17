@@ -1,15 +1,17 @@
 "use client";
 
 import { Badge, Button } from "@/components/ui";
-import { STATUS_COLOR, STATUS_LABEL, formatMoney, formatPhone, formatTime } from "@/lib/format";
+import { STATUS_COLOR, STATUS_LABEL, formatMoney, formatPhone, formatTime, shortDateTime, whatsappLink } from "@/lib/format";
 import type { Appointment } from "@/lib/types";
+
+export type AppointmentAction = "confirm" | "start" | "finish" | "cancel" | "no-show" | "reschedule" | "notes";
 
 export function AppointmentCard({
   appointment: a,
   onAction,
 }: {
   appointment: Appointment;
-  onAction: (action: "confirm" | "start" | "finish" | "cancel" | "no-show") => void;
+  onAction: (action: AppointmentAction) => void;
 }) {
   const open = a.status === "SCHEDULED" || a.status === "CONFIRMED";
   const faded = a.status === "CANCELED" || a.status === "NO_SHOW";
@@ -23,7 +25,10 @@ export function AppointmentCard({
           </p>
           <p className="text-sm text-zinc-700">{a.customer.name}</p>
           <a
-            href={`https://wa.me/55${a.customerPhone}`}
+            href={whatsappLink(
+              a.customerPhone,
+              open ? `Olá, ${a.customer.name.split(" ")[0]}! Passando para lembrar do seu horário de ${a.service.name} ${shortDateTime(a.startAt)}.` : undefined,
+            )}
             target="_blank"
             rel="noreferrer"
             className="text-xs text-emerald-700 hover:underline"
@@ -39,6 +44,11 @@ export function AppointmentCard({
       </div>
 
       {a.notes && <p className="mt-2 text-xs text-zinc-500">“{a.notes}”</p>}
+      {a.serviceNotes && (
+        <p className="mt-2 whitespace-pre-line rounded-lg bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+          <span className="font-bold">Anotações:</span> {a.serviceNotes}
+        </p>
+      )}
       {a.status === "DONE" && a.realMinutes != null && (
         <p className="mt-2 text-xs text-zinc-500">
           Tempo real {a.realMinutes} min (previsto {a.estimatedMinutes} min)
@@ -62,6 +72,9 @@ export function AppointmentCard({
           </Button>
           {open && (
             <>
+              <Button size="sm" variant="secondary" onClick={() => onAction("reschedule")}>
+                Remarcar
+              </Button>
               <Button size="sm" variant="ghost" onClick={() => onAction("no-show")}>
                 Faltou
               </Button>
@@ -71,6 +84,11 @@ export function AppointmentCard({
             </>
           )}
         </div>
+      )}
+      {a.status !== "CANCELED" && (
+        <button onClick={() => onAction("notes")} className="mt-2 text-xs font-semibold text-brand-rose hover:underline">
+          {a.serviceNotes ? "Editar anotações" : "+ Anotações (tinta, corte...)"}
+        </button>
       )}
     </div>
   );

@@ -264,6 +264,70 @@ class SalonFlowIntegrationTest {
         assertThat(java.time.Duration.between(dbSide, now).abs().toMinutes()).isLessThan(2);
     }
 
+    @Test
+    void customerFindsReschedulesAndSalonGetsNotified() throws Exception {
+        Tenant salon = register();
+        call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                status().isCreated());
+        long service = id(call(salon, post("/api/services"),
+                Map.of("name", "Luzes", "durationMinutes", 60, "price", 200, "cost", 0, "active", true),
+                status().isCreated()));
+        String base = "/api/public/salons/" + salon.slug;
+        JsonNode booked = call(null, post(base + "/bookings"), Map.of("serviceId", service, "startAt", day + "T10:00:00",
+                "name", "Márcia Souza", "phone", "(11) 97777-6666"), status().isCreated());
+        String token = booked.get("token").asText();
+        assertThat(booked.get("cancelable").asBoolean()).isTrue();
+
+        // consulta só com nome + telefone (acento e sobrenome não importam; o primeiro nome precisa conferir)
+        String ip = UUID.randomUUID().toString();
+        JsonNode mine = call(null, post(base + "/my-bookings").header("X-Forwarded-For", ip),
+                Map.of("name", "marcia", "phone", "11977776666"), status().isOk());
+        assertThat(mine).hasSize(1);
+        assertThat(mine.get(0).get("token").asText()).isEqualTo(token);
+        assertThat(call(null, post(base + "/my-bookings").header("X-Forwarded-For", ip),
+                Map.of("name", "Joana", "phone", "11977776666"), status().isOk())).isEmpty();
+
+        // anotação interna do profissional não aparece para o cliente
+        long appointment = id(call(salon, get("/api/appointments?from=" + day), null, status().isOk()).get(0));
+        call(salon, put("/api/appointments/" + appointment + "/service-notes"),
+                Map.of("serviceNotes", "Tinta 7.1 + ox 20 vol"), status().isOk());
+        JsonNode pub = call(null, get(base + "/bookings/" + token), null, status().isOk());
+        assertThat(pub.has("serviceNotes")).isFalse();
+
+        // remarca para um horário livre; horário fora do expediente é recusado
+        JsonNode moved = call(null, post(base + "/bookings/" + token + "/reschedule"),
+                Map.of("startAt", day + "T14:00:00"), status().isOk());
+        assertThat(moved.get("startAt").asText()).isEqualTo(day + "T14:00:00");
+        assertThat(moved.get("endAt").asText()).isEqualTo(day + "T15:00:00");
+        call(null, post(base + "/bookings/" + token + "/reschedule"), Map.of("startAt", day + "T22:00:00"),
+                status().isUnprocessableEntity());
+
+        JsonNode inside = call(salon, get("/api/appointments?from=" + day), null, status().isOk()).get(0);
+        assertThat(inside.get("serviceNotes").asText()).isEqualTo("Tinta 7.1 + ox 20 vol");
+
+        call(null, post(base + "/bookings/" + token + "/cancel"), null, status().isOk());
+
+        JsonNode inbox = call(salon, get("/api/notifications"), null, status().isOk());
+        assertThat(inbox.get("unread").asLong()).isEqualTo(3);
+        assertThat(inbox.get("items").get(0).get("type").asText()).isEqualTo("CANCELED");
+        assertThat(inbox.get("items").get(1).get("type").asText()).isEqualTo("RESCHEDULED");
+        call(salon, post("/api/notifications/read"), null, status().isNoContent());
+        assertThat(call(salon, get("/api/notifications"), null, status().isOk()).get("unread").asLong()).isZero();
+    }
+
+    @Test
+    void lookupIsRateLimited() throws Exception {
+        Tenant salon = register();
+        String base = "/api/public/salons/" + salon.slug;
+        String ip = UUID.randomUUID().toString();
+        for (int i = 0; i < 10; i++) {
+            call(null, post(base + "/my-bookings").header("X-Forwarded-For", ip),
+                    Map.of("name", "Ana", "phone", "119000000" + (10 + i)), status().isOk());
+        }
+        call(null, post(base + "/my-bookings").header("X-Forwarded-For", ip),
+                Map.of("name", "Ana", "phone", "11900000099"), status().isTooManyRequests());
+    }
+
     private record Tenant(String slug, String token) {
     }
 

@@ -145,6 +145,8 @@ export type Appointment = {
   startedAt: string | null;
   finishedAt: string | null;
   notes: string | null;
+  /** Anotações internas do atendimento (tinta usada, corte feito...). Nunca aparecem para o cliente. */
+  serviceNotes: string | null;
   source: "ADMIN" | "ONLINE";
 };
 
@@ -208,12 +210,29 @@ export type Booking = {
   startAt: string;
   endAt: string;
   status: AppointmentStatus;
+  serviceId: number;
   serviceName: string;
+  professionalId: number;
   professionalName: string;
   price: number;
   customerName: string;
+  /** Cliente ainda pode cancelar ou remarcar sozinho (até 2h antes). */
   cancelable: boolean;
 };
+
+export type NotificationType = "BOOKED" | "CANCELED" | "RESCHEDULED";
+
+export type AppNotification = {
+  id: number;
+  type: NotificationType;
+  appointmentId: number | null;
+  title: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+};
+
+export type Inbox = { unread: number; items: AppNotification[] };
 
 export type PricingHealth = "LOSS" | "LOW" | "HEALTHY" | "NO_PRICE";
 

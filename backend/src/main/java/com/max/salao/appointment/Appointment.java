@@ -66,7 +66,11 @@ public class Appointment extends TenantEntity {
     @Setter(AccessLevel.NONE)
     private LocalDateTime finishedAt;
 
+    /** Observação do agendamento (feita pelo cliente ou pela recepção). */
     private String notes;
+
+    /** Anotações do profissional (privadas do salão): tinta usada, tipo de corte, produtos... */
+    private String serviceNotes;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, updatable = false)

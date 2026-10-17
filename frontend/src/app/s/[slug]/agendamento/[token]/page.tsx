@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { RescheduleBooking } from "@/components/booking/RescheduleBooking";
 import { Badge, Button, Card, ErrorMessage } from "@/components/ui";
 import { api } from "@/lib/api";
 import { STATUS_COLOR, STATUS_LABEL, formatMoney, formatTime, weekdayLabel } from "@/lib/format";
@@ -14,6 +15,7 @@ export default function BookingPage() {
   const path = `/api/public/salons/${slug}/bookings/${token}`;
   const { data: b, error, reload } = useApi<Booking>(path);
   const [actionError, setActionError] = useState<string>();
+  const [rescheduling, setRescheduling] = useState(false);
 
   async function cancel() {
     if (!confirm("Cancelar este agendamento?")) return;
@@ -44,14 +46,35 @@ export default function BookingPage() {
           <p className="text-sm">{formatMoney(b.price)}</p>
           <Badge className={STATUS_COLOR[b.status]}>{STATUS_LABEL[b.status]}</Badge>
         </div>
-        <p className="mt-6 text-xs text-zinc-500">Salve este link para consultar ou cancelar seu horário.</p>
+        {rescheduling ? (
+          <RescheduleBooking
+            slug={slug}
+            booking={b}
+            onCancel={() => setRescheduling(false)}
+            onDone={() => {
+              setRescheduling(false);
+              reload();
+            }}
+          />
+        ) : (
+          <p className="mt-6 text-xs text-zinc-500">
+            Para ver seus horários depois, use <strong>Meus horários</strong> com seu nome e WhatsApp.
+            {b.status !== "CANCELED" && !b.cancelable && " Mudanças com menos de 2h de antecedência só pelo salão."}
+          </p>
+        )}
         <ErrorMessage message={actionError} />
         <div className="mt-4 flex flex-col gap-2">
-          {b.cancelable && (
-            <Button variant="danger" onClick={cancel}>
-              Cancelar agendamento
-            </Button>
+          {b.cancelable && !rescheduling && (
+            <>
+              <Button onClick={() => setRescheduling(true)}>Remarcar horário</Button>
+              <Button variant="danger" onClick={cancel}>
+                Cancelar agendamento
+              </Button>
+            </>
           )}
+          <Link href={`/s/${slug}/meus-horarios`} className="text-sm font-semibold text-brand-rose hover:underline">
+            Meus horários
+          </Link>
           <Link href={`/s/${slug}`} className="text-sm text-brand-rose hover:underline">
             Fazer outro agendamento
           </Link>

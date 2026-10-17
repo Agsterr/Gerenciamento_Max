@@ -1,9 +1,11 @@
 package com.max.salao.booking;
 
+import java.text.Normalizer;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 import com.max.salao.appointment.Appointment;
 import com.max.salao.appointment.AppointmentRepository;
@@ -16,6 +18,8 @@ import com.max.salao.catalog.ServiceItem;
 import com.max.salao.catalog.ServiceItemRepository;
 import com.max.salao.customer.Customer;
 import com.max.salao.customer.CustomerRepository;
+import com.max.salao.notification.Notification;
+import com.max.salao.notification.NotificationService;
 import com.max.salao.professional.Professional;
 import com.max.salao.professional.ProfessionalRepository;
 import com.max.salao.salon.Salon;
@@ -31,6 +35,9 @@ public class PublicBookingService {
     /** Antecedência mínima para o cliente cancelar sozinho. */
     private static final int CANCEL_MIN_HOURS = 2;
 
+    /** Quantos dias de histórico a consulta "meus agendamentos" mostra. */
+    private static final int LOOKUP_HISTORY_DAYS = 60;
+
     private final SalonService salonService;
     private final ServiceItemRepository services;
     private final ProfessionalRepository professionals;
@@ -39,11 +46,12 @@ public class PublicBookingService {
     private final AppointmentService appointmentService;
     private final AvailabilityService availabilityService;
     private final Clock clock;
+    private final NotificationService notifications;
 
     public PublicBookingService(SalonService salonService, ServiceItemRepository services,
                                 ProfessionalRepository professionals, CustomerRepository customers,
                                 AppointmentRepository appointments, AppointmentService appointmentService,
-                                AvailabilityService availabilityService, Clock clock) {
+                                AvailabilityService availabilityService, Clock clock, NotificationService notifications) {
         this.salonService = salonService;
         this.services = services;
         this.professionals = professionals;
@@ -52,6 +60,7 @@ public class PublicBookingService {
         this.appointmentService = appointmentService;
         this.availabilityService = availabilityService;
         this.clock = clock;
+        this.notifications = notifications;
     }
 
     public Salon salon() {
@@ -87,8 +96,45 @@ public class PublicBookingService {
             c.setEmail(req.email());
             return customers.save(c);
         });
-        return appointmentService.book(BookCommand.online(customer, req.professionalId(), req.serviceId(),
+        Appointment a = appointmentService.book(BookCommand.online(customer, req.professionalId(), req.serviceId(),
                 req.startAt(), req.notes()));
+        notifications.notifySalon(Notification.Type.BOOKED, a);
+        return a;
+    }
+
+    /**
+     * "Meus agendamentos": o cliente informa o mesmo nome e WhatsApp usados ao agendar.
+     * O primeiro nome precisa conferir com o cadastro, para um telefone sozinho não bastar.
+     * Sem correspondência, devolve lista vazia (não revela se o telefone existe).
+     */
+    @Transactional(readOnly = true)
+    public List<Appointment> lookup(String name, String phone) {
+        return customers.findByPhone(Customer.normalizePhone(phone))
+                .filter(c -> firstName(c.getName()).equals(firstName(name)))
+                .map(c -> {
+                    LocalDateTime since = LocalDate.now(clock).minusDays(LOOKUP_HISTORY_DAYS).atStartOfDay();
+                    return appointments.findTop50ByCustomerIdOrderByStartAtDesc(c.getId()).stream()
+                            .filter(a -> !a.getStartAt().isBefore(since))
+                            .toList();
+                })
+                .orElse(List.of());
+    }
+
+    static String firstName(String name) {
+        String plain = Normalizer.normalize(name == null ? "" : name.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT);
+        int space = plain.indexOf(' ');
+        return space < 0 ? plain : plain.substring(0, space);
+    }
+
+    @Transactional
+    public Appointment reschedule(String token, LocalDateTime startAt, Long professionalId) {
+        Appointment a = find(token);
+        requireChangeWindow(a, "Remarcação");
+        appointmentService.rescheduleByCustomer(a, startAt, professionalId);
+        notifications.notifySalon(Notification.Type.RESCHEDULED, a);
+        return a;
     }
 
     @Transactional(readOnly = true)
@@ -99,11 +145,24 @@ public class PublicBookingService {
     @Transactional
     public Appointment cancel(String token) {
         Appointment a = find(token);
-        if (a.getStartAt().isBefore(LocalDateTime.now(clock).plusHours(CANCEL_MIN_HOURS))) {
-            throw new BusinessException("Cancelamento online só até " + CANCEL_MIN_HOURS
+        requireChangeWindow(a, "Cancelamento");
+        a.cancel();
+        notifications.notifySalon(Notification.Type.CANCELED, a);
+        return a;
+    }
+
+    /** O cliente só cancela ou remarca sozinho até {@value #CANCEL_MIN_HOURS} h antes do horário marcado. */
+    public boolean canChange(Appointment a) {
+        return a.getStatus().isOpen() && !a.getStartAt().isBefore(LocalDateTime.now(clock).plusHours(CANCEL_MIN_HOURS));
+    }
+
+    private void requireChangeWindow(Appointment a, String action) {
+        if (!a.getStatus().isOpen()) {
+            throw new BusinessException("Este agendamento não pode mais ser alterado");
+        }
+        if (!canChange(a)) {
+            throw new BusinessException(action + " online só até " + CANCEL_MIN_HOURS
                     + "h antes. Entre em contato com o salão.");
         }
-        a.cancel();
-        return a;
     }
 }

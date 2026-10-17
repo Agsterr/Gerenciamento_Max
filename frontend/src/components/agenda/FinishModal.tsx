@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import type { Appointment, Product } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
+import { ServiceNotesField } from "./ServiceNotesModal";
 
 type Line = { productId: string; quantity: string; sold: boolean };
 
@@ -19,6 +20,7 @@ export function FinishModal({
   onFinished: () => void;
 }) {
   const [price, setPrice] = useState("");
+  const [serviceNotes, setServiceNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -27,6 +29,7 @@ export function FinishModal({
   useEffect(() => {
     if (appointment) {
       setPrice(String(appointment.price));
+      setServiceNotes(appointment.serviceNotes ?? "");
       setLines([]);
       setError(undefined);
     }
@@ -49,6 +52,7 @@ export function FinishModal({
     try {
       await api.post(`/api/appointments/${appointment.id}/finish`, {
         price: Number(price),
+        serviceNotes,
         usedProducts: toItems(false),
         soldProducts: toItems(true),
       });
@@ -99,6 +103,8 @@ export function FinishModal({
               + Produto
             </Button>
           </div>
+
+          <ServiceNotesField value={serviceNotes} onChange={setServiceNotes} />
 
           <div className="rounded-lg bg-zinc-50 p-3 text-sm">
             Total a receber: <strong>{formatMoney(Number(price || 0) + sales)}</strong>

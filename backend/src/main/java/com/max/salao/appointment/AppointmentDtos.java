@@ -9,6 +9,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public final class AppointmentDtos {
 
@@ -30,8 +31,12 @@ public final class AppointmentDtos {
 
     public record FinishRequest(
             @DecimalMin("0") BigDecimal price,
+            @Size(max = 1000) String serviceNotes,
             List<@Valid ProductQuantity> usedProducts,
             List<@Valid ProductQuantity> soldProducts) {
+    }
+
+    public record ServiceNotesRequest(@Size(max = 1000) String serviceNotes) {
     }
 
     public record Ref(Long id, String name) {
@@ -53,6 +58,7 @@ public final class AppointmentDtos {
             LocalDateTime startedAt,
             LocalDateTime finishedAt,
             String notes,
+            String serviceNotes,
             Appointment.Source source) {
 
         public static AppointmentResponse from(Appointment a) {
@@ -61,7 +67,7 @@ public final class AppointmentDtos {
                     new Ref(a.getProfessional().getId(), a.getProfessional().getName()),
                     new Ref(a.getService().getId(), a.getService().getName()),
                     a.plannedMinutes(), a.realMinutes(), a.getPrice(), a.getCommissionAmount(),
-                    a.getStartedAt(), a.getFinishedAt(), a.getNotes(), a.getSource());
+                    a.getStartedAt(), a.getFinishedAt(), a.getNotes(), a.getServiceNotes(), a.getSource());
         }
     }
 }

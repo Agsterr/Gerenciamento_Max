@@ -69,12 +69,15 @@ function HistoryModal({ customer, onClose }: { customer: Customer | null; onClos
       )}
       <ul className="divide-y">
         {data?.map((a) => (
-          <li key={a.id} className="flex items-center justify-between py-2 text-sm">
+          <li key={a.id} className="flex items-start justify-between gap-3 py-2 text-sm">
             <div>
               <p className="font-medium">{a.service.name}</p>
               <p className="text-zinc-500">
                 {formatDateTime(a.startAt)} · {a.professional.name}
               </p>
+              {a.serviceNotes && (
+                <p className="mt-1 whitespace-pre-line rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">{a.serviceNotes}</p>
+              )}
             </div>
             <div className="text-right">
               <Badge className={STATUS_COLOR[a.status]}>{STATUS_LABEL[a.status]}</Badge>

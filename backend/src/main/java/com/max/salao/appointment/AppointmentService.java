@@ -166,9 +166,49 @@ public class AppointmentService {
     public Appointment finish(Long id, FinishRequest req) {
         Appointment a = get(id);
         a.finish(LocalDateTime.now(clock), req.price());
+        if (req.serviceNotes() != null) {
+            a.setServiceNotes(blankToNull(req.serviceNotes()));
+        }
         moveAll(req.usedProducts(), StockMovement.Type.USE, a.getId());
         moveAll(req.soldProducts(), StockMovement.Type.SALE, a.getId());
         return a;
+    }
+
+    /** Anotações do profissional: podem ser editadas a qualquer momento (inclusive depois de finalizar). */
+    @Transactional
+    public Appointment updateServiceNotes(Long id, String serviceNotes) {
+        Appointment a = get(id);
+        a.setServiceNotes(blankToNull(serviceNotes));
+        return a;
+    }
+
+    /**
+     * Remarcação feita pelo cliente: mesmo serviço e duração, só em horário livre e dentro do expediente.
+     * {@code professionalId} nulo mantém o profissional atual.
+     */
+    @Transactional
+    public Appointment rescheduleByCustomer(Appointment a, LocalDateTime newStart, Long professionalId) {
+        if (!a.getStatus().isOpen()) {
+            throw new BusinessException("Este agendamento não pode mais ser remarcado");
+        }
+        LocalDateTime start = newStart.withSecond(0).withNano(0);
+        if (start.isBefore(LocalDateTime.now(clock))) {
+            throw new BusinessException("Escolha um horário futuro");
+        }
+        Long proId = professionalId != null ? professionalId : a.getProfessional().getId();
+        Professional professional = professionals.findByIdForUpdate(proId)
+                .filter(Professional::isActive)
+                .orElseThrow(() -> new NotFoundException("Profissional não encontrado"));
+        LocalDateTime end = start.plusMinutes(a.plannedMinutes());
+        availability.assertBookable(salonService.current(), professional.getId(), start, end, a.getId());
+        a.setProfessional(professional);
+        a.setStartAt(start);
+        a.setEndAt(end);
+        return a;
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
     }
 
     private void moveAll(List<ProductQuantity> items, StockMovement.Type type, Long appointmentId) {

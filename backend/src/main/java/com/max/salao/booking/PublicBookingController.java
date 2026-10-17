@@ -8,8 +8,10 @@ import java.util.List;
 import com.max.salao.appointment.Appointment;
 import com.max.salao.appointment.AppointmentStatus;
 import com.max.salao.appointment.AvailabilityService.Slot;
+import com.max.salao.customer.Customer;
 import com.max.salao.salon.Salon;
 import com.max.salao.salon.SalonDtos;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -52,21 +54,32 @@ public class PublicBookingController {
             @Size(max = 300) String notes) {
     }
 
-    public record BookingResponse(String token, LocalDateTime startAt, LocalDateTime endAt, AppointmentStatus status,
-                                  String serviceName, String professionalName, BigDecimal price,
-                                  String customerName, boolean cancelable) {
+    public record LookupRequest(@NotBlank @Size(max = 120) String name,
+                                @NotBlank @Size(min = 8, max = 30) String phone) {
+    }
 
-        static BookingResponse from(Appointment a) {
-            return new BookingResponse(a.getPublicToken(), a.getStartAt(), a.getEndAt(), a.getStatus(),
-                    a.getService().getName(), a.getProfessional().getName(), a.getPrice(),
-                    a.getCustomer().getName(), a.getStatus().isOpen());
-        }
+    public record RescheduleRequest(@NotNull LocalDateTime startAt, Long professionalId) {
+    }
+
+    /** Visão do cliente. Não inclui as anotações internas do salão (tinta usada, etc.). */
+    public record BookingResponse(String token, LocalDateTime startAt, LocalDateTime endAt, AppointmentStatus status,
+                                  Long serviceId, String serviceName, Long professionalId, String professionalName,
+                                  BigDecimal price, String customerName, boolean cancelable) {
     }
 
     private final PublicBookingService service;
+    private final LookupRateLimiter rateLimiter;
 
-    public PublicBookingController(PublicBookingService service) {
+    public PublicBookingController(PublicBookingService service, LookupRateLimiter rateLimiter) {
         this.service = service;
+        this.rateLimiter = rateLimiter;
+    }
+
+    private BookingResponse toResponse(Appointment a) {
+        return new BookingResponse(a.getPublicToken(), a.getStartAt(), a.getEndAt(), a.getStatus(),
+                a.getService().getId(), a.getService().getName(),
+                a.getProfessional().getId(), a.getProfessional().getName(), a.getPrice(),
+                a.getCustomer().getName(), service.canChange(a));
     }
 
     @GetMapping
@@ -92,16 +105,42 @@ public class PublicBookingController {
     @PostMapping("/bookings")
     @ResponseStatus(HttpStatus.CREATED)
     public BookingResponse book(@Valid @RequestBody BookingRequest req) {
-        return BookingResponse.from(service.book(req));
+        return toResponse(service.book(req));
     }
 
     @GetMapping("/bookings/{token}")
     public BookingResponse get(@PathVariable String token) {
-        return BookingResponse.from(service.find(token));
+        return toResponse(service.find(token));
     }
 
     @PostMapping("/bookings/{token}/cancel")
     public BookingResponse cancel(@PathVariable String token) {
-        return BookingResponse.from(service.cancel(token));
+        return toResponse(service.cancel(token));
+    }
+
+    @PostMapping("/bookings/{token}/reschedule")
+    public BookingResponse reschedule(@PathVariable String token, @Valid @RequestBody RescheduleRequest req) {
+        return toResponse(service.reschedule(token, req.startAt(), req.professionalId()));
+    }
+
+    /** "Meus agendamentos": consulta pelo mesmo nome e WhatsApp usados ao agendar. */
+    @PostMapping("/my-bookings")
+    public List<BookingResponse> myBookings(@Valid @RequestBody LookupRequest req, HttpServletRequest http) {
+        rateLimiter.check("ip:" + clientIp(http));
+        rateLimiter.check("tel:" + Customer.normalizePhone(req.phone()));
+        return service.lookup(req.name(), req.phone()).stream().map(this::toResponse).toList();
+    }
+
+    /** IP real do visitante atrás do Cloudflare/nginx. */
+    static String clientIp(HttpServletRequest http) {
+        String cf = http.getHeader("CF-Connecting-IP");
+        if (cf != null && !cf.isBlank()) {
+            return cf.trim();
+        }
+        String xff = http.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        return http.getRemoteAddr();
     }
 }

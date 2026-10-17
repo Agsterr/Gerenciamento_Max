@@ -27,6 +27,25 @@ export function weekdayLabel(iso: string) {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+/** Próximos dias em que o salão abre ("1,2,..." com 1 = segunda), a partir de hoje. */
+export function bookableDays(workDays: string, count = 14) {
+  const work = workDays.split(",");
+  const today = isoDate();
+  return Array.from({ length: count * 2 }, (_, i) => addDays(today, i))
+    .filter((d) => work.includes(String(((new Date(d + "T12:00:00").getDay() + 6) % 7) + 1)))
+    .slice(0, count);
+}
+
+/** "2026-10-20T14:30:00" -> "Ter., 20/10 às 14:30" */
+export function shortDateTime(iso: string) {
+  const day = new Date(iso.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+  return `${day.charAt(0).toUpperCase()}${day.slice(1)} às ${formatTime(iso)}`;
+}
+
+/** Link do WhatsApp com mensagem pronta (telefone salvo só com dígitos, DDD incluso). */
+export const whatsappLink = (phone: string, text?: string) =>
+  `https://wa.me/55${phone.replace(/\D/g, "")}` + (text ? `?text=${encodeURIComponent(text)}` : "");
+
 export const formatPhone = (phone: string) => {
   const d = phone.replace(/\D/g, "");
   if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;

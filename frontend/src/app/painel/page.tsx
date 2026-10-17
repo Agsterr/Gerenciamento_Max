@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { AppointmentCard } from "@/components/agenda/AppointmentCard";
+import { AppointmentCard, type AppointmentAction } from "@/components/agenda/AppointmentCard";
 import { FinishModal } from "@/components/agenda/FinishModal";
 import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
+import { RescheduleModal } from "@/components/agenda/RescheduleModal";
+import { ServiceNotesModal } from "@/components/agenda/ServiceNotesModal";
 import { Button, Card, Empty, ErrorMessage, PageHeader } from "@/components/ui";
 import { api } from "@/lib/api";
 import { addDays, formatMoney, isoDate, weekdayLabel } from "@/lib/format";
@@ -14,12 +16,16 @@ export default function AgendaPage() {
   const [date, setDate] = useState(isoDate());
   const [creating, setCreating] = useState(false);
   const [finishing, setFinishing] = useState<Appointment | null>(null);
+  const [moving, setMoving] = useState<Appointment | null>(null);
+  const [noting, setNoting] = useState<Appointment | null>(null);
   const [actionError, setActionError] = useState<string>();
   const { data: appointments, error, reload } = useApi<Appointment[]>(`/api/appointments?from=${date}`);
   const { data: professionals } = useApi<Professional[]>("/api/professionals");
 
-  async function act(a: Appointment, action: string) {
+  async function act(a: Appointment, action: AppointmentAction) {
     if (action === "finish") return setFinishing(a);
+    if (action === "reschedule") return setMoving(a);
+    if (action === "notes") return setNoting(a);
     if (action === "cancel" && !confirm(`Cancelar o horário de ${a.customer.name}?`)) return;
     setActionError(undefined);
     try {
@@ -97,6 +103,15 @@ export default function AgendaPage() {
         onClose={() => setFinishing(null)}
         onFinished={() => {
           setFinishing(null);
+          reload();
+        }}
+      />
+      <RescheduleModal appointment={moving} onClose={() => setMoving(null)} onSaved={reload} />
+      <ServiceNotesModal
+        appointment={noting}
+        onClose={() => setNoting(null)}
+        onSaved={() => {
+          setNoting(null);
           reload();
         }}
       />

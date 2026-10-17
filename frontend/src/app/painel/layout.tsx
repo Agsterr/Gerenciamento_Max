@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/lib/auth";
 
 const NAV = [
@@ -39,15 +40,18 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             <img src="/icon-gestao.png" alt="" className="h-8 w-8 rounded-lg" />
             <span className="text-brand">Salão Max</span>
           </Link>
-          <button
-            onClick={() => {
-              signOut();
-              router.push("/login");
-            }}
-            className="text-sm text-zinc-500 hover:text-brand-rose md:hidden"
-          >
-            Sair
-          </button>
+          <div className="flex items-center gap-2 md:mt-3">
+            <NotificationBell />
+            <button
+              onClick={() => {
+                signOut();
+                router.push("/login");
+              }}
+              className="text-sm text-zinc-500 hover:text-brand-rose md:hidden"
+            >
+              Sair
+            </button>
+          </div>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:px-3">
           {items.map((n) => {

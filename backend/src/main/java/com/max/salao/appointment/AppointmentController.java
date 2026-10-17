@@ -6,6 +6,7 @@ import java.util.List;
 import com.max.salao.appointment.AppointmentDtos.AppointmentRequest;
 import com.max.salao.appointment.AppointmentDtos.AppointmentResponse;
 import com.max.salao.appointment.AppointmentDtos.FinishRequest;
+import com.max.salao.appointment.AppointmentDtos.ServiceNotesRequest;
 import com.max.salao.appointment.AvailabilityService.Slot;
 import com.max.salao.catalog.ServiceItemRepository;
 import com.max.salao.professional.ProfessionalRepository;
@@ -76,6 +77,11 @@ public class AppointmentController {
     @PutMapping("/appointments/{id}")
     public AppointmentResponse reschedule(@PathVariable Long id, @Valid @RequestBody AppointmentRequest req) {
         return AppointmentResponse.from(service.reschedule(id, req));
+    }
+
+    @PutMapping("/appointments/{id}/service-notes")
+    public AppointmentResponse serviceNotes(@PathVariable Long id, @Valid @RequestBody ServiceNotesRequest req) {
+        return AppointmentResponse.from(service.updateServiceNotes(id, req.serviceNotes()));
     }
 
     @PostMapping("/appointments/{id}/confirm")

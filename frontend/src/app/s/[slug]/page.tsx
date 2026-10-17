@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { SlotPicker } from "@/components/agenda/SlotPicker";
 import { Icon, serviceIcon } from "@/components/Icon";
 import { ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";
-import { addDays, formatMoney, isoDate } from "@/lib/format";
+import { bookableDays, formatMoney } from "@/lib/format";
 import type { Booking, PublicSalon, Slot } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
@@ -26,14 +27,7 @@ export default function PublicBookingPage() {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
-  const days = useMemo(() => {
-    if (!salon) return [];
-    const work = salon.workDays.split(",");
-    const today = isoDate();
-    return Array.from({ length: 21 }, (_, i) => addDays(today, i))
-      .filter((d) => work.includes(String(((new Date(d + "T12:00:00").getDay() + 6) % 7) + 1)))
-      .slice(0, 14);
-  }, [salon]);
+  const days = useMemo(() => (salon ? bookableDays(salon.workDays) : []), [salon]);
 
   useEffect(() => {
     if (!date && days.length) setDate(days[0]);
@@ -95,6 +89,14 @@ export default function PublicBookingPage() {
             )}
             <p className="mt-1 text-sm font-semibold text-white/90">Agende seu horário online</p>
           </div>
+        </div>
+        <div className="relative mx-auto mt-5 max-w-xl">
+          <Link
+            href={`/s/${slug}/meus-horarios`}
+            className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/40 backdrop-blur transition hover:bg-white/30"
+          >
+            <Icon name="search" className="h-4 w-4" /> Já agendou? Ver ou remarcar meus horários
+          </Link>
         </div>
       </header>
 
