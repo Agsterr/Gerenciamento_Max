@@ -32,6 +32,20 @@ android {
         versionName = flutter.versionName
     }
 
+    // Canais de distribuição (mesmo applicationId):
+    //  - play: Google Play. Sem REQUEST_INSTALL_PACKAGES nem auto-update (a Play reprova).
+    //  - direct: APK baixado do site; checa /api/app/version e instala a versão nova.
+    // Combine com --dart-define=DISTRIBUTION=play|direct (veja mobile/README.md).
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("play") {
+            dimension = "distribution"
+        }
+        create("direct") {
+            dimension = "distribution"
+        }
+    }
+
     signingConfigs {
         create("release") {
             if (keystoreProperties.isNotEmpty()) {
@@ -62,4 +76,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // FileProvider do instalador de atualização (só no canal direct).
+    "directImplementation"("androidx.core:core:1.13.1")
 }

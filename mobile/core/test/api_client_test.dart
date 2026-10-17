@@ -35,6 +35,63 @@ void main() {
     expect(unauthorized, isTrue);
   });
 
+  test('403 ACCOUNT_BLOCKED vira AccountBlockedException com o motivo e avisa o app', () async {
+    String? reason;
+    var unauthorized = false;
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      token: () => 'abc',
+      onUnauthorized: () => unauthorized = true,
+      onAccountBlocked: (r) => reason = r,
+      httpClient: MockClient((_) async => http.Response.bytes(
+          utf8.encode(jsonEncode({
+            'type': 'about:blank',
+            'title': 'Forbidden',
+            'status': 403,
+            'detail': 'Mensalidade em atraso',
+            'code': 'ACCOUNT_BLOCKED',
+          })),
+          403,
+          headers: {'content-type': 'application/problem+json'})),
+    );
+    await expectLater(
+      api.post('/api/auth/login', {'email': 'a@b.c'}),
+      throwsA(isA<AccountBlockedException>()
+          .having((e) => e.message, 'message', 'Mensalidade em atraso')
+          .having((e) => e.code, 'code', 'ACCOUNT_BLOCKED')
+          .having((e) => e.status, 'status', 403)),
+    );
+    expect(reason, 'Mensalidade em atraso');
+    expect(unauthorized, isFalse);
+  });
+
+  test('ACCOUNT_BLOCKED sem detail usa mensagem padrão', () async {
+    String? reason;
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      onAccountBlocked: (r) => reason = r,
+      httpClient: MockClient((_) async => http.Response(jsonEncode({'code': 'ACCOUNT_BLOCKED'}), 403)),
+    );
+    await expectLater(api.get('/x'), throwsA(isA<AccountBlockedException>()));
+    expect(reason, AccountBlockedException.defaultReason);
+  });
+
+  test('403 comum não é bloqueio de conta', () async {
+    var blocked = false;
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      onAccountBlocked: (_) => blocked = true,
+      httpClient: MockClient((_) async => http.Response.bytes(utf8.encode(jsonEncode({'detail': 'Só o dono pode fazer isso'})), 403)),
+    );
+    await expectLater(
+      api.get('/x'),
+      throwsA(isA<ApiException>()
+          .having((e) => e is AccountBlockedException, 'bloqueio', isFalse)
+          .having((e) => e.message, 'message', 'Só o dono pode fazer isso')),
+    );
+    expect(blocked, isFalse);
+  });
+
   test('modelos aceitam a resposta da API', () {
     final a = Appointment.fromJson({
       'id': 1,

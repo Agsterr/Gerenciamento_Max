@@ -7,10 +7,13 @@ import 'package:http/http.dart' as http;
 import 'config.dart';
 
 class ApiException implements Exception {
-  ApiException(this.status, this.message);
+  ApiException(this.status, this.message, {this.code});
 
   final int status;
   final String message;
+
+  /// Campo `code` do ProblemDetail, quando a API manda (ex.: `ACCOUNT_BLOCKED`).
+  final String? code;
 
   bool get isUnauthorized => status == 401;
 
@@ -18,11 +21,24 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+/// Usuário ou salão bloqueado pelo super-admin: 403 com `"code": "ACCOUNT_BLOCKED"`.
+/// [message] é o motivo (`detail` do ProblemDetail).
+class AccountBlockedException extends ApiException {
+  AccountBlockedException(String reason) : super(403, reason, code: codeValue);
+
+  static const codeValue = 'ACCOUNT_BLOCKED';
+  static const defaultReason = 'Sua conta foi bloqueada.';
+}
+
 /// Cliente HTTP mínimo para a API. Converte erros (ProblemDetail) em [ApiException].
 class ApiClient {
-  ApiClient({String? baseUrl, this.token, this.onUnauthorized, http.Client? httpClient})
+  ApiClient({String? baseUrl, this.token, this.onUnauthorized, this.onAccountBlocked, http.Client? httpClient})
       : baseUrl = baseUrl ?? AppConfig.apiUrl,
         _http = httpClient ?? http.Client();
+
+  /// Chamado (antes de lançar [AccountBlockedException]) quando a API diz que a conta está bloqueada —
+  /// em qualquer requisição, inclusive no login. Recebe o motivo.
+  final void Function(String reason)? onAccountBlocked;
 
   final String baseUrl;
   final http.Client _http;
@@ -68,15 +84,28 @@ class ApiClient {
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return text.isEmpty ? null : jsonDecode(text);
     }
+    final problem = _problem(text);
+    if (res.statusCode == 403 && problem?['code'] == AccountBlockedException.codeValue) {
+      final detail = problem?['detail'];
+      final reason = detail is String && detail.trim().isNotEmpty ? detail.trim() : AccountBlockedException.defaultReason;
+      onAccountBlocked?.call(reason);
+      throw AccountBlockedException(reason);
+    }
     if (res.statusCode == 401 && jwt != null) onUnauthorized?.call();
-    throw ApiException(res.statusCode, _message(text, res.statusCode));
+    final code = problem?['code'];
+    throw ApiException(res.statusCode, _message(problem, res.statusCode), code: code is String ? code : null);
   }
 
-  static String _message(String body, int status) {
+  static Map<String, dynamic>? _problem(String body) {
     try {
       final json = jsonDecode(body);
-      if (json is Map && json['detail'] is String) return json['detail'] as String;
+      if (json is Map<String, dynamic>) return json;
     } catch (_) {}
+    return null;
+  }
+
+  static String _message(Map<String, dynamic>? problem, int status) {
+    if (problem?['detail'] is String) return problem!['detail'] as String;
     return switch (status) {
       401 => 'Sessão expirada. Entre novamente.',
       403 => 'Você não tem permissão para isso.',

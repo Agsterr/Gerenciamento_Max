@@ -15,7 +15,8 @@ Checklist do que **já está feito no código** (✅) e do que **você precisa f
 - ✅ **Somente HTTPS em produção**: o Android release não permite tráfego em texto puro (só o build de debug libera,
   via `src/debug/AndroidManifest.xml`); no iOS o ATS só libera rede local (`NSAllowsLocalNetworking`).
   ☐ Publique a API atrás de HTTPS (ex.: certificado Let's Encrypt).
-- ✅ **Sem rastreamento, anúncios, localização, câmera ou contatos.** A única permissão Android é `INTERNET`;
+- ✅ **Sem rastreamento, anúncios, localização, câmera ou contatos.** A única permissão Android do build da loja
+  (flavor `play`) é `INTERNET` — `REQUEST_INSTALL_PACKAGES` só existe no APK do site (flavor `direct`, §2.1);
   no iOS não há pedido de permissão (nenhum `NS...UsageDescription` necessário).
 - ✅ Credenciais protegidas: o JWT do app Gestão fica no Keychain/Keystore (`flutter_secure_storage`) e o
   backup do Android está desativado para ele.
@@ -29,7 +30,7 @@ Checklist do que **já está feito no código** (✅) e do que **você precisa f
 | Item | Situação |
 |---|---|
 | `targetSdk` / `compileSdk` **36** (Android 16), `minSdk` 24 | ✅ `android/app/build.gradle.kts` |
-| Formato **AAB** (`flutter build appbundle`) | ✅ |
+| Formato **AAB** (`flutter build appbundle --flavor play`) | ✅ |
 | Assinatura de upload via `key.properties` + **Play App Signing** | ✅ configurado / ☐ gerar a chave e ativar no console |
 | Páginas de memória de **16 KB** (exigido para apps com código nativo) | ✅ engine Flutter 3.47 compatível; plugins usados não trazem `.so` próprio |
 | *Predictive back* (`enableOnBackInvokedCallback`) e *edge-to-edge* | ✅ |
@@ -42,6 +43,20 @@ Checklist do que **já está feito no código** (✅) e do que **você precisa f
 | ☐ Público-alvo: **18+** (não é app para crianças) | console |
 | ☐ *Acesso ao app*: informar a conta demo do app Gestão | console |
 | ☐ URL de exclusão de conta: `SITE_URL/excluir-conta` | console → Segurança dos dados |
+
+### 2.1 Envie sempre o flavor `play`
+
+O app também é distribuído por fora da loja (APK no site, flavor `direct`, com auto-update). **Para a Play use
+só o flavor `play`:**
+```bash
+flutter build appbundle --release --flavor play --dart-define=DISTRIBUTION=play --dart-define=API_URL=... --dart-define=SITE_URL=...
+```
+- O `play` não tem `REQUEST_INSTALL_PACKAGES`, `FileProvider` de APK nem o canal nativo do instalador, e o código
+  Dart de auto-update fica desligado (`DISTRIBUTION=play`). A Play reprova apps que se atualizam por fora da loja
+  (política *Device and Network Abuse*) e pede justificativa para `REQUEST_INSTALL_PACKAGES`.
+- ☐ Antes de enviar, confira no Play Console (*App bundle explorer → Permissões*) que só aparece `INTERNET`.
+- O `applicationId` é o mesmo nos dois canais. Com Play App Signing a assinatura da loja é diferente da do APK do
+  site: quem instalou por um canal precisa desinstalar para passar para o outro.
 
 ### Formulário "Segurança dos dados" — respostas sugeridas
 

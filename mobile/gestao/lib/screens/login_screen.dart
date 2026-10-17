@@ -57,7 +57,8 @@ class _LoginScreenState extends State<LoginScreen> {
         await widget.session.login(_email.text.trim(), _password.text);
       }
     } catch (e) {
-      if (mounted) showError(context, e);
+      // Conta bloqueada: a Session já troca para a tela de bloqueio.
+      if (mounted && e is! AccountBlockedException) showError(context, e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
