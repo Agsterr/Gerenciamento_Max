@@ -14,7 +14,7 @@ class AppConfig {
   /// Site Next.js (política de privacidade, termos e exclusão de conta).
   static const siteUrl = String.fromEnvironment('SITE_URL', defaultValue: 'http://localhost:3000');
 
-  static const supportEmail = String.fromEnvironment('SUPPORT_EMAIL', defaultValue: 'privacidade@exemplo.com.br');
+  static const supportEmail = String.fromEnvironment('SUPPORT_EMAIL', defaultValue: 'focodevsistemas@gmail.com');
 
   static const _distributionDefine = String.fromEnvironment('DISTRIBUTION');
 
