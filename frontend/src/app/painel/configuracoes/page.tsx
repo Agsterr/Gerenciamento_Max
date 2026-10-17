@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Card, ErrorMessage, Field, PageHeader, Select } from "@/components/ui";
+import { Button, Card, ErrorMessage, Field, NewPasswordFields, PageHeader, Select } from "@/components/ui";
 import { api, appDownloadUrl } from "@/lib/api";
 import { WeeklyHoursEditor, normalizeHours } from "@/components/WeeklyHoursEditor";
 import type { Role, Salon, User } from "@/lib/types";
@@ -105,14 +105,17 @@ export default function SettingsPage() {
 function Team() {
   const { data: users, reload } = useApi<User[]>("/api/users");
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "STAFF" as Role });
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string>();
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setError(undefined);
+    if (form.password !== confirm) return setError("As senhas não conferem.");
     try {
       await api.post("/api/users", form);
       setForm({ name: "", email: "", password: "", role: "STAFF" });
+      setConfirm("");
       reload();
     } catch (err) {
       setError((err as Error).message);
@@ -136,7 +139,12 @@ function Team() {
       <form onSubmit={add} className="grid gap-2 sm:grid-cols-2">
         <Field label="Nome" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <Field label="E-mail" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <Field label="Senha" type="password" minLength={6} required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+        <NewPasswordFields
+          value={form.password}
+          onChange={(password) => setForm({ ...form, password })}
+          confirm={confirm}
+          onConfirmChange={setConfirm}
+        />
         <Select label="Perfil" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
           <option value="STAFF">Funcionário</option>
           <option value="OWNER">Dono</option>

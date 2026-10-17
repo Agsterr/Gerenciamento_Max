@@ -16,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _confirm = TextEditingController();
   final _salonName = TextEditingController();
   final _slug = TextEditingController();
   final _ownerName = TextEditingController();
@@ -24,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    for (final c in [_email, _password, _salonName, _slug, _ownerName]) {
+    for (final c in [_email, _password, _confirm, _salonName, _slug, _ownerName]) {
       c.dispose();
     }
     super.dispose();
@@ -159,14 +160,23 @@ class _LoginScreenState extends State<LoginScreen> {
                               validator: _required,
                             ),
                             const SizedBox(height: 12),
-                            TextFormField(
+                            PasswordFormField(
                               controller: _password,
-                              decoration: const InputDecoration(labelText: 'Senha', prefixIcon: Icon(Icons.lock_outline_rounded)),
-                              obscureText: true,
                               autofillHints: [_register ? AutofillHints.newPassword : AutofillHints.password],
+                              textInputAction: _register ? TextInputAction.next : TextInputAction.done,
                               validator: (v) => (v ?? '').length < 6 ? 'Mínimo 6 caracteres' : null,
-                              onFieldSubmitted: (_) => _submit(),
+                              onFieldSubmitted: (_) => _register ? null : _submit(),
                             ),
+                            if (_register) ...[
+                              const SizedBox(height: 12),
+                              PasswordFormField(
+                                controller: _confirm,
+                                label: 'Confirme a senha',
+                                autofillHints: const [AutofillHints.newPassword],
+                                validator: (v) => v != _password.text ? 'As senhas não conferem' : null,
+                                onFieldSubmitted: (_) => _submit(),
+                              ),
+                            ],
                             const SizedBox(height: 20),
                             GradientButton(
                               label: _register ? 'Criar salão' : 'Entrar',

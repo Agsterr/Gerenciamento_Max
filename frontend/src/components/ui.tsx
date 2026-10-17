@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "danger" | "ghost";
@@ -35,6 +35,70 @@ export function Field({ label, className = "", ...props }: FieldProps) {
         {...props}
       />
     </label>
+  );
+}
+
+/** Campo de senha com o "olhinho" para mostrar/esconder o que foi digitado. */
+export function PasswordField({ label, className = "", ...props }: Omit<FieldProps, "type">) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label className={`block text-sm ${className}`}>
+      <span className="mb-1 block font-semibold text-brand-ink">{label}</span>
+      <span className="relative block">
+        <input
+          type={visible ? "text" : "password"}
+          className="w-full rounded-xl border border-[#F1E3EB] bg-white py-2.5 pl-3 pr-11 outline-none focus:border-brand-rose focus:ring-4 focus:ring-brand-pink/15"
+          {...props}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? "Esconder senha" : "Mostrar senha"}
+          title={visible ? "Esconder senha" : "Mostrar senha"}
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-brand-muted hover:text-brand-rose"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+            <circle cx="12" cy="12" r="3" />
+            {visible && <path d="M3 3l18 18" />}
+          </svg>
+        </button>
+      </span>
+    </label>
+  );
+}
+
+/** Senha + "Confirme a senha", com aviso quando não conferem. Use `valid` para liberar o envio. */
+export function NewPasswordFields({
+  value,
+  onChange,
+  confirm,
+  onConfirmChange,
+  label = "Senha",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  confirm: string;
+  onConfirmChange: (v: string) => void;
+  label?: string;
+}) {
+  const mismatch = confirm.length > 0 && confirm !== value;
+  return (
+    <>
+      <PasswordField label={label} name="password" minLength={6} required autoComplete="new-password" value={value} onChange={(e) => onChange(e.target.value)} />
+      <div>
+        <PasswordField
+          label="Confirme a senha"
+          name="passwordConfirm"
+          minLength={6}
+          required
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => onConfirmChange(e.target.value)}
+        />
+        {mismatch && <p className="mt-1 text-xs font-semibold text-brand-rose">As senhas não conferem.</p>}
+      </div>
+    </>
   );
 }
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { LegalPage } from "@/components/LegalPage";
-import { Button, ErrorMessage, Field } from "@/components/ui";
+import { Button, ErrorMessage, Field, PasswordField } from "@/components/ui";
 import { api, tokenStore } from "@/lib/api";
 import { LEGAL } from "@/lib/legal";
 import type { User } from "@/lib/types";
@@ -55,7 +55,7 @@ export default function DeleteAccountPage() {
       ) : (
         <form onSubmit={onSubmit} className="max-w-sm space-y-3">
           <Field label="E-mail" name="email" type="email" required />
-          <Field label="Senha" name="password" type="password" required />
+          <PasswordField label="Senha" name="password" required />
           <ErrorMessage message={error} />
           <Button variant="danger" disabled={busy}>
             {busy ? "Excluindo..." : "Excluir minha conta"}

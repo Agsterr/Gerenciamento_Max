@@ -57,7 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'serão apagados de forma definitiva.'
               : 'Seu acesso ao salão será removido.'),
           const SizedBox(height: 12),
-          TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Confirme sua senha')),
+          PasswordFormField(controller: password, label: 'Confirme sua senha', showIcon: false),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Voltar')),

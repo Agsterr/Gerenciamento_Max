@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Badge, Button, Card, Empty, ErrorMessage, Field, Modal, PageHeader, Select } from "@/components/ui";
+import { Badge, Button, Card, Empty, ErrorMessage, Field, Modal, PageHeader, PasswordField, Select } from "@/components/ui";
 import { api, appDownloadUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -104,7 +104,7 @@ function PlatformLogin({ loggedAsSalon }: { loggedAsSalon: boolean }) {
         )}
         <form onSubmit={onSubmit} className="space-y-3">
           <Field label="E-mail" name="email" type="email" required autoComplete="username" />
-          <Field label="Senha" name="password" type="password" required autoComplete="current-password" />
+          <PasswordField label="Senha" name="password" required autoComplete="current-password" />
           <ErrorMessage message={error} />
           <Button className="w-full" disabled={busy}>
             {busy ? "Entrando..." : "Entrar"}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button, Card, ErrorMessage, Field } from "@/components/ui";
+import { Button, Card, ErrorMessage, Field, NewPasswordFields } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { User } from "@/lib/types";
@@ -23,12 +23,15 @@ export default function RegisterPage() {
   const [salonName, setSalonName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
+    if (password !== confirm) return setError("As senhas não conferem.");
     setBusy(true);
     setError(undefined);
     try {
@@ -37,7 +40,7 @@ export default function RegisterPage() {
         slug,
         ownerName: form.get("ownerName"),
         email: form.get("email"),
-        password: form.get("password"),
+        password,
       });
       signIn(res.token, res.user);
       router.push("/painel/configuracoes");
@@ -79,7 +82,7 @@ export default function RegisterPage() {
           <p className="-mt-2 text-xs text-zinc-500">Seus clientes vão agendar em /s/{slug || "seu-salao"}</p>
           <Field label="Seu nome" name="ownerName" required />
           <Field label="E-mail" name="email" type="email" required autoComplete="email" />
-          <Field label="Senha" name="password" type="password" minLength={6} required autoComplete="new-password" />
+          <NewPasswordFields value={password} onChange={setPassword} confirm={confirm} onConfirmChange={setConfirm} />
           <ErrorMessage message={error} />
           <Button className="w-full" disabled={busy}>
             {busy ? "Criando..." : "Criar salão"}

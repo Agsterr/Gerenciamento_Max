@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button, Card, ErrorMessage, Field } from "@/components/ui";
+import { Button, Card, ErrorMessage, Field, PasswordField } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { User } from "@/lib/types";
@@ -42,7 +42,7 @@ export default function LoginPage() {
         <h1 className="mb-4 mt-2 text-xl font-semibold">Entrar no painel</h1>
         <form onSubmit={onSubmit} className="space-y-3">
           <Field label="E-mail" name="email" type="email" required autoComplete="email" />
-          <Field label="Senha" name="password" type="password" required autoComplete="current-password" />
+          <PasswordField label="Senha" name="password" required autoComplete="current-password" />
           <ErrorMessage message={error} />
           <Button className="w-full" disabled={busy}>
             {busy ? "Entrando..." : "Entrar"}
