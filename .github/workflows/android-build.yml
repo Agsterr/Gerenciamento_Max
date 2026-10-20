@@ -1,0 +1,44 @@
+name: Android (build do PR)
+
+# Compila os APKs de release (com R8) quando o PR mexe nos apps, para pegar erro de Gradle,
+# Manifest ou plugin nativo antes do merge — os workflows da Play e do APK só rodam na main.
+# Sem key.properties o build usa a chave de debug: nada daqui é publicado.
+on:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/android-build.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: APK ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [cliente, gestao]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Build (canal play)
+        working-directory: mobile/${{ matrix.app }}
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build apk --release --flavor play --dart-define=DISTRIBUTION=play
