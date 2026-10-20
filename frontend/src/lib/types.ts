@@ -74,7 +74,12 @@ export type Salon = {
   hours: DayHours[];
   workDays: string;
   slotMinutes: number;
+  reminderMode: ReminderMode;
+  /** Dias antes do horário em que o cliente é lembrado (vazio = desligado). */
+  reminderDays: number[];
 };
+
+export type ReminderMode = "OFF" | "ONE_DAY" | "TWO_DAYS" | "BOTH";
 
 export type Professional = {
   id: number;
@@ -152,6 +157,10 @@ export type Appointment = {
   /** Anotações internas do atendimento (tinta usada, corte feito...). Nunca aparecem para o cliente. */
   serviceNotes: string | null;
   source: "ADMIN" | "ONLINE";
+  /** Salão mandou o lembrete pelo WhatsApp. */
+  reminderSentAt: string | null;
+  /** O próprio cliente confirmou pelo link do lembrete. */
+  customerConfirmedAt: string | null;
 };
 
 export type Slot = { time: string; professionalIds: number[] };
@@ -207,6 +216,7 @@ export type PublicSalon = {
   hours: DayHours[];
   services: { id: number; name: string; description: string | null; durationMinutes: number; price: number }[];
   professionals: Ref[];
+  reminderDays: number[];
 };
 
 export type Booking = {
@@ -222,9 +232,12 @@ export type Booking = {
   customerName: string;
   /** Cliente ainda pode cancelar ou remarcar sozinho (até 2h antes). */
   cancelable: boolean;
+  /** Falta o cliente confirmar presença (botão "Confirmar presença"). */
+  confirmable: boolean;
+  reminderDays: number[];
 };
 
-export type NotificationType = "BOOKED" | "CANCELED" | "RESCHEDULED";
+export type NotificationType = "BOOKED" | "CANCELED" | "RESCHEDULED" | "CONFIRMED" | "REMINDERS" | "STAFF_REMINDER";
 
 export type AppNotification = {
   id: number;
@@ -237,6 +250,52 @@ export type AppNotification = {
 };
 
 export type Inbox = { unread: number; items: AppNotification[] };
+
+// ---- Lembretes ----
+
+export type ReminderItem = {
+  appointmentId: number;
+  daysBefore: number;
+  startAt: string;
+  status: AppointmentStatus;
+  customerName: string;
+  customerPhone: string;
+  serviceName: string;
+  professionalName: string;
+  customerConfirmed: boolean;
+  reminderSentAt: string | null;
+  confirmUrl: string;
+  message: string;
+  whatsappUrl: string;
+};
+
+export type Reminders = { mode: ReminderMode; days: number[]; items: ReminderItem[] };
+
+/** Regra de lembrete do profissional: "N dias antes às HH:mm" ou "X minutos antes". */
+export type StaffReminderRule = {
+  id?: number;
+  daysBefore: number | null;
+  atTime: string | null;
+  minutesBefore: number | null;
+};
+
+export type StaffReminderSettings = { professionalId: number | null; rules: StaffReminderRule[] };
+
+// ---- Portfólio ----
+
+export type Photo = {
+  id: number;
+  url: string;
+  thumbUrl: string;
+  caption: string | null;
+  width: number;
+  height: number;
+  serviceId: number | null;
+  serviceName: string | null;
+  professionalId: number | null;
+  professionalName: string | null;
+  createdAt: string;
+};
 
 export type PricingHealth = "LOSS" | "LOW" | "HEALTHY" | "NO_PRICE";
 
@@ -297,6 +356,7 @@ export type PlanInfo = {
   customers: Usage;
   contactWhatsapp: string;
   contactEmail: string;
+  photos: Usage;
 };
 
 /** Condições do teste grátis (página de cadastro) e configuração da plataforma. */
@@ -307,4 +367,8 @@ export type TrialTerms = {
   maxCustomers: number;
   contactWhatsapp: string;
   contactEmail: string;
+  /** Fotos do portfólio no teste grátis. */
+  maxPhotos: number;
+  /** Só na configuração da plataforma: fotos no plano pago. */
+  maxPhotosPaid?: number;
 };

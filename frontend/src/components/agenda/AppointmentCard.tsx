@@ -39,6 +39,8 @@ export function AppointmentCard({
         <div className="text-right">
           <Badge className={STATUS_COLOR[a.status]}>{STATUS_LABEL[a.status]}</Badge>
           <p className="mt-1 text-sm font-medium">{formatMoney(a.price)}</p>
+          {a.customerConfirmedAt && <p className="text-xs font-bold text-emerald-700">✓ cliente confirmou</p>}
+          {!a.customerConfirmedAt && a.reminderSentAt && <p className="text-xs text-sky-700">lembrete enviado</p>}
           {a.source === "ONLINE" && <p className="text-xs text-zinc-400">online</p>}
         </div>
       </div>

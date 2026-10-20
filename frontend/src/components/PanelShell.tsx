@@ -10,10 +10,12 @@ import { useAuth } from "@/lib/auth";
 
 const NAV = [
   { href: "/painel", label: "Agenda", ownerOnly: false },
+  { href: "/painel/lembretes", label: "Lembretes", ownerOnly: false },
   { href: "/painel/clientes", label: "Clientes", ownerOnly: false },
   { href: "/painel/servicos", label: "Serviços", ownerOnly: false },
   { href: "/painel/profissionais", label: "Profissionais", ownerOnly: false },
   { href: "/painel/produtos", label: "Produtos", ownerOnly: false },
+  { href: "/painel/portfolio", label: "Portfólio", ownerOnly: false },
   { href: "/painel/financeiro", label: "Financeiro", ownerOnly: true },
   { href: "/painel/precificacao", label: "Precificação", ownerOnly: true },
   { href: "/painel/configuracoes", label: "Configurações", ownerOnly: true },

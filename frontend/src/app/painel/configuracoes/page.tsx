@@ -5,7 +5,8 @@ import { Button, Card, ErrorMessage, Field, NewPasswordFields, PageHeader, Selec
 import { InstallAppLink } from "@/components/InstallApp";
 import { api, appDownloadUrl } from "@/lib/api";
 import { WeeklyHoursEditor, normalizeHours } from "@/components/WeeklyHoursEditor";
-import type { Role, Salon, User } from "@/lib/types";
+import { REMINDER_MODES } from "@/lib/format";
+import type { ReminderMode, Role, Salon, User } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 export default function SettingsPage() {
@@ -36,6 +37,7 @@ export default function SettingsPage() {
         address: form.address,
         hours: form.hours,
         slotMinutes: Number(form.slotMinutes),
+        reminderMode: form.reminderMode,
       });
       setMessage("Salvo!");
       reload();
@@ -81,6 +83,21 @@ export default function SettingsPage() {
                 </option>
               ))}
             </Select>
+            <Select
+              label="Lembrete para o cliente confirmar o horário"
+              value={form.reminderMode}
+              onChange={(e) => setForm({ ...form, reminderMode: e.target.value as ReminderMode })}
+            >
+              {REMINDER_MODES.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </Select>
+            <p className="-mt-1 text-xs text-zinc-500">
+              O app do cliente avisa sozinho e, em <strong>Lembretes</strong>, você manda a mensagem pelo WhatsApp com o link para ele
+              confirmar.
+            </p>
             <ErrorMessage message={error} />
             {message && <p className="text-sm text-emerald-700">{message}</p>}
             <Button className="w-full sm:w-auto" disabled={form.hours.length === 0}>Salvar</Button>
