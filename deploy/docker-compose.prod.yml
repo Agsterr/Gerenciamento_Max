@@ -41,9 +41,17 @@ services:
       APP_RELEASE_DEPLOY_TOKEN: ${APP_RELEASE_DEPLOY_TOKEN:-}
       PLATFORM_ADMIN_EMAIL: ${PLATFORM_ADMIN_EMAIL:-}
       PLATFORM_ADMIN_PASSWORD: ${PLATFORM_ADMIN_PASSWORD:-}
+      # Fotos do portfólio: Cloudflare R2 (bucket salao-max-fotos); sem as variáveis, ficam no volume salon_media
+      APP_MEDIA_PATH: /app/media
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
       JAVA_TOOL_OPTIONS: -Xms96m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -Xss512k
     volumes:
       - apk_releases:/app/releases
+      - salon_media:/app/media
     mem_limit: 448m
 
   web:
@@ -73,3 +81,4 @@ services:
 volumes:
   pgdata:
   apk_releases:
+  salon_media:

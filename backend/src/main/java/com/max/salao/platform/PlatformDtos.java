@@ -44,7 +44,9 @@ public final class PlatformDtos {
             @Min(1) @Max(1000) int maxServices,
             @Min(1) @Max(100000) int maxCustomers,
             @Size(max = 30) String contactWhatsapp,
-            @Size(max = 120) String contactEmail) {
+            @Size(max = 120) String contactEmail,
+            /* nulos = mantém (painel antigo não manda) */ @Min(0) @Max(10000) Integer maxPhotos,
+            @Min(0) @Max(10000) Integer maxPhotosPaid) {
     }
 
     public record PlatformUser(

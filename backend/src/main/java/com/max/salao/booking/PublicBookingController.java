@@ -39,9 +39,10 @@ public class PublicBookingController {
     public record PublicProfessional(Long id, String name) {
     }
 
+    /** reminderDays: dias antes do horário em que o app do cliente avisa para confirmar (vazio = desligado). */
     public record SalonInfo(String name, String slug, String phone, String address, String workDays,
                             List<SalonDtos.DayHoursDto> hours, List<PublicService> services,
-                            List<PublicProfessional> professionals) {
+                            List<PublicProfessional> professionals, List<Integer> reminderDays) {
     }
 
     public record BookingRequest(
@@ -64,13 +65,14 @@ public class PublicBookingController {
     /** Visão do cliente. Não inclui as anotações internas do salão (tinta usada, etc.). */
     public record BookingResponse(String token, LocalDateTime startAt, LocalDateTime endAt, AppointmentStatus status,
                                   Long serviceId, String serviceName, Long professionalId, String professionalName,
-                                  BigDecimal price, String customerName, boolean cancelable) {
+                                  BigDecimal price, String customerName, boolean cancelable,
+                                  boolean confirmable, List<Integer> reminderDays) {
 
-        static BookingResponse of(Appointment a, boolean cancelable) {
+        static BookingResponse of(Appointment a, PublicBookingService service, List<Integer> reminderDays) {
             return new BookingResponse(a.getPublicToken(), a.getStartAt(), a.getEndAt(), a.getStatus(),
                     a.getService().getId(), a.getService().getName(),
                     a.getProfessional().getId(), a.getProfessional().getName(), a.getPrice(),
-                    a.getCustomer().getName(), cancelable);
+                    a.getCustomer().getName(), service.canChange(a), service.canConfirm(a), reminderDays);
         }
     }
 
@@ -83,7 +85,7 @@ public class PublicBookingController {
     }
 
     private BookingResponse toResponse(Appointment a) {
-        return BookingResponse.of(a, service.canChange(a));
+        return BookingResponse.of(a, service, service.salon().getReminderMode().days());
     }
 
     @GetMapping
@@ -96,7 +98,8 @@ public class PublicBookingController {
                                 x.getDurationMinutes(), x.getPrice()))
                         .toList(),
                 service.activeProfessionals().stream().map(p -> new PublicProfessional(p.getId(), p.getName()))
-                        .toList());
+                        .toList(),
+                s.getReminderMode().days());
     }
 
     @GetMapping("/availability")
@@ -122,6 +125,12 @@ public class PublicBookingController {
         return toResponse(service.cancel(token));
     }
 
+    /** Link do lembrete: o cliente confirma que vai. */
+    @PostMapping("/bookings/{token}/confirm")
+    public BookingResponse confirm(@PathVariable String token) {
+        return toResponse(service.confirm(token));
+    }
+
     @PostMapping("/bookings/{token}/reschedule")
     public BookingResponse reschedule(@PathVariable String token, @Valid @RequestBody RescheduleRequest req) {
         return toResponse(service.reschedule(token, req.startAt(), req.professionalId()));
@@ -132,7 +141,9 @@ public class PublicBookingController {
     public List<BookingResponse> myBookings(@Valid @RequestBody LookupRequest req, HttpServletRequest http) {
         rateLimiter.check("ip:" + clientIp(http));
         rateLimiter.check("tel:" + Customer.normalizePhone(req.phone()));
-        return service.lookup(req.name(), req.phone()).stream().map(this::toResponse).toList();
+        List<Integer> reminderDays = service.salon().getReminderMode().days();
+        return service.lookup(req.name(), req.phone()).stream()
+                .map(a -> BookingResponse.of(a, service, reminderDays)).toList();
     }
 
     /** IP real do visitante atrás do Cloudflare/nginx. */

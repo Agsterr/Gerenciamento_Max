@@ -11,6 +11,7 @@ import java.util.Locale;
 import com.max.salao.appointment.Appointment;
 import com.max.salao.appointment.AppointmentRepository;
 import com.max.salao.appointment.AppointmentService;
+import com.max.salao.appointment.AppointmentStatus;
 import com.max.salao.appointment.AppointmentService.BookCommand;
 import com.max.salao.appointment.AvailabilityService;
 import com.max.salao.appointment.AvailabilityService.Slot;
@@ -157,6 +158,29 @@ public class PublicBookingService {
         a.cancel();
         notifications.notifySalon(Notification.Type.CANCELED, a);
         return a;
+    }
+
+    /**
+     * Cliente confirma a presença pelo link do lembrete (ou pelo app). Vale até o horário marcado;
+     * confirmar de novo só devolve o agendamento.
+     */
+    @Transactional
+    public Appointment confirm(String token) {
+        Appointment a = find(token);
+        if (a.getStatus() == AppointmentStatus.CONFIRMED && a.getCustomerConfirmedAt() != null) {
+            return a;
+        }
+        if (!a.getStatus().isOpen() || !a.getStartAt().isAfter(LocalDateTime.now(clock))) {
+            throw new BusinessException("Este agendamento não pode mais ser confirmado");
+        }
+        a.confirmByCustomer(LocalDateTime.now(clock));
+        notifications.notifySalon(Notification.Type.CONFIRMED, a);
+        return a;
+    }
+
+    /** Ainda falta o cliente confirmar (mostra o botão "Confirmar presença"). */
+    public boolean canConfirm(Appointment a) {
+        return a.getStatus() == AppointmentStatus.SCHEDULED && a.getStartAt().isAfter(LocalDateTime.now(clock));
     }
 
     /** O cliente só cancela ou remarca sozinho até {@value #CANCEL_MIN_HOURS} h antes do horário marcado. */

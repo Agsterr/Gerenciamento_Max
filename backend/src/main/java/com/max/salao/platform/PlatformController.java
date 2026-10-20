@@ -70,8 +70,11 @@ public class PlatformController {
 
     @PutMapping("/settings")
     public PlatformSettings.Values saveSettings(@Valid @RequestBody SettingsRequest req) {
+        PlatformSettings.Values current = settings.get();
         return settings.save(new PlatformSettings.Values(req.trialDays(), req.maxProfessionals(), req.maxServices(),
-                req.maxCustomers(), req.contactWhatsapp(), req.contactEmail()));
+                req.maxCustomers(), req.contactWhatsapp(), req.contactEmail(),
+                req.maxPhotos() != null ? req.maxPhotos() : current.maxPhotos(),
+                req.maxPhotosPaid() != null ? req.maxPhotosPaid() : current.maxPhotosPaid()));
     }
 
     @GetMapping("/salons/{id}/users")

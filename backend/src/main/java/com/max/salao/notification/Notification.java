@@ -16,7 +16,7 @@ import lombok.Setter;
 @Entity
 public class Notification extends TenantEntity {
 
-    public enum Type { BOOKED, CANCELED, RESCHEDULED }
+    public enum Type { BOOKED, CANCELED, RESCHEDULED, CONFIRMED, REMINDERS }
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

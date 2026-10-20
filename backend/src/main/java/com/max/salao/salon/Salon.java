@@ -55,6 +55,11 @@ public class Salon {
     @Column(nullable = false)
     private int slotMinutes = 30;
 
+    /** Lembrete para o cliente confirmar o horário (app do cliente e lista de lembretes do salão). */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ReminderMode reminderMode = ReminderMode.ONE_DAY;
+
     // ---- Precificação ----
 
     /** Taxa média de cartão/maquininha + impostos sobre o faturamento (%). */

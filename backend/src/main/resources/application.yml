@@ -49,3 +49,15 @@ app:
     max-retained: ${APP_RELEASES_MAX_COUNT:2}
     deploy-token: ${APP_RELEASE_DEPLOY_TOKEN:}
     public-base-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
+  # Fotos do portfólio: Cloudflare R2 (igual aos vídeos do foco-academia) ou, sem R2, disco local
+  media:
+    storage-path: ${APP_MEDIA_PATH:/app/media}
+    max-upload-mb: ${APP_MEDIA_MAX_UPLOAD_MB:15}
+    r2-bucket: ${R2_BUCKET:}
+    r2-endpoint: ${R2_ENDPOINT:}
+    r2-access-key-id: ${R2_ACCESS_KEY_ID:}
+    r2-secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+    r2-public-base-url: ${R2_PUBLIC_BASE_URL:}
+  # Aviso diário ao salão dos clientes a lembrar (horário do salão)
+  reminders:
+    cron: ${APP_REMINDERS_CRON:0 0 8 * * *}

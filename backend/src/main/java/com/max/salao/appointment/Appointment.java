@@ -83,9 +83,25 @@ public class Appointment extends TenantEntity {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    /** Quando o salão mandou o lembrete de confirmação (WhatsApp). */
+    private LocalDateTime reminderSentAt;
+
+    /** Quando o próprio cliente confirmou a presença (link do lembrete ou app). */
+    @Setter(AccessLevel.NONE)
+    private LocalDateTime customerConfirmedAt;
+
     public void confirm() {
         requireOpen();
         status = AppointmentStatus.CONFIRMED;
+    }
+
+    /** Cliente confirmou pelo lembrete. Repetir não muda nada (o link pode ser aberto várias vezes). */
+    public void confirmByCustomer(LocalDateTime now) {
+        requireOpen();
+        status = AppointmentStatus.CONFIRMED;
+        if (customerConfirmedAt == null) {
+            customerConfirmedAt = now;
+        }
     }
 
     public void start(LocalDateTime now) {

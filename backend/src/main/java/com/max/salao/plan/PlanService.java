@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 import com.max.salao.catalog.ServiceItemRepository;
 import com.max.salao.customer.CustomerRepository;
+import com.max.salao.portfolio.PortfolioPhotoRepository;
 import com.max.salao.professional.ProfessionalRepository;
 import com.max.salao.salon.Salon;
 import com.max.salao.salon.SalonService;
@@ -34,7 +35,7 @@ public class PlanService {
 
     public record PlanInfo(PlanStatus status, Plan plan, LocalDateTime trialEndsAt, LocalDate paidUntil, Long daysLeft,
                            Usage professionals, Usage services, Usage customers,
-                           String contactWhatsapp, String contactEmail) {
+                           String contactWhatsapp, String contactEmail, Usage photos) {
     }
 
     private final SalonService salons;
@@ -42,10 +43,13 @@ public class PlanService {
     private final ProfessionalRepository professionals;
     private final ServiceItemRepository services;
     private final CustomerRepository customers;
+    private final PortfolioPhotoRepository photos;
     private final Clock clock;
 
     public PlanService(SalonService salons, PlatformSettings settings, ProfessionalRepository professionals,
-                       ServiceItemRepository services, CustomerRepository customers, Clock clock) {
+                       ServiceItemRepository services, CustomerRepository customers, PortfolioPhotoRepository photos,
+                       Clock clock) {
+        this.photos = photos;
         this.salons = salons;
         this.settings = settings;
         this.professionals = professionals;
@@ -85,7 +89,25 @@ public class PlanService {
                 new Usage(professionals.count(), limited ? cfg.maxProfessionals() : 0),
                 new Usage(services.count(), limited ? cfg.maxServices() : 0),
                 new Usage(customers.count(), limited ? cfg.maxCustomers() : 0),
-                cfg.contactWhatsapp(), cfg.contactEmail());
+                cfg.contactWhatsapp(), cfg.contactEmail(),
+                new Usage(photos.count(), photoLimit(status, cfg)));
+    }
+
+    private static int photoLimit(PlanStatus status, PlatformSettings.Values cfg) {
+        return status == PlanStatus.ACTIVE ? cfg.maxPhotosPaid() : cfg.maxPhotos();
+    }
+
+    /** Fotos do portfólio têm limite no teste e também no plano pago (espaço no R2). */
+    @Transactional(readOnly = true)
+    public void checkPhotoLimit() {
+        PlanStatus status = status(salons.current());
+        int max = photoLimit(status, settings.get());
+        if (photos.count() >= max) {
+            throw new BusinessException(status == PlanStatus.ACTIVE
+                    ? "Limite de " + max + " fotos atingido. Apague fotos antigas para enviar novas."
+                    : "No teste grátis o limite é de " + max + " fotos"
+                      + (AppChannel.isStoreApp() ? "." : ". Para enviar mais, ative o plano com o Salão Max."));
+        }
     }
 
     /** Barra alterações quando o teste ou o plano venceu. */
