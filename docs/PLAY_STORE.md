@@ -1,8 +1,8 @@
 # Google Play — publicação automática
 
-O workflow **Play Store (teste interno)** (`.github/workflows/play-release.yml`) roda a cada push na
+O workflow **Play Store** (`.github/workflows/play-release.yml`) roda a cada push na
 `main` que mexe em `mobile/`: builda o `.aab` do canal `play` dos dois apps e envia para a faixa de
-**teste interno**. Promover para produção é no Play Console. Sem a conta de serviço configurada, o
+**teste fechado (Alpha)**, onde estão os testadores. Para mudar a faixa sem editar o arquivo, crie a variável do repositório `PLAY_TRACK` (`internal`, `alpha`, `beta` ou `production`). Sem a conta de serviço configurada, o
 `.aab` fica disponível nos *Artifacts* da execução (útil para o primeiro envio manual).
 
 | App | Pacote |
