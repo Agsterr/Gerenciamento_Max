@@ -125,6 +125,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
             const SizedBox(height: 12),
             TextField(controller: caption, maxLength: 200, decoration: const InputDecoration(labelText: 'Legenda')),
             DropdownButtonFormField<int?>(
+              isExpanded: true,
               initialValue: _services.any((s) => s.id == serviceId) ? serviceId : null,
               decoration: const InputDecoration(labelText: 'Serviço'),
               items: [
@@ -135,6 +136,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<int?>(
+              isExpanded: true,
               initialValue: _professionals.any((x) => x.id == professionalId) ? professionalId : null,
               decoration: const InputDecoration(labelText: 'Profissional'),
               items: [

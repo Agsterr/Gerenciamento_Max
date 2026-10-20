@@ -93,6 +93,7 @@ class _MyRemindersScreenState extends State<MyRemindersScreen> {
             const SizedBox(height: 16),
             if (relative)
               DropdownButtonFormField<int>(
+                isExpanded: true,
                 initialValue: minutes,
                 decoration: const InputDecoration(labelText: 'Antecedência'),
                 items: [
@@ -103,6 +104,7 @@ class _MyRemindersScreenState extends State<MyRemindersScreen> {
               )
             else ...[
               DropdownButtonFormField<int>(
+                isExpanded: true,
                 initialValue: days,
                 decoration: const InputDecoration(labelText: 'Dia'),
                 items: const [
@@ -158,6 +160,7 @@ class _MyRemindersScreenState extends State<MyRemindersScreen> {
                       style: text.bodySmall?.copyWith(color: Brand.muted)),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<int?>(
+                    isExpanded: true,
                     initialValue: _professionals.any((p) => p.id == s.professionalId) ? s.professionalId : null,
                     decoration: const InputDecoration(labelText: 'Agenda', prefixIcon: Icon(Icons.person_outline_rounded)),
                     items: [

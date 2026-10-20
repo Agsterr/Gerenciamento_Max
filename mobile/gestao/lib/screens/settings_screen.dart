@@ -201,6 +201,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 14),
                     DropdownButtonFormField<ReminderMode>(
+                      isExpanded: true,
                       initialValue: salon.reminderMode,
                       decoration: const InputDecoration(
                         labelText: 'Lembrete para o cliente confirmar',
