@@ -4,6 +4,9 @@ import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
 import '../widgets/weekly_hours_editor.dart';
+import 'my_reminders_screen.dart';
+import 'portfolio_screen.dart';
+import 'reminders_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.session});
@@ -44,6 +47,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) showError(context, e);
     }
   }
+
+  void _open(Widget screen) => Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
 
   Future<void> _deleteAccount() async {
     final password = TextEditingController();
@@ -195,10 +200,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onChanged: (v) => setState(() => salon.slotMinutes = v!),
                     ),
                     const SizedBox(height: 14),
+                    DropdownButtonFormField<ReminderMode>(
+                      isExpanded: true,
+                      initialValue: salon.reminderMode,
+                      decoration: const InputDecoration(
+                        labelText: 'Lembrete para o cliente confirmar',
+                        prefixIcon: Icon(Icons.notifications_active_outlined),
+                      ),
+                      items: [for (final m in ReminderMode.values) DropdownMenuItem(value: m, child: Text(m.label))],
+                      onChanged: (v) => setState(() => salon.reminderMode = v!),
+                    ),
+                    const SizedBox(height: 14),
                     GradientButton(label: 'Salvar funcionamento', icon: Icons.save_outlined, onPressed: salon.hours.isEmpty ? null : _saveSalon),
                   ]),
                 ),
               ],
+              const SectionTitle('Lembretes e portfólio'),
+              SoftCard(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(children: [
+                  tile(Icons.mark_chat_read_outlined, 'Lembretes dos clientes', () => _open(RemindersScreen(api: _session.api))),
+                  tile(Icons.alarm_rounded, 'Meus lembretes de atendimento', () => _open(MyRemindersScreen(api: _session.api))),
+                  tile(Icons.photo_library_outlined, 'Portfólio de fotos', () => _open(PortfolioScreen(api: _session.api))),
+                ]),
+              ),
               const SectionTitle('Conta'),
               SoftCard(
                 padding: const EdgeInsets.symmetric(vertical: 6),

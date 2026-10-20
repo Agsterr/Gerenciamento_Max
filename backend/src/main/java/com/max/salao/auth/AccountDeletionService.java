@@ -1,5 +1,8 @@
 package com.max.salao.auth;
 
+import java.util.List;
+
+import com.max.salao.portfolio.MediaStorage;
 import com.max.salao.shared.NotFoundException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -16,13 +19,16 @@ public class AccountDeletionService {
 
     /** Ordem respeita as chaves estrangeiras. */
     private static final String[] TENANT_TABLES = {
-            "notification", "stock_movement", "appointment", "expense", "product", "customer", "service_item", "professional"};
+            "notification", "user_reminder_rule", "portfolio_photo", "stock_movement", "appointment", "expense", "product", "customer", "service_item", "professional"};
 
     private final AppUserRepository users;
     private final PasswordEncoder passwordEncoder;
+    private final MediaStorage media;
     private final JdbcTemplate jdbc;
 
-    public AccountDeletionService(AppUserRepository users, PasswordEncoder passwordEncoder, JdbcTemplate jdbc) {
+    public AccountDeletionService(AppUserRepository users, PasswordEncoder passwordEncoder, JdbcTemplate jdbc,
+                                  MediaStorage media) {
+        this.media = media;
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jdbc = jdbc;
@@ -43,6 +49,11 @@ public class AccountDeletionService {
             users.delete(user);
             return false;
         }
+        // fotos do portfólio saem também do R2/disco
+        List<String> keys = jdbc.queryForList(
+                "SELECT image_key FROM portfolio_photo WHERE tenant_id = ? UNION ALL SELECT thumb_key FROM portfolio_photo WHERE tenant_id = ?",
+                String.class, salonId, salonId);
+        keys.forEach(media::delete);
         for (String table : TENANT_TABLES) {
             jdbc.update("DELETE FROM " + table + " WHERE tenant_id = ?", salonId);
         }

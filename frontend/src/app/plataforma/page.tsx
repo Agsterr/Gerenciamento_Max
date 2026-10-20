@@ -571,6 +571,10 @@ function TrialTab() {
             <Field label="Máx. serviços" type="number" min={1} required value={form.maxServices} onChange={num("maxServices")} />
             <Field label="Máx. clientes" type="number" min={1} required value={form.maxCustomers} onChange={num("maxCustomers")} />
           </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Fotos do portfólio (teste)" type="number" min={0} required value={form.maxPhotos} onChange={num("maxPhotos")} />
+            <Field label="Fotos do portfólio (plano pago)" type="number" min={0} required value={form.maxPhotosPaid ?? 300} onChange={num("maxPhotosPaid")} />
+          </div>
           <Field
             label="Seu WhatsApp para quem quer assinar"
             inputMode="tel"

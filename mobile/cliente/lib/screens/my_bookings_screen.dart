@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../booking_store.dart';
+import '../confirm_reminders.dart';
 import '../customer_sync.dart';
 import 'booking_screen.dart';
 import 'find_bookings_sheet.dart';
@@ -61,6 +62,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    var failed = false;
     final entries = await Future.wait(widget.store.bookings.map((b) async {
       try {
         final json = await widget.api.get('/api/public/salons/${b.slug}/bookings/${b.token}');
@@ -70,6 +72,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         rethrow;
       }
     }).toList()).catchError((Object e) {
+      failed = true;
       if (mounted) showError(context, e);
       return <MapEntry<String, Booking?>>[];
     });
@@ -78,12 +81,28 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       final b = entries.where((e) => e.key == s.token).firstOrNull?.value;
       if (b != null && s.seen == null) await widget.store.markSeen(s.token, b.signature);
     }
+    if (!failed) await _scheduleReminders(Map.fromEntries(entries));
     if (mounted) {
       setState(() {
         _details = Map.fromEntries(entries);
         _loading = false;
       });
     }
+  }
+
+  /// Agenda no aparelho o lembrete de confirmar presença (1/2 dias antes, conforme o salão).
+  Future<void> _scheduleReminders(Map<String, Booking?> details) async {
+    final notifications = LocalReminders.instance;
+    if (!notifications.ready) return;
+    final reminders = confirmReminders([
+      for (final s in widget.store.bookings)
+        if (details[s.token] case final b?) (s, b),
+    ]);
+    if (reminders.isNotEmpty && !widget.store.askedNotifications) {
+      await widget.store.markAskedNotifications();
+      await notifications.requestPermission();
+    }
+    await notifications.replace(confirmGroup, reminders);
   }
 
   @override

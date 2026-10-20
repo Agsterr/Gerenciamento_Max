@@ -61,3 +61,6 @@ app:
   # Aviso diário ao salão dos clientes a lembrar (horário do salão)
   reminders:
     cron: ${APP_REMINDERS_CRON:0 0 8 * * *}
+  # Lembretes de atendimento de cada profissional/usuário (sino do painel e do app)
+  staff-reminders:
+    cron: ${APP_STAFF_REMINDERS_CRON:0 */5 * * * *}

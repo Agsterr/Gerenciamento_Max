@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { SlotPicker } from "@/components/agenda/SlotPicker";
+import { Gallery } from "@/components/Gallery";
 import { AppPromo } from "@/components/InstallApp";
 import { Icon, serviceIcon } from "@/components/Icon";
 import { ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";
 import { bookableDays, formatMoney } from "@/lib/format";
-import type { Booking, PublicSalon, Slot } from "@/lib/types";
+import type { Booking, Photo, PublicSalon, Slot } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 /** Versão do cliente: escolhe serviço → profissional → dia/horário → nome e telefone. */
@@ -18,6 +19,9 @@ export default function PublicBookingPage() {
   const router = useRouter();
   const base = `/api/public/salons/${slug}`;
   const { data: salon, error: salonError } = useApi<PublicSalon>(base);
+  const { data: photos } = useApi<Photo[]>(`${base}/portfolio`);
+  const [photoFilter, setPhotoFilter] = useState<number | null>(null);
+  const [allPhotos, setAllPhotos] = useState(false);
 
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [professionalId, setProfessionalId] = useState<number | null>(null);
@@ -45,6 +49,9 @@ export default function PublicBookingPage() {
   if (!salon) return <Centered>Carregando...</Centered>;
 
   const service = salon.services.find((s) => s.id === serviceId);
+  const servicePhotos = photos?.filter((p) => p.serviceId === serviceId) ?? [];
+  const photoServices = salon.services.filter((s) => photos?.some((p) => p.serviceId === s.id));
+  const shownPhotos = photos?.filter((p) => photoFilter === null || p.serviceId === photoFilter) ?? [];
 
   async function book(e: React.FormEvent) {
     e.preventDefault();
@@ -102,6 +109,33 @@ export default function PublicBookingPage() {
       </header>
 
       <div className="mx-auto max-w-xl px-4">
+        {photos && photos.length > 0 && (
+          <section className="mt-7">
+            <h2 className="mb-3 text-lg font-extrabold">Nossos trabalhos</h2>
+            {photoServices.length > 0 && (
+              <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+                {[{ id: null as number | null, name: "Todos" }, ...photoServices].map((s) => (
+                  <button
+                    key={s.id ?? 0}
+                    onClick={() => setPhotoFilter(s.id)}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-bold ${
+                      photoFilter === s.id ? "bg-brand text-white" : "border border-[#F1E3EB] bg-white text-brand-muted"
+                    }`}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Gallery key={photoFilter ?? 0} photos={allPhotos ? shownPhotos : shownPhotos.slice(0, 9)} />
+            {!allPhotos && shownPhotos.length > 9 && (
+              <button onClick={() => setAllPhotos(true)} className="mt-2 text-sm font-bold text-brand-rose hover:underline">
+                Ver todas as {shownPhotos.length} fotos
+              </button>
+            )}
+          </section>
+        )}
+
         <Step n={1} title="Escolha o serviço">
           <div className="space-y-3">
             {salon.services.map((s) => {
@@ -129,6 +163,12 @@ export default function PublicBookingPage() {
             })}
             {salon.services.length === 0 && <p className="text-sm text-brand-muted">Nenhum serviço disponível no momento.</p>}
           </div>
+          {servicePhotos.length > 0 && (
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-bold text-brand-muted">Fotos de {service?.name}</p>
+              <Gallery key={serviceId ?? 0} photos={servicePhotos.slice(0, 6)} />
+            </div>
+          )}
         </Step>
 
         {service && (

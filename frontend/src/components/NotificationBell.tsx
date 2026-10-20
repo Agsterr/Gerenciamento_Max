@@ -7,7 +7,7 @@ import type { Inbox } from "@/lib/types";
 
 const POLL_MS = 60_000;
 
-/** Sininho do painel: agendamentos, cancelamentos e remarcações feitos pelos clientes. */
+/** Sininho do painel: o que os clientes fizeram (agendar, cancelar, remarcar, confirmar) e os lembretes. */
 export function NotificationBell() {
   const [inbox, setInbox] = useState<Inbox>();
   const [open, setOpen] = useState(false);

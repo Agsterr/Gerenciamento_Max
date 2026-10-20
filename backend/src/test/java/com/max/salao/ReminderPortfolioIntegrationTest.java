@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.max.salao.plan.PlatformSettings;
 import com.max.salao.reminder.ReminderJob;
+import com.max.salao.reminder.StaffReminderJob;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -53,6 +54,9 @@ class ReminderPortfolioIntegrationTest {
 
     @Autowired
     PlatformSettings platformSettings;
+
+    @Autowired
+    StaffReminderJob staffReminderJob;
 
     private final LocalDate tomorrow = LocalDate.now().plusDays(1);
     private final LocalDate inTwoDays = LocalDate.now().plusDays(2);
@@ -203,6 +207,77 @@ class ReminderPortfolioIntegrationTest {
         } finally {
             platformSettings.save(original);
         }
+    }
+
+    @Test
+    void staffChoosesOwnAppointmentReminders() throws Exception {
+        Tenant owner = register();
+        openEveryDay(owner, "ONE_DAY");
+        long service = createService(owner, "Corte");
+        long ana = call(owner, get("/api/professionals"), null, status().isOk()).get(0).get("id").asLong();
+        long bruno = call(owner, post("/api/professionals"), Map.of("name", "Bruno", "commissionPercent", 0, "active", true),
+                status().isCreated()).get("id").asLong();
+        long customer = call(owner, post("/api/customers"), Map.of("name", "Lia Prado", "phone", "11966660001"),
+                status().isCreated()).get("id").asLong();
+
+        // regras inválidas
+        call(owner, put("/api/me/reminders"), Map.of("rules", List.of(Map.of("daysBefore", 1))),
+                status().isUnprocessableEntity());
+        List<Map<String, Object>> six = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            six.add(Map.of("minutesBefore", 30 + i));
+        }
+        call(owner, put("/api/me/reminders"), Map.of("rules", six), status().isUnprocessableEntity());
+
+        // "1 dia antes às 19h" e "65 minutos antes", só da agenda da Ana
+        JsonNode saved = call(owner, put("/api/me/reminders"), Map.of("professionalId", ana, "rules", List.of(
+                Map.of("daysBefore", 1, "atTime", "19:00"), Map.of("minutesBefore", 65))), status().isOk());
+        assertThat(saved.get("rules")).hasSize(2);
+        assertThat(call(owner, get("/api/me/reminders"), null, status().isOk()).get("professionalId").asLong())
+                .isEqualTo(ana);
+
+        java.time.LocalDateTime soon = java.time.LocalDateTime.now().withSecond(0).withNano(0).plusHours(1);
+        LocalDate later = LocalDate.now().plusDays(3);
+        appointment(owner, customer, ana, service, soon.toString());
+        appointment(owner, customer, ana, service, later + "T10:00:00");
+        appointment(owner, customer, bruno, service, later + "T11:00:00");
+
+        // próximos avisos para o app agendar no aparelho (o de 65 min antes de "soon" já venceu)
+        JsonNode upcoming = call(owner, get("/api/me/reminders/upcoming?days=7"), null, status().isOk());
+        List<String> at = new ArrayList<>();
+        upcoming.forEach(u -> at.add(u.get("remindAt").asText()));
+        assertThat(at).contains(later.minusDays(1) + "T19:00:00", later + "T08:55:00");
+        upcoming.forEach(u -> assertThat(u.get("message").asText()).doesNotContain("Bruno"));
+
+        // job: grava no sino só do dono (uma vez), a equipe não vê
+        String email = "staff-" + UUID.randomUUID() + "@teste.com";
+        call(owner, post("/api/users"), Map.of("name", "Recepção", "email", email, "password", "123456",
+                "role", "STAFF"), status().isCreated());
+        Tenant staff = new Tenant(owner.slug, call(null, post("/api/auth/login"),
+                Map.of("email", email, "password", "123456"), status().isOk()).get("token").asText());
+
+        staffReminderJob.run();
+        staffReminderJob.run();
+        List<JsonNode> mine = new ArrayList<>();
+        call(owner, get("/api/notifications"), null, status().isOk()).get("items").forEach(n -> {
+            if (n.get("type").asText().equals("STAFF_REMINDER")) {
+                mine.add(n);
+            }
+        });
+        assertThat(mine).hasSize(1);
+        assertThat(mine.get(0).get("title").asText()).startsWith("Atendimento às").endsWith("Lia Prado");
+        call(staff, get("/api/notifications"), null, status().isOk()).get("items")
+                .forEach(n -> assertThat(n.get("type").asText()).isNotEqualTo("STAFF_REMINDER"));
+
+        // ler tudo no dono não marca os avisos da equipe que ele não vê... e vice-versa
+        call(staff, post("/api/notifications/read"), null, status().isNoContent());
+        assertThat(call(owner, get("/api/notifications"), null, status().isOk()).get("unread").asLong()).isEqualTo(1);
+    }
+
+    private void appointment(Tenant salon, long customer, long professional, long service, String startAt)
+            throws Exception {
+        call(salon, post("/api/appointments"), Map.of("customerId", customer, "professionalId", professional,
+                "serviceId", service, "startAt", startAt, "force", true), status().isCreated());
     }
 
     // ---------------- helpers ----------------

@@ -17,6 +17,20 @@ export default function BookingPage() {
   const { data: b, error, reload } = useApi<Booking>(path);
   const [actionError, setActionError] = useState<string>();
   const [rescheduling, setRescheduling] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  async function confirmPresence() {
+    setActionError(undefined);
+    setConfirming(true);
+    try {
+      await api.post(`${path}/confirm`);
+      reload();
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
+      setConfirming(false);
+    }
+  }
 
   async function cancel() {
     if (!confirm("Cancelar este agendamento?")) return;
@@ -65,9 +79,17 @@ export default function BookingPage() {
         )}
         <ErrorMessage message={actionError} />
         <div className="mt-4 flex flex-col gap-2">
+          {b.confirmable && !rescheduling && (
+            <Button onClick={confirmPresence} disabled={confirming} className="py-3 text-lg">
+              {confirming ? "Confirmando..." : "Confirmar presença"}
+            </Button>
+          )}
+          {b.status === "CONFIRMED" && <p className="font-bold text-emerald-700">Presença confirmada. Até lá!</p>}
           {b.cancelable && !rescheduling && (
             <>
-              <Button onClick={() => setRescheduling(true)}>Remarcar horário</Button>
+              <Button variant={b.confirmable ? "secondary" : "primary"} onClick={() => setRescheduling(true)}>
+                Remarcar horário
+              </Button>
               <Button variant="danger" onClick={cancel}>
                 Cancelar agendamento
               </Button>

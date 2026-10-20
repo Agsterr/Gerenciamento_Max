@@ -21,6 +21,9 @@ class _SalonScreenState extends State<SalonScreen> {
   PublicSalon? _salon;
   String? _error;
 
+  /// Portfólio do salão (galeria); vazio enquanto carrega ou se o salão não tem fotos.
+  List<Photo> _photos = const [];
+
   PublicService? _service;
   int? _professionalId;
   DateTime? _day;
@@ -63,9 +66,20 @@ class _SalonScreenState extends State<SalonScreen> {
         _salon = salon;
         _day = _days(salon).firstOrNull;
       });
+      _loadPhotos();
     } catch (e) {
       setState(() => _error = e.toString());
     }
+  }
+
+  /// Galeria é opcional: sem rede ou sem fotos, a tela segue só com o agendamento.
+  Future<void> _loadPhotos() async {
+    try {
+      final json = await widget.api.get('$_base/portfolio');
+      if (json is List && mounted) {
+        setState(() => _photos = json.map((e) => Photo.fromJson(e as Map<String, dynamic>)).toList());
+      }
+    } catch (_) {}
   }
 
   /// Próximos 14 dias de funcionamento.
@@ -228,7 +242,21 @@ class _SalonScreenState extends State<SalonScreen> {
 
   List<Widget> _steps(PublicSalon salon) {
     final text = Theme.of(context).textTheme;
+    final servicePhotos = _service == null ? const <Photo>[] : _photos.where((p) => p.serviceId == _service!.id).toList();
     return [
+      if (_photos.isNotEmpty) ...[
+        const SectionTitle('Nossos trabalhos'),
+        PhotoGrid(photos: _photos, maxItems: 6),
+        if (_photos.length > 6)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _AllPhotos(name: salon.name, photos: _photos))),
+              icon: const Icon(Icons.photo_library_outlined),
+              label: Text('Ver todas as ${_photos.length} fotos'),
+            ),
+          ),
+      ],
       const SectionTitle('1. Escolha o serviço'),
       if (salon.services.isEmpty) const Text('Nenhum serviço disponível no momento.'),
       for (final s in salon.services)
@@ -254,6 +282,13 @@ class _SalonScreenState extends State<SalonScreen> {
             ]),
           ),
         ),
+      if (servicePhotos.isNotEmpty) ...[
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          child: Text('Fotos de ${_service!.name}', style: text.titleSmall?.copyWith(color: Brand.muted)),
+        ),
+        PhotoGrid(photos: servicePhotos, maxItems: 6),
+      ],
       if (_service != null) ...[
         const SectionTitle('2. Com quem?'),
         SizedBox(
@@ -423,6 +458,22 @@ class _ProfessionalOption extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+}
+
+/// Todas as fotos do portfólio do salão.
+class _AllPhotos extends StatelessWidget {
+  const _AllPhotos({required this.name, required this.photos});
+
+  final String name;
+  final List<Photo> photos;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(name)),
+      body: SingleChildScrollView(padding: const EdgeInsets.all(12), child: PhotoGrid(photos: photos)),
     );
   }
 }

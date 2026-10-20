@@ -45,6 +45,9 @@ public class AppUser {
 
     private boolean active = true;
 
+    /** Agenda que o usuário acompanha nos lembretes dele (nulo = todos os profissionais). */
+    private Long professionalId;
+
     /** Bloqueado pelo administrador da plataforma. */
     private boolean blocked;
     private String blockedReason;

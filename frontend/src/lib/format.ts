@@ -80,3 +80,10 @@ export const WEEKDAYS = [
   { value: "6", label: "Sáb" },
   { value: "7", label: "Dom" },
 ];
+
+export const REMINDER_MODES: { value: import("./types").ReminderMode; label: string }[] = [
+  { value: "OFF", label: "Desligado" },
+  { value: "ONE_DAY", label: "1 dia antes" },
+  { value: "TWO_DAYS", label: "2 dias antes" },
+  { value: "BOTH", label: "2 dias e 1 dia antes" },
+];

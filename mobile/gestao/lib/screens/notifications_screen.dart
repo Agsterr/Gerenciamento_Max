@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
-/// Avisos do salão: agendamentos, cancelamentos e remarcações feitos pelos clientes.
+/// Avisos do salão: o que os clientes fizeram (agendar, cancelar, remarcar, confirmar) e os lembretes.
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key, required this.api});
 
@@ -41,6 +41,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   static (IconData, Color) _style(String type) => switch (type) {
         'CANCELED' => (Icons.event_busy_rounded, const Color(0xFFBE123C)),
         'RESCHEDULED' => (Icons.event_repeat_rounded, const Color(0xFF6D28D9)),
+        'CONFIRMED' => (Icons.verified_rounded, const Color(0xFF047857)),
+        'REMINDERS' => (Icons.mark_chat_read_outlined, const Color(0xFFB45309)),
+        'STAFF_REMINDER' => (Icons.alarm_rounded, Brand.rose),
         _ => (Icons.event_available_rounded, const Color(0xFF047857)),
       };
 

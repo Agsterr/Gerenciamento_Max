@@ -33,6 +33,7 @@ class BookingStore extends ChangeNotifier {
   static const _bookingsKey = 'bookings';
   static const _nameKey = 'customer.name';
   static const _phoneKey = 'customer.phone';
+  static const _askedNotificationsKey = 'notifications.asked';
 
   final SharedPreferences _prefs;
 
@@ -70,6 +71,11 @@ class BookingStore extends ChangeNotifier {
     await _prefs.setStringList(_bookingsKey, list.map((b) => jsonEncode(b.toJson())).toList());
     notifyListeners();
   }
+
+  /// Já pedimos permissão de notificação (para não insistir).
+  bool get askedNotifications => _prefs.getBool(_askedNotificationsKey) ?? false;
+
+  Future<void> markAskedNotifications() => _prefs.setBool(_askedNotificationsKey, true);
 
   Future<void> rememberCustomer(String name, String phone) async {
     await _prefs.setString(_nameKey, name);

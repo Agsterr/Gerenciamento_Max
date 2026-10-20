@@ -16,6 +16,8 @@ dependencies:
   intl: ^0.20.2
   flutter_secure_storage: ^11.2.0
   http: ^1.6.0
+  # Fotos do portfólio (galeria/câmera)
+  image_picker: ^1.2.0
 
 dev_dependencies:
   flutter_test:

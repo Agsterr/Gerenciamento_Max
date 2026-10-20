@@ -2,6 +2,7 @@
 
 double _num(Object? v) => (v as num?)?.toDouble() ?? 0;
 DateTime _date(Object? v) => DateTime.parse(v as String);
+List<int> _ints(Object? v) => v == null ? const [] : (v as List).cast<int>();
 
 enum AppointmentStatus {
   scheduled('SCHEDULED', 'Agendado'),
@@ -81,6 +82,7 @@ class PublicSalon {
     required this.workDays,
     required this.services,
     required this.professionals,
+    this.reminderDays = const [],
   });
 
   factory PublicSalon.fromJson(Map<String, dynamic> j) => PublicSalon(
@@ -91,12 +93,16 @@ class PublicSalon {
         workDays: (j['workDays'] as String).split(',').where((s) => s.isNotEmpty).map(int.parse).toSet(),
         services: (j['services'] as List).map((e) => PublicService.fromJson(e as Map<String, dynamic>)).toList(),
         professionals: (j['professionals'] as List).map((e) => Ref.fromJson(e as Map<String, dynamic>)).toList(),
+        reminderDays: _ints(j['reminderDays']),
       );
 
   final String name;
   final String slug;
   final String? phone;
   final String? address;
+
+  /// Dias antes do horário em que o app lembra o cliente de confirmar (vazio = salão desligou).
+  final List<int> reminderDays;
 
   /// Dias ISO (1 = segunda ... 7 = domingo) — igual a [DateTime.weekday].
   final Set<int> workDays;
@@ -117,6 +123,8 @@ class Booking {
     required this.price,
     required this.customerName,
     required this.cancelable,
+    this.confirmable = false,
+    this.reminderDays = const [],
   });
 
   factory Booking.fromJson(Map<String, dynamic> j) => Booking(
@@ -131,6 +139,8 @@ class Booking {
         price: _num(j['price']),
         customerName: j['customerName'] as String,
         cancelable: j['cancelable'] as bool,
+        confirmable: j['confirmable'] as bool? ?? false,
+        reminderDays: _ints(j['reminderDays']),
       );
 
   final String token;
@@ -146,6 +156,12 @@ class Booking {
 
   /// Cliente ainda pode cancelar ou remarcar sozinho (até 2h antes).
   final bool cancelable;
+
+  /// Falta o cliente confirmar presença (botão "Confirmar presença").
+  final bool confirmable;
+
+  /// Dias antes do horário em que o app lembra de confirmar (ajuste do salão; vazio = desligado).
+  final List<int> reminderDays;
 
   /// Assinatura do que importa para o cliente: muda se o salão remarcar, trocar o profissional ou cancelar.
   String get signature => '${startAt.toIso8601String()}|$professionalId|${status.name}';
@@ -217,6 +233,7 @@ class Salon {
     this.address,
     required this.hours,
     required this.slotMinutes,
+    this.reminderMode = ReminderMode.oneDay,
   });
 
   factory Salon.fromJson(Map<String, dynamic> j) => Salon(
@@ -226,6 +243,7 @@ class Salon {
         address: j['address'] as String?,
         hours: (j['hours'] as List).map((e) => DayHours.fromJson(e as Map<String, dynamic>)).toList(),
         slotMinutes: j['slotMinutes'] as int,
+        reminderMode: ReminderMode.parse(j['reminderMode'] as String?),
       );
 
   String name;
@@ -236,8 +254,10 @@ class Salon {
   /// Somente os dias em que o salão abre, ordenados.
   List<DayHours> hours;
   int slotMinutes;
+  ReminderMode reminderMode;
 
   Map<String, dynamic> toJson() => {
+        'reminderMode': reminderMode.api,
         'name': name,
         'phone': phone,
         'address': address,
@@ -364,6 +384,8 @@ class Appointment {
     this.notes,
     this.serviceNotes,
     required this.online,
+    this.customerConfirmed = false,
+    this.reminderSent = false,
   });
 
   factory Appointment.fromJson(Map<String, dynamic> j) => Appointment(
@@ -381,6 +403,8 @@ class Appointment {
         notes: j['notes'] as String?,
         serviceNotes: j['serviceNotes'] as String?,
         online: j['source'] == 'ONLINE',
+        customerConfirmed: j['customerConfirmedAt'] != null,
+        reminderSent: j['reminderSentAt'] != null,
       );
 
   final int id;
@@ -399,6 +423,12 @@ class Appointment {
   /// Anotações internas do atendimento (tinta usada, corte feito...). Só a equipe vê.
   final String? serviceNotes;
   final bool online;
+
+  /// O próprio cliente confirmou pelo lembrete (link ou app).
+  final bool customerConfirmed;
+
+  /// O salão mandou o lembrete pelo WhatsApp.
+  final bool reminderSent;
 }
 
 class Expense {
@@ -545,7 +575,7 @@ class AppNotification {
 
   final int id;
 
-  /// BOOKED, CANCELED ou RESCHEDULED.
+  /// BOOKED, CANCELED, RESCHEDULED, CONFIRMED, REMINDERS ou STAFF_REMINDER.
   final String type;
   final String title;
   final String message;
@@ -576,6 +606,7 @@ class PlanInfo {
     required this.customers,
     required this.contactWhatsapp,
     required this.contactEmail,
+    this.photos = (0, 0),
   });
 
   factory PlanInfo.fromJson(Map<String, dynamic> j) {
@@ -588,6 +619,7 @@ class PlanInfo {
       customers: usage(j['customers']),
       contactWhatsapp: j['contactWhatsapp'] as String? ?? '',
       contactEmail: j['contactEmail'] as String? ?? '',
+      photos: j['photos'] == null ? (0, 0) : usage(j['photos']),
     );
   }
 
@@ -602,6 +634,193 @@ class PlanInfo {
   final String contactWhatsapp;
   final String contactEmail;
 
+  /// Fotos do portfólio (usadas, máximo).
+  final (int, int) photos;
+
   bool get expired => status == 'EXPIRED';
   bool get trial => status == 'TRIAL';
+}
+
+// ---------- Lembretes ----------
+
+/// Lembrete para o cliente confirmar o horário (ajuste do salão).
+enum ReminderMode {
+  off('OFF', 'Desligado'),
+  oneDay('ONE_DAY', '1 dia antes'),
+  twoDays('TWO_DAYS', '2 dias antes'),
+  both('BOTH', '2 dias e 1 dia antes');
+
+  const ReminderMode(this.api, this.label);
+
+  final String api;
+  final String label;
+
+  static ReminderMode parse(String? value) => values.firstWhere((m) => m.api == value, orElse: () => oneDay);
+}
+
+/// Cliente de amanhã/depois de amanhã para lembrar pelo WhatsApp.
+class ReminderItem {
+  const ReminderItem({
+    required this.appointmentId,
+    required this.daysBefore,
+    required this.startAt,
+    required this.status,
+    required this.customerName,
+    required this.customerPhone,
+    required this.serviceName,
+    required this.professionalName,
+    required this.customerConfirmed,
+    required this.reminderSent,
+    required this.message,
+    required this.whatsappUrl,
+  });
+
+  factory ReminderItem.fromJson(Map<String, dynamic> j) => ReminderItem(
+        appointmentId: j['appointmentId'] as int,
+        daysBefore: j['daysBefore'] as int,
+        startAt: _date(j['startAt']),
+        status: AppointmentStatus.parse(j['status'] as String),
+        customerName: j['customerName'] as String,
+        customerPhone: j['customerPhone'] as String,
+        serviceName: j['serviceName'] as String,
+        professionalName: j['professionalName'] as String,
+        customerConfirmed: j['customerConfirmed'] as bool,
+        reminderSent: j['reminderSentAt'] != null,
+        message: j['message'] as String,
+        whatsappUrl: j['whatsappUrl'] as String,
+      );
+
+  final int appointmentId;
+  final int daysBefore;
+  final DateTime startAt;
+  final AppointmentStatus status;
+  final String customerName;
+  final String customerPhone;
+  final String serviceName;
+  final String professionalName;
+  final bool customerConfirmed;
+  final bool reminderSent;
+  final String message;
+  final String whatsappUrl;
+}
+
+/// Regra de lembrete do profissional: "N dias antes às HH:mm" ou "X minutos antes".
+class StaffReminderRule {
+  const StaffReminderRule.daysBefore(int days, String time)
+      : daysBefore = days,
+        atTime = time,
+        minutesBefore = null;
+
+  const StaffReminderRule.minutesBefore(int minutes)
+      : minutesBefore = minutes,
+        daysBefore = null,
+        atTime = null;
+
+  factory StaffReminderRule.fromJson(Map<String, dynamic> j) => j['minutesBefore'] != null
+      ? StaffReminderRule.minutesBefore(j['minutesBefore'] as int)
+      : StaffReminderRule.daysBefore(j['daysBefore'] as int, (j['atTime'] as String).substring(0, 5));
+
+  final int? daysBefore;
+
+  /// "HH:mm"
+  final String? atTime;
+  final int? minutesBefore;
+
+  bool get relative => minutesBefore != null;
+
+  String get label {
+    final m = minutesBefore;
+    if (m != null) {
+      if (m < 60) return '$m minutos antes';
+      return m % 60 == 0 ? '${m ~/ 60} h antes' : '${m ~/ 60} h ${m % 60} min antes';
+    }
+    final day = switch (daysBefore) { 0 => 'No dia', 1 => '1 dia antes', _ => '$daysBefore dias antes' };
+    return '$day, às $atTime';
+  }
+
+  Map<String, dynamic> toJson() => {'daysBefore': daysBefore, 'atTime': atTime, 'minutesBefore': minutesBefore};
+}
+
+class StaffReminderSettings {
+  StaffReminderSettings({this.professionalId, required this.rules});
+
+  factory StaffReminderSettings.fromJson(Map<String, dynamic> j) => StaffReminderSettings(
+        professionalId: j['professionalId'] as int?,
+        rules: (j['rules'] as List).map((e) => StaffReminderRule.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+
+  /// Agenda acompanhada (nulo = todos os profissionais).
+  int? professionalId;
+  List<StaffReminderRule> rules;
+
+  Map<String, dynamic> toJson() => {
+        'professionalId': professionalId,
+        'rules': [for (final r in rules) r.toJson()],
+      };
+}
+
+/// Próximo lembrete de atendimento do usuário (para agendar a notificação no aparelho).
+class UpcomingReminder {
+  const UpcomingReminder({
+    required this.key,
+    required this.appointmentId,
+    required this.remindAt,
+    required this.title,
+    required this.message,
+  });
+
+  factory UpcomingReminder.fromJson(Map<String, dynamic> j) => UpcomingReminder(
+        key: j['key'] as String,
+        appointmentId: j['appointmentId'] as int,
+        remindAt: _date(j['remindAt']),
+        title: j['title'] as String,
+        message: j['message'] as String,
+      );
+
+  final String key;
+  final int appointmentId;
+  final DateTime remindAt;
+  final String title;
+  final String message;
+}
+
+// ---------- Portfólio ----------
+
+class Photo {
+  const Photo({
+    required this.id,
+    required this.url,
+    required this.thumbUrl,
+    this.caption,
+    required this.width,
+    required this.height,
+    this.serviceId,
+    this.serviceName,
+    this.professionalId,
+    this.professionalName,
+  });
+
+  factory Photo.fromJson(Map<String, dynamic> j) => Photo(
+        id: j['id'] as int,
+        url: j['url'] as String,
+        thumbUrl: j['thumbUrl'] as String,
+        caption: j['caption'] as String?,
+        width: j['width'] as int,
+        height: j['height'] as int,
+        serviceId: j['serviceId'] as int?,
+        serviceName: j['serviceName'] as String?,
+        professionalId: j['professionalId'] as int?,
+        professionalName: j['professionalName'] as String?,
+      );
+
+  final int id;
+  final String url;
+  final String thumbUrl;
+  final String? caption;
+  final int width;
+  final int height;
+  final int? serviceId;
+  final String? serviceName;
+  final int? professionalId;
+  final String? professionalName;
 }

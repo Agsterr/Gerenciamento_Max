@@ -59,20 +59,33 @@ class ApiClient {
 
   Future<dynamic> delete(String path) => _send('DELETE', path);
 
-  Future<dynamic> _send(String method, String path, [Object? body]) async {
+  /// Envio de arquivo (multipart/form-data), ex.: fotos do portfólio.
+  Future<dynamic> upload(String path,
+      {required List<int> bytes, required String filename, String field = 'file', Map<String, String> fields = const {}}) {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'))
+      ..fields.addAll(fields)
+      ..files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
+    return _execute(request, timeout: const Duration(seconds: 90));
+  }
+
+  Future<dynamic> _send(String method, String path, [Object? body]) {
     final request = http.Request(method, Uri.parse('$baseUrl$path'));
-    final jwt = token?.call();
-    if (jwt != null) request.headers['Authorization'] = 'Bearer $jwt';
-    request.headers['Accept'] = 'application/json';
-    request.headers['X-App-Channel'] = AppConfig.apiChannel;
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
     }
+    return _execute(request);
+  }
+
+  Future<dynamic> _execute(http.BaseRequest request, {Duration timeout = _timeout}) async {
+    final jwt = token?.call();
+    if (jwt != null) request.headers['Authorization'] = 'Bearer $jwt';
+    request.headers['Accept'] = 'application/json';
+    request.headers['X-App-Channel'] = AppConfig.apiChannel;
 
     final http.Response res;
     try {
-      res = await http.Response.fromStream(await _http.send(request).timeout(_timeout));
+      res = await http.Response.fromStream(await _http.send(request).timeout(timeout));
     } on TimeoutException {
       throw ApiException(0, 'O servidor demorou para responder. Tente novamente.');
     } on SocketException {
