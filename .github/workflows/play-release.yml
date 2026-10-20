@@ -1,7 +1,7 @@
-name: Play Store (teste interno)
+name: Play Store
 
 # push na main mexendo em mobile/** → builda o .aab do canal "play" de cada app e envia para a faixa
-# de teste interno da Google Play. Promover para produção é no Play Console (um clique).
+# do teste fechado (Alpha, com os testadores) da Google Play. Faixa: input manual > variável PLAY_TRACK > alpha.
 # Pré-requisitos (uma vez, no Play Console): ver docs/PLAY_STORE.md.
 on:
   push:
@@ -20,7 +20,7 @@ on:
       track:
         description: "Faixa da Play"
         type: choice
-        default: internal
+        default: alpha
         options: [internal, alpha, beta, production]
       status:
         description: "auto = variável PLAY_RELEASE_STATUS (padrão draft). draft até a 1ª aprovação, depois completed"
@@ -40,7 +40,7 @@ env:
   SITE_URL: https://salaomax.focodev.com.br
   # Variável do repositório PLAY_RELEASE_STATUS: deixe "draft" até a 1ª versão ser aprovada, depois "completed".
   RELEASE_STATUS: ${{ (github.event.inputs.status != '' && github.event.inputs.status != 'auto') && github.event.inputs.status || vars.PLAY_RELEASE_STATUS || 'draft' }}
-  TRACK: ${{ github.event.inputs.track || 'internal' }}
+  TRACK: ${{ github.event.inputs.track || vars.PLAY_TRACK || 'alpha' }}
 
 jobs:
   release:
