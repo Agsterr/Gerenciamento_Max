@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../session.dart';
+import '../staff_reminders.dart';
 import 'agenda_screen.dart';
 import 'catalog_screen.dart';
 import 'customers_screen.dart';
@@ -18,6 +19,13 @@ class Shell extends StatefulWidget {
 
 class _ShellState extends State<Shell> {
   int _tab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // lembretes de atendimento do usuário agendados no celular (atualiza a cada abertura)
+    syncStaffReminders(widget.session.api);
+  }
 
   @override
   Widget build(BuildContext context) {

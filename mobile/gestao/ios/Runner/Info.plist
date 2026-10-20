@@ -26,6 +26,10 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Para escolher fotos dos seus trabalhos e mostrar no portfólio do salão.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Para tirar fotos dos seus trabalhos e mostrar no portfólio do salão.</string>
 		<key>NSAppTransportSecurity</key>
 		<dict>
 			<!-- Só libera http para rede local (desenvolvimento). Produção usa HTTPS. -->

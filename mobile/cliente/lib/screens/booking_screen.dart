@@ -56,6 +56,18 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
+  Future<void> _confirm() async {
+    try {
+      final b = Booking.fromJson(await widget.api.post('$_path/confirm') as Map<String, dynamic>);
+      if (mounted) {
+        setState(() => _booking = b);
+        showMessage(context, 'Presença confirmada. O salão já foi avisado!');
+      }
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
   Future<void> _reschedule() async {
     final updated = await showRescheduleSheet(context, api: widget.api, slug: widget.slug, booking: _booking!);
     if (updated != null && mounted) {
@@ -115,8 +127,28 @@ class _BookingScreenState extends State<BookingScreen> {
               child: Column(children: [
                 _Ticket(booking: b, salonName: widget.salonName, code: widget.token),
                 const SizedBox(height: 20),
+                if (b.confirmable) ...[
+                  GradientButton(label: 'Confirmar presença', icon: Icons.check_circle_outline_rounded, onPressed: _confirm),
+                  const SizedBox(height: 10),
+                ] else if (b.status == AppointmentStatus.confirmed) ...[
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    const Icon(Icons.verified_rounded, color: Brand.success),
+                    const SizedBox(width: 6),
+                    Text('Presença confirmada', style: text.titleSmall?.copyWith(color: Brand.success)),
+                  ]),
+                  const SizedBox(height: 14),
+                ],
                 if (b.cancelable) ...[
-                  GradientButton(label: 'Remarcar horário', icon: Icons.event_repeat_rounded, onPressed: _reschedule),
+                  b.confirmable
+                      ? SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _reschedule,
+                            icon: const Icon(Icons.event_repeat_rounded),
+                            label: const Text('Remarcar horário'),
+                          ),
+                        )
+                      : GradientButton(label: 'Remarcar horário', icon: Icons.event_repeat_rounded, onPressed: _reschedule),
                   const SizedBox(height: 10),
                 ],
                 if (b.cancelable)

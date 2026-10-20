@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
+import '../staff_reminders.dart';
 import 'appointment_sheets.dart';
 import 'finish_sheet.dart';
 import 'new_appointment_sheet.dart';
@@ -77,6 +78,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     if (withUnread) {
       _loadUnread();
       _loadPlan();
+      syncStaffReminders(_api);
     }
     setState(() => _error = null);
     try {
@@ -432,6 +434,11 @@ class _TimelineItem extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(a.professional.name, style: text.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
                     const Spacer(),
+                    if (a.customerConfirmed)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 6),
+                        child: Pill('confirmou', icon: Icons.verified_rounded, color: Color(0xFFDCFCE7), textColor: Color(0xFF047857)),
+                      ),
                     if (a.online) const Pill('online', icon: Icons.smartphone_rounded, color: Color(0xFFEDE9FE), textColor: Color(0xFF6D28D9)),
                     if (a.realMinutes != null) ...[
                       const SizedBox(width: 6),

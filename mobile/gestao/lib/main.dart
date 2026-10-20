@@ -11,6 +11,7 @@ import 'screens/shell.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR');
+  await LocalReminders.instance.init();
   final session = Session();
   session.restore();
   runApp(GestaoApp(session: session, updates: AppUpdateService(app: 'gestao')));

@@ -4,6 +4,8 @@ library;
 export 'src/api_client.dart';
 export 'src/config.dart';
 export 'src/format.dart';
+export 'src/gallery.dart';
+export 'src/local_reminders.dart';
 export 'src/models.dart';
 export 'src/password_field.dart';
 export 'src/theme.dart';
