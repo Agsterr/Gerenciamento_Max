@@ -37,7 +37,7 @@ void main() {
 
     test('avisa 1 dia e 2 dias antes, às 10h', () {
       final list = confirmReminders([(_saved, _booking(startAt: DateTime(2026, 10, 23, 14)))], now: now);
-      expect(list.map((r) => r.at), [DateTime(2026, 10, 21, 10), DateTime(2026, 10, 22, 10)]);
+      expect(list.map((r) => r.at), [DateTime(2026, 10, 22, 10), DateTime(2026, 10, 21, 10)]);
       expect(list.first.title, 'Seu horário é amanhã');
       expect(list.first.body, contains('Corte às 14:00 · Studio Bella'));
       expect(list.first.payload, 'bella/tok123');
