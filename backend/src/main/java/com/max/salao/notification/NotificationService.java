@@ -43,6 +43,8 @@ public class NotificationService {
             case BOOKED -> "Novo agendamento online";
             case CANCELED -> "Agendamento cancelado pelo cliente";
             case RESCHEDULED -> "Cliente remarcou o horário";
+            case CONFIRMED -> "Cliente confirmou presença";
+            case REMINDERS -> throw new IllegalArgumentException("use notifyReminders");
         };
         Notification n = new Notification();
         n.setType(type);
@@ -50,6 +52,24 @@ public class NotificationService {
         n.setTitle(title);
         n.setMessage(describe(a));
         repository.save(n);
+    }
+
+    /**
+     * Aviso diário (job de lembretes): quantos clientes o salão tem para lembrar. Um por dia, no máximo.
+     * Retorna false se o aviso de hoje já existia.
+     */
+    @Transactional
+    public boolean notifyReminders(long count, String when) {
+        LocalDateTime today = LocalDateTime.now(clock).toLocalDate().atStartOfDay();
+        if (count == 0 || repository.existsByTypeAndCreatedAtGreaterThanEqual(Notification.Type.REMINDERS, today)) {
+            return false;
+        }
+        Notification n = new Notification();
+        n.setType(Notification.Type.REMINDERS);
+        n.setTitle(count == 1 ? "1 cliente para lembrar" : count + " clientes para lembrar");
+        n.setMessage("Horários " + when + " ainda sem confirmação. Abra Lembretes e mande a mensagem pelo WhatsApp.");
+        repository.save(n);
+        return true;
     }
 
     static String describe(Appointment a) {

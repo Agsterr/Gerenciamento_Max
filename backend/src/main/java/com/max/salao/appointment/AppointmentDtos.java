@@ -59,7 +59,9 @@ public final class AppointmentDtos {
             LocalDateTime finishedAt,
             String notes,
             String serviceNotes,
-            Appointment.Source source) {
+            Appointment.Source source,
+            LocalDateTime reminderSentAt,
+            LocalDateTime customerConfirmedAt) {
 
         public static AppointmentResponse from(Appointment a) {
             return new AppointmentResponse(a.getId(), a.getStartAt(), a.getEndAt(), a.getStatus(),
@@ -67,7 +69,8 @@ public final class AppointmentDtos {
                     new Ref(a.getProfessional().getId(), a.getProfessional().getName()),
                     new Ref(a.getService().getId(), a.getService().getName()),
                     a.plannedMinutes(), a.realMinutes(), a.getPrice(), a.getCommissionAmount(),
-                    a.getStartedAt(), a.getFinishedAt(), a.getNotes(), a.getServiceNotes(), a.getSource());
+                    a.getStartedAt(), a.getFinishedAt(), a.getNotes(), a.getServiceNotes(), a.getSource(),
+                    a.getReminderSentAt(), a.getCustomerConfirmedAt());
         }
     }
 }

@@ -8,7 +8,7 @@ public class PlanController {
 
     /** Condições do teste grátis, para a página de cadastro. */
     public record TrialTerms(int trialDays, int maxProfessionals, int maxServices, int maxCustomers,
-                             String contactWhatsapp, String contactEmail) {
+                             String contactWhatsapp, String contactEmail, int maxPhotos) {
     }
 
     private final PlanService plans;
@@ -29,6 +29,6 @@ public class PlanController {
     public TrialTerms terms() {
         PlatformSettings.Values v = settings.get();
         return new TrialTerms(v.trialDays(), v.maxProfessionals(), v.maxServices(), v.maxCustomers(),
-                v.contactWhatsapp(), v.contactEmail());
+                v.contactWhatsapp(), v.contactEmail(), v.maxPhotos());
     }
 }

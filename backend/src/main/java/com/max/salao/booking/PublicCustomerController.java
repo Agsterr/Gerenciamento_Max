@@ -56,8 +56,9 @@ public class PublicCustomerController {
         try {
             for (SalonRef salon : salons) {
                 TenantContext.set(salon.id());
+                List<Integer> reminderDays = service.salon().getReminderMode().days();
                 service.lookup(req.name(), req.phone()).forEach(a -> result.add(
-                        new SalonBooking(salon.slug(), salon.name(), BookingResponse.of(a, service.canChange(a)))));
+                        new SalonBooking(salon.slug(), salon.name(), BookingResponse.of(a, service, reminderDays))));
             }
         } finally {
             TenantContext.clear();

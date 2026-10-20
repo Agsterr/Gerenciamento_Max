@@ -35,7 +35,8 @@ public class PlanInterceptor implements HandlerInterceptor {
             }
             return true;
         }
-        boolean alwaysAllowed = path.startsWith("/api/me/") || path.equals("/api/notifications/read") || path.endsWith("/cancel");
+        boolean alwaysAllowed = path.startsWith("/api/me/") || path.equals("/api/notifications/read") || path.endsWith("/cancel")
+                || path.startsWith("/api/reminders/");
         if (!alwaysAllowed) {
             plans.requireActive(false);
         }

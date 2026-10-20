@@ -41,6 +41,9 @@ public class SalonService {
         salon.getHours().clear();
         salon.getHours().addAll(validHours(req.hours()));
         salon.setSlotMinutes(req.slotMinutes());
+        if (req.reminderMode() != null) {
+            salon.setReminderMode(req.reminderMode());
+        }
         return salons.save(salon);
     }
 

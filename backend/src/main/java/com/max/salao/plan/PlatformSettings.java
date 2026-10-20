@@ -14,11 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PlatformSettings {
 
+    /** maxPhotos: fotos do portfólio no teste grátis; maxPhotosPaid: no plano pago. */
     public record Values(int trialDays, int maxProfessionals, int maxServices, int maxCustomers,
-                         String contactWhatsapp, String contactEmail) {
+                         String contactWhatsapp, String contactEmail, int maxPhotos, int maxPhotosPaid) {
     }
 
-    static final Values DEFAULTS = new Values(14, 2, 10, 50, "", "");
+    static final Values DEFAULTS = new Values(14, 2, 10, 50, "", "", 20, 300);
 
     private final JdbcTemplate jdbc;
 
@@ -38,7 +39,9 @@ public class PlatformSettings {
                 integer(m, "max_services", DEFAULTS.maxServices()),
                 integer(m, "max_customers", DEFAULTS.maxCustomers()),
                 m.getOrDefault("contact_whatsapp", DEFAULTS.contactWhatsapp()),
-                m.getOrDefault("contact_email", DEFAULTS.contactEmail()));
+                m.getOrDefault("contact_email", DEFAULTS.contactEmail()),
+                integer(m, "max_photos", DEFAULTS.maxPhotos()),
+                integer(m, "max_photos_paid", DEFAULTS.maxPhotosPaid()));
     }
 
     @Transactional
@@ -49,6 +52,8 @@ public class PlatformSettings {
         put("max_customers", v.maxCustomers());
         put("contact_whatsapp", v.contactWhatsapp() == null ? "" : v.contactWhatsapp().replaceAll("\\D", ""));
         put("contact_email", v.contactEmail() == null ? "" : v.contactEmail().trim());
+        put("max_photos", v.maxPhotos());
+        put("max_photos_paid", v.maxPhotosPaid());
         return get();
     }
 
