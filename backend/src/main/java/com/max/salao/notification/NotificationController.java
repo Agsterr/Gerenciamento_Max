@@ -2,6 +2,8 @@ package com.max.salao.notification;
 
 import com.max.salao.notification.NotificationService.Inbox;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,13 +22,13 @@ public class NotificationController {
     }
 
     @GetMapping
-    public Inbox inbox() {
-        return service.inbox();
+    public Inbox inbox(@AuthenticationPrincipal Jwt jwt) {
+        return service.inbox(Long.valueOf(jwt.getSubject()));
     }
 
     @PostMapping("/read")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void markAllRead() {
-        service.markAllRead();
+    public void markAllRead(@AuthenticationPrincipal Jwt jwt) {
+        service.markAllRead(Long.valueOf(jwt.getSubject()));
     }
 }

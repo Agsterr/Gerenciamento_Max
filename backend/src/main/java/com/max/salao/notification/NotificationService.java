@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 
 import com.max.salao.appointment.Appointment;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,7 +45,7 @@ public class NotificationService {
             case CANCELED -> "Agendamento cancelado pelo cliente";
             case RESCHEDULED -> "Cliente remarcou o horário";
             case CONFIRMED -> "Cliente confirmou presença";
-            case REMINDERS -> throw new IllegalArgumentException("use notifyReminders");
+            case REMINDERS, STAFF_REMINDER -> throw new IllegalArgumentException("aviso sem título fixo");
         };
         Notification n = new Notification();
         n.setType(type);
@@ -72,19 +73,36 @@ public class NotificationService {
         return true;
     }
 
-    static String describe(Appointment a) {
+    /** Lembrete de atendimento para um usuário do salão; a chave impede repetir o mesmo aviso. */
+    @Transactional
+    public boolean notifyUser(Long userId, String dedupKey, Appointment a, String title) {
+        if (repository.existsByDedupKey(dedupKey)) {
+            return false;
+        }
+        Notification n = new Notification();
+        n.setType(Notification.Type.STAFF_REMINDER);
+        n.setUserId(userId);
+        n.setDedupKey(dedupKey);
+        n.setAppointmentId(a.getId());
+        n.setTitle(title);
+        n.setMessage(describe(a));
+        repository.save(n);
+        return true;
+    }
+
+    public static String describe(Appointment a) {
         return "%s · %s · %s com %s".formatted(a.getCustomer().getName(), a.getService().getName(),
                 WHEN.format(a.getStartAt()), a.getProfessional().getName());
     }
 
     @Transactional(readOnly = true)
-    public Inbox inbox() {
-        return new Inbox(repository.countByReadAtIsNull(),
-                repository.findTop50ByOrderByCreatedAtDesc().stream().map(NotificationResponse::from).toList());
+    public Inbox inbox(Long userId) {
+        return new Inbox(repository.countUnread(userId),
+                repository.findVisible(userId, PageRequest.of(0, 50)).stream().map(NotificationResponse::from).toList());
     }
 
     @Transactional
-    public void markAllRead() {
-        repository.markAllRead(LocalDateTime.now(clock));
+    public void markAllRead(Long userId) {
+        repository.markAllRead(userId, LocalDateTime.now(clock));
     }
 }

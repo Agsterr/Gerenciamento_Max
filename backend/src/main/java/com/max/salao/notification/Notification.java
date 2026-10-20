@@ -16,7 +16,7 @@ import lombok.Setter;
 @Entity
 public class Notification extends TenantEntity {
 
-    public enum Type { BOOKED, CANCELED, RESCHEDULED, CONFIRMED, REMINDERS }
+    public enum Type { BOOKED, CANCELED, RESCHEDULED, CONFIRMED, REMINDERS, STAFF_REMINDER }
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -34,4 +34,10 @@ public class Notification extends TenantEntity {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime readAt;
+
+    /** Aviso só para este usuário (lembrete do profissional); nulo = toda a equipe. */
+    private Long userId;
+
+    /** Evita que o job repita o mesmo aviso. */
+    private String dedupKey;
 }
