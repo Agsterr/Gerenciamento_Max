@@ -510,3 +510,11 @@ Future<bool> confirmDialog(BuildContext context, String message, {String confirm
   );
   return ok ?? false;
 }
+
+/// Espaço no rodapé de janelas inferiores: teclado aberto ou, sem ele, a barra de navegação do Android
+/// (o app desenha atrás dela), para o botão principal nunca ficar coberto.
+double sheetBottomInset(BuildContext context) {
+  final insets = MediaQuery.viewInsetsOf(context).bottom;
+  final nav = MediaQuery.viewPaddingOf(context).bottom;
+  return insets > nav ? insets : nav;
+}

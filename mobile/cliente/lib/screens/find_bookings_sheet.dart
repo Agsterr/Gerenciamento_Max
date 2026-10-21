@@ -92,7 +92,7 @@ class _FindBookingsSheetState extends State<_FindBookingsSheet> {
     final found = _found;
     final signIn = widget.slug == null;
     return Padding(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.viewInsetsOf(context).bottom + MediaQuery.viewPaddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + sheetBottomInset(context)),
       child: SingleChildScrollView(
         child: Form(
           key: _form,

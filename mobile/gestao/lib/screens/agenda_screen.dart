@@ -148,7 +148,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                 _act(a, action);
               },
             );
-        return SingleChildScrollView(child: Wrap(children: [
+        return SafeArea(top: false, child: SingleChildScrollView(child: Wrap(children: [
           ListTile(
             title: Text('${a.customer.name} · ${a.service.name}'),
             subtitle: Text('${formatTime(a.startAt)}–${formatTime(a.endAt)} com ${a.professional.name}'),
@@ -172,7 +172,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
             item(Icons.edit_note_rounded, a.serviceNotes == null ? 'Anotações (tinta, corte...)' : 'Editar anotações', 'notes'),
           if (open) item(Icons.person_off_outlined, 'Faltou', 'no-show'),
           if (open) item(Icons.close, 'Cancelar', 'cancel'),
-        ]));
+        ])));
       },
     );
   }

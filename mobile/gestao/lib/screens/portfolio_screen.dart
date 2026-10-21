@@ -118,7 +118,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (context) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + sheetBottomInset(context)),
         child: StatefulBuilder(
           builder: (context, setSheet) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('Editar foto', style: Theme.of(context).textTheme.titleLarge),
@@ -166,7 +166,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
-      builder: (context) => Column(mainAxisSize: MainAxisSize.min, children: [
+      builder: (context) => SafeArea(top: false, child: Column(mainAxisSize: MainAxisSize.min, children: [
         ListTile(
           leading: const Icon(Icons.fullscreen_rounded),
           title: const Text('Ver em tela cheia'),
@@ -209,7 +209,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
             _delete(p);
           },
         ),
-      ]),
+      ])),
     );
   }
 
@@ -226,7 +226,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
               onPressed: () => showModalBottomSheet<void>(
                 context: context,
                 useSafeArea: true,
-                builder: (context) => Column(mainAxisSize: MainAxisSize.min, children: [
+                builder: (context) => SafeArea(top: false, child: Column(mainAxisSize: MainAxisSize.min, children: [
                   ListTile(
                     leading: const Icon(Icons.photo_library_outlined),
                     title: const Text('Escolher da galeria'),
@@ -243,7 +243,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
                       _add(ImageSource.camera);
                     },
                   ),
-                ]),
+                ])),
               ),
               icon: const Icon(Icons.add_a_photo_outlined),
               label: const Text('Adicionar fotos'),

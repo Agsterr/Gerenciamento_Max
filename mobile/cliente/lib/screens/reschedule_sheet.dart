@@ -106,7 +106,7 @@ class _RescheduleSheetState extends State<_RescheduleSheet> {
     final text = Theme.of(context).textTheme;
     if (salon == null) return const SizedBox(height: 240, child: Center(child: CircularProgressIndicator()));
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.viewPaddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + sheetBottomInset(context)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('Remarcar horário', style: text.titleLarge),
         Text('${widget.booking.serviceName} · hoje ${formatShortDateTime(widget.booking.startAt)}',

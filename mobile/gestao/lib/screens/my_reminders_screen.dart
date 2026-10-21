@@ -78,7 +78,7 @@ class _MyRemindersScreenState extends State<MyRemindersScreen> {
       useSafeArea: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheet) => Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + sheetBottomInset(context)),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('Novo lembrete', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),

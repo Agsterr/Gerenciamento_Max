@@ -135,7 +135,7 @@ class _NewAppointmentSheetState extends State<_NewAppointmentSheet> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Padding(
-      padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.viewInsetsOf(context).bottom + 16),
+      padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: sheetBottomInset(context) + 16),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

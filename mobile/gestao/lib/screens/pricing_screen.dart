@@ -113,7 +113,7 @@ class _PricingScreenState extends State<PricingScreen> {
         final target = (_pricing!.settings['targetMarginPercent'] as num).toDouble();
         final color = r.profit < 0 ? const Color(0xFFBE123C) : (r.margin < target ? const Color(0xFFB45309) : const Color(0xFF15803D));
         return Padding(
-          padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+          padding: EdgeInsets.fromLTRB(20, 0, 20, sheetBottomInset(context) + 20),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('Simular preço · ${p.name}', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),

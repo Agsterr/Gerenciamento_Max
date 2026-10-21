@@ -87,7 +87,7 @@ class _FinishSheetState extends State<_FinishSheet> {
   Widget build(BuildContext context) {
     final a = widget.appointment;
     return Padding(
-      padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.viewInsetsOf(context).bottom + 16),
+      padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: sheetBottomInset(context) + 16),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

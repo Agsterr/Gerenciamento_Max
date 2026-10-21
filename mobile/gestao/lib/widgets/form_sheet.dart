@@ -89,7 +89,7 @@ class _FormSheetState extends State<_FormSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.viewInsetsOf(context).bottom + 16),
+      padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: sheetBottomInset(context) + 16),
       child: Form(
         key: _form,
         child: SingleChildScrollView(

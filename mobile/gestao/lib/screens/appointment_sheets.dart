@@ -72,7 +72,7 @@ class _NotesSheetState extends State<_NotesSheet> {
   Widget build(BuildContext context) {
     final a = widget.appointment;
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.viewInsetsOf(context).bottom + 16),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, sheetBottomInset(context) + 16),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('Anotações', style: Theme.of(context).textTheme.titleLarge),
         Text('${a.customer.name} · ${a.service.name} com ${a.professional.name}'),
@@ -202,7 +202,7 @@ class _RescheduleSheetState extends State<_RescheduleSheet> {
     final a = widget.appointment;
     final text = Theme.of(context).textTheme;
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.viewPaddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + sheetBottomInset(context)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('Remarcar horário', style: text.titleLarge),
         Text('${a.customer.name} · ${a.service.name} · hoje ${formatShortDateTime(a.startAt)}',
