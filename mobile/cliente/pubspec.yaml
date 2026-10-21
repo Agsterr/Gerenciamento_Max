@@ -15,6 +15,7 @@ dependencies:
     path: ../core
   intl: ^0.20.2
   shared_preferences: ^2.5.6
+  workmanager: ^0.10.10
 
 dev_dependencies:
   flutter_test:

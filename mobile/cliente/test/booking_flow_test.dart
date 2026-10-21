@@ -78,6 +78,49 @@ void main() {
     expect(store.bookings.single.token, 'tok123');
     expect(store.phone, '11988887777');
   });
+  testWidgets('aberto pela promoção: serviço escolhido e primeiro dia com horário livre', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    final store = await BookingStore.load();
+    final today = DateTime.now();
+    String iso(DateTime d) => d.toIso8601String().substring(0, 10);
+    final asked = <String>[];
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      httpClient: MockClient((req) async {
+        Object body = const [];
+        if (req.url.path == '/api/public/salons/bella') {
+          body = {
+            'name': 'Studio Bella',
+            'slug': 'bella',
+            'workDays': '1,2,3,4,5,6,7',
+            'services': [
+              {
+                'id': 1, 'name': 'Corte', 'durationMinutes': 60, 'price': 100, 'promoPrice': 80, 'promoName': 'Semana',
+                'promoPercent': 20, 'promoStartsOn': iso(today), 'promoEndsOn': iso(today.add(const Duration(days: 5))),
+              },
+            ],
+            'professionals': [{'id': 7, 'name': 'Ana'}],
+          };
+        } else if (req.url.path.endsWith('/availability')) {
+          final date = req.url.queryParameters['date']!;
+          asked.add(date);
+          // hoje lotado; amanhã tem horário
+          body = asked.length == 1 ? const [] : [{'time': '15:00:00', 'professionalIds': [7]}];
+        }
+        return http.Response(jsonEncode(body), 200, headers: {'content-type': 'application/json; charset=utf-8'});
+      }),
+    );
+
+    await tester.pumpWidget(MaterialApp(home: SalonScreen(slug: 'bella', store: store, api: api, initialServiceId: 1)));
+    await tester.pumpAndSettle();
+    expect(asked.length, 2);
+    expect(find.text('15:00'), findsOneWidget);
+    expect(find.textContaining('por '), findsWidgets);
+  });
+
 }
 
 const _booking = {

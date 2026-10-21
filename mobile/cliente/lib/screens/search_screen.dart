@@ -174,7 +174,17 @@ class _SearchScreenState extends State<SearchScreen> {
                       promotion: p.promotion,
                       salonName: p.salon.name,
                       offers: p.offers,
-                      onTap: () => _open(SalonSummary(name: p.salon.name, slug: p.salon.slug)),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SalonScreen(
+                            slug: p.salon.slug,
+                            store: widget.store,
+                            api: widget.api,
+                            initialServiceId: p.promotion.serviceIds.firstOrNull,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
               ],

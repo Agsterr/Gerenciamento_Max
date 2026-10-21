@@ -3,16 +3,20 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:salao_core/salao_core.dart';
 
+import 'background.dart';
 import 'booking_store.dart';
 import 'confirm_reminders.dart';
+import 'promo_alerts.dart';
 import 'screens/booking_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/salon_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR');
   await LocalReminders.instance.init();
   final store = await BookingStore.load();
+  await scheduleBackgroundChecks();
   runApp(ClienteApp(store: store, api: ApiClient(), updates: AppUpdateService(app: 'cliente')));
 }
 
@@ -46,6 +50,16 @@ class _ClienteAppState extends State<ClienteApp> {
 
   /// Toque em "Seu horário é amanhã": abre o agendamento com o botão Confirmar presença.
   void _openFromNotification() {
+    // "Promoção no salão": abre o salão com o serviço da promoção e os horários livres
+    final promo = LocalReminders.payloadOf(LocalReminders.instance.tapped.value, promoGroup);
+    if (promo != null) {
+      LocalReminders.instance.tapped.value = null;
+      final [slug, service, ...] = '$promo/'.split('/');
+      _navigator.currentState?.push(MaterialPageRoute(
+        builder: (_) => SalonScreen(slug: slug, store: widget.store, api: widget.api, initialServiceId: int.tryParse(service)),
+      ));
+      return;
+    }
     final payload = LocalReminders.payloadOf(LocalReminders.instance.tapped.value, confirmGroup);
     final parts = payload?.split('/');
     if (parts == null || parts.length != 2) return;

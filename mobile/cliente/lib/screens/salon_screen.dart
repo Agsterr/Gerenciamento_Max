@@ -8,9 +8,12 @@ import 'search_screen.dart' show PromoBanner;
 
 /// Agendamento: serviço → profissional → dia/horário → nome e WhatsApp.
 class SalonScreen extends StatefulWidget {
-  const SalonScreen({super.key, required this.slug, required this.store, required this.api});
+  const SalonScreen({super.key, required this.slug, required this.store, required this.api, this.initialServiceId});
 
   final String slug;
+
+  /// Veio de uma promoção: já abre com o serviço escolhido e no primeiro dia com horário livre.
+  final int? initialServiceId;
   final BookingStore store;
   final ApiClient api;
 
@@ -72,6 +75,8 @@ class _SalonScreenState extends State<SalonScreen> {
       });
       _loadPhotos();
       widget.store.rememberSalon(widget.slug, salon.name);
+      final initial = salon.services.where((s) => s.id == widget.initialServiceId).firstOrNull;
+      if (initial != null) _openService(salon, initial);
     } catch (e) {
       setState(() => _error = e.toString());
     }
@@ -94,6 +99,36 @@ class _SalonScreenState extends State<SalonScreen> {
         .where((d) => salon.workDays.contains(d.weekday))
         .take(14)
         .toList();
+  }
+
+  /// Seleciona o serviço e procura o primeiro dia (dentro da promoção, se houver) com horário livre
+  /// que caiba no expediente — o servidor já soma a duração do serviço (ou do pacote) e respeita as pausas.
+  Future<void> _openService(PublicSalon salon, PublicService service) async {
+    setState(() {
+      _service = service;
+      _slots = null;
+    });
+    final days = _days(salon).where((d) {
+      final start = service.promoStartsOn, end = service.promoEndsOn;
+      return start == null || end == null || (!d.isBefore(start) && !d.isAfter(end));
+    }).toList();
+    for (final d in days.isEmpty ? _days(salon) : days) {
+      try {
+        final json = await widget.api.get('$_base/availability?serviceId=${service.id}&date=${isoDate(d)}') as List;
+        if (!mounted) return;
+        if (json.isNotEmpty) {
+          setState(() {
+            _day = d;
+            _slots = json.map((e) => Slot.fromJson(e as Map<String, dynamic>)).toList();
+          });
+          _scrollToEnd();
+          return;
+        }
+      } catch (_) {
+        break;
+      }
+    }
+    if (mounted) _loadSlots();
   }
 
   Future<void> _loadSlots() async {
