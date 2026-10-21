@@ -451,6 +451,62 @@ class SalonFlowIntegrationTest {
     }
 
     @Test
+    void reportSeparatesFixedAndVariableExpensesReworksAndProducts() throws Exception {
+        Tenant salon = register();
+        long pro = id(call(salon, post("/api/professionals"),
+                Map.of("name", "Ana", "commissionPercent", 40, "active", true), status().isCreated()));
+        long service = id(call(salon, post("/api/services"),
+                Map.of("name", "Escova", "durationMinutes", 60, "price", 70, "cost", 8, "active", true),
+                status().isCreated()));
+        long product = id(call(salon, post("/api/products"),
+                Map.of("name", "Esmalte", "costPrice", 10, "salePrice", 15, "markupPercent", 50, "minStock", 1,
+                        "unit", "un", "active", true), status().isCreated()));
+        call(salon, post("/api/products/" + product + "/movements"),
+                Map.of("type", "IN", "quantity", 10, "unitValue", 10), status().isCreated());
+        long customer = id(call(salon, post("/api/customers"), Map.of("name", "Rita", "phone", "11977776666"),
+                status().isCreated()));
+
+        // cliente voltou para refazer: não paga, mas o material e o produto usado contam como custo
+        long redo = id(call(salon, post("/api/appointments"), Map.of("customerId", customer, "professionalId", pro,
+                "serviceId", service, "startAt", day + "T10:00:00"), status().isCreated()));
+        JsonNode finished = call(salon, post("/api/appointments/" + redo + "/finish"), Map.of("rework", true,
+                "usedProducts", new Object[] {Map.of("productId", product, "quantity", 1)}), status().isOk());
+        assertThat(finished.get("price").decimalValue()).isEqualByComparingTo("0");
+        assertThat(finished.get("commissionAmount").decimalValue()).isEqualByComparingTo("0");
+        assertThat(finished.get("rework").asBoolean()).isTrue();
+
+        call(salon, post("/api/products/" + product + "/movements"), Map.of("type", "SALE", "quantity", 2),
+                status().isCreated());
+        LocalDate today = LocalDate.now();
+        call(salon, post("/api/expenses"), Map.of("description", "Aluguel da sala", "category", "Aluguel",
+                "amount", 1500, "date", today.toString()), status().isCreated());
+        call(salon, post("/api/expenses"), Map.of("description", "Café e biscoitos", "category",
+                "Cortesias (café, água, lanches)", "amount", 40, "date", today.toString()), status().isCreated());
+
+        JsonNode s = call(salon, get("/api/reports/summary?from=" + today + "&to=" + day), null, status().isOk());
+        assertThat(s.get("fixedExpenses").decimalValue()).isEqualByComparingTo("1500");
+        assertThat(s.get("variableExpenses").decimalValue()).isEqualByComparingTo("40");
+        assertThat(s.get("fixedByCategory").get("Aluguel").decimalValue()).isEqualByComparingTo("1500");
+        assertThat(s.get("rework").get("count").asLong()).isEqualTo(1);
+        assertThat(s.get("rework").get("totalCost").decimalValue()).isEqualByComparingTo("18"); // 8 material + 10 esmalte
+        assertThat(s.get("averageTicket").decimalValue()).isEqualByComparingTo("0");
+        JsonNode p = s.get("products").get(0);
+        assertThat(p.get("soldQuantity").decimalValue()).isEqualByComparingTo("2");
+        assertThat(p.get("salesProfit").decimalValue()).isEqualByComparingTo("10");
+        assertThat(p.get("usedCost").decimalValue()).isEqualByComparingTo("10");
+        assertThat(p.get("stockValue").decimalValue()).isEqualByComparingTo("70");
+        assertThat(p.get("markupPercent").decimalValue()).isEqualByComparingTo("50");
+
+        // despesas fixas do mês passado viram as deste mês, sem duplicar
+        java.time.YearMonth next = java.time.YearMonth.from(today).plusMonths(1);
+        Map<String, Object> month = Map.of("month", next.toString());
+        assertThat(call(salon, post("/api/expenses/repeat-fixed"), month, status().isOk()).get("created").asInt())
+                .isEqualTo(1);
+        assertThat(call(salon, post("/api/expenses/repeat-fixed"), month, status().isOk()).get("created").asInt())
+                .isEqualTo(0);
+    }
+
+    @Test
     void salonClockFollowsTheSalonTimezone() throws Exception {
         Tenant salon = register();
         assertThat(call(salon, get("/api/salon"), null, status().isOk()).get("timezone").asText())

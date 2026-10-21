@@ -15,6 +15,40 @@ const MOVEMENT_LABEL: Record<MovementType, string> = {
   LOSS: "Perda / ajuste",
 };
 
+/** % de ganho em cima do custo: (venda - custo) / custo. */
+function markupOf(cost: number, price: number) {
+  return cost > 0 ? `${Math.round(((price - cost) / cost) * 1000) / 10}%` : "—";
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Custo ou margem mudou: calcula o preço de venda. Preço mudou: mostra quanto % ele dá em cima do custo.
+ */
+function productPricing(key: string, v: Record<string, unknown>) {
+  const cost = Number(v.costPrice) || 0;
+  const markup = v.markupPercent === "" || v.markupPercent == null ? null : Number(v.markupPercent);
+  if ((key === "costPrice" || key === "markupPercent") && markup != null && cost > 0) {
+    return { ...v, salePrice: round2(cost * (1 + markup / 100)) };
+  }
+  if (key === "salePrice" && cost > 0 && Number(v.salePrice) > 0) {
+    return { ...v, markupPercent: Math.round(((Number(v.salePrice) - cost) / cost) * 1000) / 10 };
+  }
+  return v;
+}
+
+function ProfitPreview({ cost, price }: { cost: number; price: number }) {
+  if (price <= 0) return <p className="text-xs text-zinc-500">Preço 0: produto só para uso nos atendimentos.</p>;
+  const profit = price - cost;
+  return (
+    <div className={`rounded-lg p-3 text-sm ${profit < 0 ? "bg-rose-50 text-rose-800" : "bg-emerald-50 text-emerald-800"}`}>
+      Lucro por unidade: <strong>{formatMoney(profit)}</strong> · {markupOf(cost, price)} em cima do custo
+      {price > 0 && ` · margem de ${Math.round((profit / price) * 100)}% do preço`}
+      {profit < 0 && " — vendendo com prejuízo!"}
+    </div>
+  );
+}
+
 export default function ProductsPage() {
   const [moving, setMoving] = useState<{ product: Product; reload: () => void } | null>(null);
 
@@ -23,15 +57,18 @@ export default function ProductsPage() {
       <CrudPage<Product>
         title="Produtos e estoque"
         path="/api/products"
-        defaults={{ name: "", costPrice: 0, salePrice: 0, minStock: 0, unit: "un", active: true }}
+        defaults={{ name: "", costPrice: 0, markupPercent: "", salePrice: 0, minStock: 0, unit: "un", active: true }}
         fields={[
           { key: "name", label: "Nome", required: true },
           { key: "unit", label: "Unidade (un, ml, g...)", required: true },
-          { key: "costPrice", label: "Custo unitário (R$)", type: "number", step: "0.01", required: true },
+          { key: "costPrice", label: "Preço pago (custo unitário, R$)", type: "number", step: "0.01", required: true },
+          { key: "markupPercent", label: "Quanto quero ganhar (% em cima do custo)", type: "number", step: "0.1", nullable: true, placeholder: "Ex.: 50" },
           { key: "salePrice", label: "Preço de venda (R$, 0 = uso interno)", type: "number", step: "0.01", required: true },
           { key: "minStock", label: "Estoque mínimo (alerta)", type: "number", step: "0.001", required: true },
           { key: "active", label: "Ativo", type: "checkbox" },
         ]}
+        onFieldChange={productPricing}
+        formExtra={(v) => <ProfitPreview cost={Number(v.costPrice) || 0} price={Number(v.salePrice) || 0} />}
         columns={[
           { label: "Produto", render: (p) => <span className="font-medium">{p.name}</span> },
           {
@@ -44,6 +81,11 @@ export default function ProductsPage() {
           },
           { label: "Custo", render: (p) => formatMoney(p.costPrice), className: "hidden sm:table-cell" },
           { label: "Venda", render: (p) => (p.salePrice > 0 ? formatMoney(p.salePrice) : "—"), className: "hidden sm:table-cell" },
+          {
+            label: "Lucro por unidade",
+            className: "hidden md:table-cell",
+            render: (p) => (p.salePrice > 0 ? `${formatMoney(p.salePrice - p.costPrice)} (${markupOf(p.costPrice, p.salePrice)})` : "—"),
+          },
         ]}
         rowActions={(p, reload) => (
           <Button variant="secondary" size="sm" onClick={() => setMoving({ product: p, reload })}>

@@ -129,6 +129,8 @@ export type Product = {
   unit: string;
   active: boolean;
   lowStock: boolean;
+  /** % que o salão quer ganhar em cima do custo (referência do preço). */
+  markupPercent: number | null;
 };
 
 export type MovementType = "IN" | "SALE" | "USE" | "LOSS";
@@ -172,6 +174,8 @@ export type Appointment = {
   reminderSentAt: string | null;
   /** O próprio cliente confirmou pelo link do lembrete. */
   customerConfirmedAt: string | null;
+  /** Refação: cliente voltou para refazer e não pagou. */
+  rework: boolean;
 };
 
 export type Slot = { time: string; professionalIds: number[] };
@@ -182,6 +186,8 @@ export type Expense = {
   category: string;
   amount: number;
   date: string;
+  /** Aluguel, água, luz... (se repetem todo mês). */
+  fixed: boolean;
 };
 
 export type Ranking = {
@@ -216,6 +222,40 @@ export type Summary = {
   byService: Ranking[];
   expensesByCategory: Record<string, number>;
   lowStock: { id: number; name: string; stock: number; minStock: number; unit: string }[];
+  fixedExpenses: number;
+  variableExpenses: number;
+  fixedByCategory: Record<string, number>;
+  variableByCategory: Record<string, number>;
+  rework: {
+    count: number;
+    materialCost: number;
+    productsCost: number;
+    totalCost: number;
+    items: { appointmentId: number; startAt: string; customer: string; service: string; professional: string; cost: number }[];
+  };
+  products: ProductReport[];
+};
+
+export type ProductReport = {
+  id: number;
+  name: string;
+  unit: string;
+  soldQuantity: number;
+  salesRevenue: number;
+  soldCost: number;
+  salesProfit: number;
+  usedQuantity: number;
+  usedCost: number;
+  lostQuantity: number;
+  lostCost: number;
+  purchasedQuantity: number;
+  purchasedCost: number;
+  stock: number;
+  stockValue: number;
+  costPrice: number;
+  salePrice: number;
+  markupPercent: number | null;
+  lowStock: boolean;
 };
 
 export type PublicSalon = {

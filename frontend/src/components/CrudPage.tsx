@@ -15,6 +15,8 @@ export type FieldDef = {
   /** Atalhos de preenchimento para campos de texto. */
   suggestions?: string[];
   hint?: string;
+  /** Número opcional: vazio vai como null (em vez de 0). */
+  nullable?: boolean;
   step?: string;
   required?: boolean;
   placeholder?: string;
@@ -35,6 +37,10 @@ type Props<T extends { id: number }> = {
   toolbar?: React.ReactNode;
   /** Mostra "Fotos deste serviço" no formulário (só para serviços). */
   servicePhotos?: boolean;
+  /** Recalcula campos quando um muda (ex.: preço de venda a partir do custo e da margem). */
+  onFieldChange?: (key: string, next: Record<string, unknown>) => Record<string, unknown>;
+  /** Conteúdo extra no formulário (ex.: resumo do lucro). */
+  formExtra?: (values: Record<string, unknown>) => React.ReactNode;
 };
 
 /** Tela padrão de cadastro: tabela + modal de criar/editar. */
@@ -49,6 +55,8 @@ export function CrudPage<T extends { id: number }>({
   listPath,
   toolbar,
   servicePhotos,
+  onFieldChange,
+  formExtra,
 }: Props<T>) {
   const { user } = useAuth();
   const canEdit = !ownerOnly || user?.role === "OWNER";
@@ -69,7 +77,8 @@ export function CrudPage<T extends { id: number }>({
     setBusy(true);
     setFormError(undefined);
     const body = { ...editing };
-    for (const f of fields) if (f.type === "number") body[f.key] = Number(body[f.key]);
+    for (const f of fields)
+      if (f.type === "number") body[f.key] = f.nullable && (body[f.key] === "" || body[f.key] == null) ? null : Number(body[f.key]);
     try {
       if (editing.id) await api.put(`${path}/${editing.id}`, body);
       else {
@@ -240,7 +249,10 @@ export function CrudPage<T extends { id: number }>({
                   required={f.required}
                   placeholder={f.placeholder}
                   value={(editing[f.key] as string | number | null) ?? ""}
-                  onChange={(e) => setEditing({ ...editing, [f.key]: e.target.value })}
+                  onChange={(e) => {
+                    const next = { ...editing, [f.key]: e.target.value };
+                    setEditing(onFieldChange ? onFieldChange(f.key, next) : next);
+                  }}
                 />
               ),
             )}
@@ -253,6 +265,7 @@ export function CrudPage<T extends { id: number }>({
                   ))}
                 </datalist>
               ))}
+            {formExtra?.(editing)}
             {servicePhotos && <ServicePhotos serviceId={editing.id as number | undefined} files={files} onFiles={setFiles} />}
             <ErrorMessage message={formError} />
             <Button className="w-full" disabled={busy}>

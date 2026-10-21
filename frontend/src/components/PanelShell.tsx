@@ -16,7 +16,7 @@ const NAV = [
   { href: "/painel/profissionais", label: "Profissionais", ownerOnly: false },
   { href: "/painel/produtos", label: "Produtos", ownerOnly: false },
   { href: "/painel/portfolio", label: "Portfólio", ownerOnly: false },
-  { href: "/painel/financeiro", label: "Financeiro", ownerOnly: true },
+  { href: "/painel/financeiro", label: "Financeiro e relatórios", ownerOnly: true },
   { href: "/painel/precificacao", label: "Precificação", ownerOnly: true },
   { href: "/painel/configuracoes", label: "Configurações", ownerOnly: true },
 ];
@@ -37,7 +37,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen md:flex">
-      <aside className="border-b border-zinc-200 bg-white md:sticky md:top-0 md:h-screen md:w-56 md:shrink-0 md:border-b-0 md:border-r">
+      <aside className="print:hidden border-b border-zinc-200 bg-white md:sticky md:top-0 md:h-screen md:w-56 md:shrink-0 md:border-b-0 md:border-r">
         <div className="flex items-center justify-between px-4 py-3 md:block md:py-5">
           <Link href="/painel" className="flex items-center gap-2 text-lg font-extrabold">
             {/* eslint-disable-next-line @next/next/no-img-element */}

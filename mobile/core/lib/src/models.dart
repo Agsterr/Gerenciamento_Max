@@ -410,6 +410,7 @@ class Product {
     required this.unit,
     required this.active,
     required this.lowStock,
+    this.markupPercent,
   });
 
   factory Product.fromJson(Map<String, dynamic> j) => Product(
@@ -422,6 +423,7 @@ class Product {
         unit: j['unit'] as String,
         active: j['active'] as bool,
         lowStock: j['lowStock'] as bool,
+        markupPercent: (j['markupPercent'] as num?)?.toDouble(),
       );
 
   final int id;
@@ -433,6 +435,12 @@ class Product {
   final String unit;
   final bool active;
   final bool lowStock;
+
+  /// % que o salão quer ganhar em cima do custo.
+  final double? markupPercent;
+
+  /// % de ganho em cima do custo no preço atual (nulo sem custo ou sem preço).
+  double? get markupOnCost => costPrice > 0 && salePrice > 0 ? (salePrice - costPrice) / costPrice * 100 : null;
 }
 
 class Appointment {
@@ -499,7 +507,14 @@ class Appointment {
 }
 
 class Expense {
-  const Expense({required this.id, required this.description, required this.category, required this.amount, required this.date});
+  const Expense({
+    required this.id,
+    required this.description,
+    required this.category,
+    required this.amount,
+    required this.date,
+    this.fixed = false,
+  });
 
   factory Expense.fromJson(Map<String, dynamic> j) => Expense(
         id: j['id'] as int,
@@ -507,6 +522,7 @@ class Expense {
         category: j['category'] as String,
         amount: _num(j['amount']),
         date: _date(j['date']),
+        fixed: j['fixed'] as bool? ?? false,
       );
 
   final int id;
@@ -514,6 +530,9 @@ class Expense {
   final String category;
   final double amount;
   final DateTime date;
+
+  /// Aluguel, água, luz... (se repete todo mês).
+  final bool fixed;
 }
 
 class Ranking {
@@ -546,6 +565,15 @@ class Summary {
   final List<Map<String, dynamic>> lowStock;
 
   double money(String key) => _num(json[key]);
+
+  /// Valores por categoria (ex.: `fixedByCategory`).
+  Map<String, double> byCategory(String key) =>
+      {for (final e in ((json[key] as Map?) ?? const {}).entries) e.key as String: _num(e.value)};
+
+  /// Refações (cliente voltou para refazer e não pagou).
+  Map<String, dynamic> get rework => (json['rework'] as Map<String, dynamic>?) ?? const {'count': 0, 'totalCost': 0, 'items': []};
+
+  List<Map<String, dynamic>> get products => ((json['products'] as List?) ?? const []).cast<Map<String, dynamic>>();
   int count(String key) => json[key] as int;
   double? minutes(String key) => (json[key] as num?)?.toDouble();
 }

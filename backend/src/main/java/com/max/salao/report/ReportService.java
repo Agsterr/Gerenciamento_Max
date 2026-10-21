@@ -13,6 +13,7 @@ import com.max.salao.appointment.Appointment;
 import com.max.salao.appointment.AppointmentRepository;
 import com.max.salao.appointment.AppointmentStatus;
 import com.max.salao.expense.Expense;
+import com.max.salao.expense.ExpenseCategories;
 import com.max.salao.expense.ExpenseRepository;
 import com.max.salao.product.Product;
 import com.max.salao.product.ProductRepository;
@@ -51,7 +52,32 @@ public class ReportService {
             List<Ranking> byProfessional,
             List<Ranking> byService,
             Map<String, BigDecimal> expensesByCategory,
-            List<LowStock> lowStock) {
+            List<LowStock> lowStock,
+            BigDecimal fixedExpenses,
+            BigDecimal variableExpenses,
+            Map<String, BigDecimal> fixedByCategory,
+            Map<String, BigDecimal> variableByCategory,
+            Rework rework,
+            List<ProductReport> products) {
+    }
+
+    /** Refações do período: atendimentos sem cobrança que só geraram custo. */
+    public record Rework(long count, BigDecimal materialCost, BigDecimal productsCost, BigDecimal totalCost,
+                         List<ReworkItem> items) {
+    }
+
+    public record ReworkItem(Long appointmentId, java.time.LocalDateTime startAt, String customer, String service,
+                             String professional, BigDecimal cost) {
+    }
+
+    /** Movimento de cada produto no período e situação atual do estoque. */
+    public record ProductReport(Long id, String name, String unit,
+                                BigDecimal soldQuantity, BigDecimal salesRevenue, BigDecimal soldCost, BigDecimal salesProfit,
+                                BigDecimal usedQuantity, BigDecimal usedCost,
+                                BigDecimal lostQuantity, BigDecimal lostCost,
+                                BigDecimal purchasedQuantity, BigDecimal purchasedCost,
+                                BigDecimal stock, BigDecimal stockValue, BigDecimal costPrice, BigDecimal salePrice,
+                                BigDecimal markupPercent, boolean lowStock) {
     }
 
     public record Ranking(String name, long count, BigDecimal revenue, BigDecimal commission, Double avgRealMinutes) {
@@ -94,6 +120,11 @@ public class ReportService {
         BigDecimal revenue = servicesRevenue.add(productSales);
         BigDecimal costs = materialCost.add(usedCost).add(soldCost).add(commissions).add(expenseTotal);
 
+        // refação não entra no ticket médio (não houve cobrança)
+        long paid = done.stream().filter(a -> !a.isRework()).count();
+        List<Expense> fixed = expenses.stream().filter(e -> ExpenseCategories.isFixed(e.getCategory())).toList();
+        List<Expense> variable = expenses.stream().filter(e -> !ExpenseCategories.isFixed(e.getCategory())).toList();
+
         return new Summary(from, to,
                 servicesRevenue, productSales, revenue,
                 materialCost, usedCost, soldCost, commissions, expenseTotal, costs, revenue.subtract(costs),
@@ -101,8 +132,8 @@ public class ReportService {
                 count(all, AppointmentStatus.CANCELED),
                 count(all, AppointmentStatus.NO_SHOW),
                 all.stream().filter(a -> a.getSource() == Appointment.Source.ONLINE).count(),
-                done.isEmpty() ? BigDecimal.ZERO
-                        : servicesRevenue.divide(BigDecimal.valueOf(done.size()), 2, RoundingMode.HALF_UP),
+                paid == 0 ? BigDecimal.ZERO
+                        : servicesRevenue.divide(BigDecimal.valueOf(paid), 2, RoundingMode.HALF_UP),
                 avg(done.stream().map(a -> (long) a.plannedMinutes()).toList()),
                 avg(done.stream().map(Appointment::realMinutes).toList()),
                 ranking(done, a -> a.getProfessional().getName()),
@@ -112,7 +143,59 @@ public class ReportService {
                 products.findAllByOrderByName().stream()
                         .filter(p -> p.isActive() && p.isLowStock())
                         .map(ReportService::lowStock)
-                        .toList());
+                        .toList(),
+                sum(fixed, Expense::getAmount),
+                sum(variable, Expense::getAmount),
+                byCategory(fixed),
+                byCategory(variable),
+                rework(done, moves),
+                productReport(moves));
+    }
+
+    private static Map<String, BigDecimal> byCategory(List<Expense> expenses) {
+        return expenses.stream().collect(Collectors.groupingBy(Expense::getCategory, java.util.TreeMap::new,
+                Collectors.reducing(BigDecimal.ZERO, Expense::getAmount, BigDecimal::add)));
+    }
+
+    private static Rework rework(List<Appointment> done, List<StockMovement> moves) {
+        List<Appointment> reworks = done.stream().filter(Appointment::isRework).toList();
+        Map<Long, BigDecimal> usedByAppointment = moves.stream()
+                .filter(m -> m.getType() == StockMovement.Type.USE && m.getAppointmentId() != null)
+                .collect(Collectors.groupingBy(StockMovement::getAppointmentId,
+                        Collectors.reducing(BigDecimal.ZERO, StockMovement::totalCost, BigDecimal::add)));
+        List<ReworkItem> items = reworks.stream()
+                .map(a -> new ReworkItem(a.getId(), a.getStartAt(), a.getCustomer().getName(), a.getService().getName(),
+                        a.getProfessional().getName(),
+                        a.getServiceCost().add(usedByAppointment.getOrDefault(a.getId(), BigDecimal.ZERO))))
+                .toList();
+        BigDecimal material = sum(reworks, Appointment::getServiceCost);
+        BigDecimal products = reworks.stream().map(a -> usedByAppointment.getOrDefault(a.getId(), BigDecimal.ZERO))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new Rework(reworks.size(), material, products, material.add(products), items);
+    }
+
+    private List<ProductReport> productReport(List<StockMovement> moves) {
+        Map<Long, List<StockMovement>> byProduct = moves.stream()
+                .collect(Collectors.groupingBy(m -> m.getProduct().getId()));
+        return products.findAllByOrderByName().stream()
+                .filter(p -> p.isActive() || byProduct.containsKey(p.getId()))
+                .map(p -> {
+                    List<StockMovement> m = byProduct.getOrDefault(p.getId(), List.of());
+                    List<StockMovement> sales = ofType(m, StockMovement.Type.SALE);
+                    List<StockMovement> used = ofType(m, StockMovement.Type.USE);
+                    List<StockMovement> lost = ofType(m, StockMovement.Type.LOSS);
+                    List<StockMovement> bought = ofType(m, StockMovement.Type.IN);
+                    BigDecimal revenue = sum(sales, StockMovement::totalPrice);
+                    BigDecimal soldCost = sum(sales, StockMovement::totalCost);
+                    return new ProductReport(p.getId(), p.getName(), p.getUnit(),
+                            sum(sales, StockMovement::getQuantity), revenue, soldCost, revenue.subtract(soldCost),
+                            sum(used, StockMovement::getQuantity), sum(used, StockMovement::totalCost),
+                            sum(lost, StockMovement::getQuantity), sum(lost, StockMovement::totalCost),
+                            sum(bought, StockMovement::getQuantity), sum(bought, StockMovement::totalCost),
+                            p.getStock(), p.getStock().multiply(p.getCostPrice()).setScale(2, RoundingMode.HALF_UP),
+                            p.getCostPrice(), p.getSalePrice(), p.getMarkupPercent(), p.isLowStock());
+                })
+                .toList();
     }
 
     private static List<Ranking> ranking(List<Appointment> done, Function<Appointment, String> key) {

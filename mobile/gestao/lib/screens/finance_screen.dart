@@ -14,7 +14,15 @@ class FinanceScreen extends StatefulWidget {
 }
 
 class _FinanceScreenState extends State<FinanceScreen> {
-  static const _categories = ['Aluguel', 'Energia/Água', 'Salários', 'Produtos', 'Marketing', 'Impostos', 'Outros'];
+  static const _fixed = ['Aluguel', 'Água', 'Luz', 'Internet e telefone', 'Salários', 'Contador', 'Sistemas e assinaturas'];
+  static const _variable = [
+    'Produtos e materiais',
+    'Cortesias (café, água, lanches)',
+    'Marketing',
+    'Manutenção',
+    'Impostos e taxas',
+    'Outros',
+  ];
 
   late DateTimeRange _range = DateTimeRange(
     start: DateTime(DateTime.now().year, DateTime.now().month),
@@ -63,7 +71,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
   Future<void> _addExpense() async {
     final description = TextEditingController();
     final amount = TextEditingController();
-    var category = _categories.first;
+    var category = _fixed.first;
     var date = dateOnly(DateTime.now());
     final ok = await showDialog<bool>(
       context: context,
@@ -77,7 +85,13 @@ class _FinanceScreenState extends State<FinanceScreen> {
               DropdownButtonFormField<String>(
                 initialValue: category,
                 decoration: const InputDecoration(labelText: 'Categoria'),
-                items: [for (final c in _categories) DropdownMenuItem(value: c, child: Text(c))],
+                isExpanded: true,
+                items: [
+                  const DropdownMenuItem(enabled: false, child: Text('FIXAS (TODO MÊS)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Brand.muted))),
+                  for (final c in _fixed) DropdownMenuItem(value: c, child: Text(c)),
+                  const DropdownMenuItem(enabled: false, child: Text('VARIÁVEIS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Brand.muted))),
+                  for (final c in _variable) DropdownMenuItem(value: c, child: Text(c)),
+                ],
                 onChanged: (v) => setState(() => category = v!),
               ),
               const SizedBox(height: 12),
@@ -118,6 +132,21 @@ class _FinanceScreenState extends State<FinanceScreen> {
     }
   }
 
+  /// Lança no mês do fim do período as despesas fixas do mês anterior (aluguel, água, luz...).
+  Future<void> _repeatFixed() async {
+    final month = isoDate(_range.end).substring(0, 7);
+    try {
+      final r = await _api.post('/api/expenses/repeat-fixed', {'month': month}) as Map<String, dynamic>;
+      final created = r['created'] as int;
+      if (mounted) {
+        showMessage(context, created == 0 ? 'As fixas do mês anterior já estão lançadas.' : '$created despesa(s) fixa(s) lançada(s).');
+      }
+      _load();
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
   Future<void> _deleteExpense(Expense e) async {
     if (!await confirmDialog(context, 'Excluir "${e.description}"?', confirm: 'Excluir', danger: true)) return;
     try {
@@ -146,7 +175,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
               gradient: Brand.nightGradient,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Expanded(child: Text('Financeiro', style: text.headlineSmall?.copyWith(color: Colors.white))),
+                  Expanded(child: Text('Financeiro e relatórios', style: text.headlineSmall?.copyWith(color: Colors.white))),
                   Material(
                     color: Colors.white.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(14),
@@ -224,19 +253,42 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       _Stat(Icons.timer_outlined, 'Tempo real médio', _minutes(s.minutes('averageRealMinutes'))),
                     ],
                   ),
+                  const SectionTitle('Receitas'),
+                  SoftCard(
+                    child: Column(children: [
+                      _Line('Serviços', s.money('servicesRevenue')),
+                      _Line('Venda de produtos', s.money('productSalesRevenue')),
+                      const Divider(),
+                      _Line('Total', s.money('totalRevenue'), bold: true, color: const Color(0xFF15803D)),
+                    ]),
+                  ),
                   const SectionTitle('Para onde vai o dinheiro'),
                   SoftCard(
                     child: Column(children: [
-                      for (final (label, key, color) in [
-                        ('Despesas', 'expenses', const Color(0xFF8E2DE2)),
-                        ('Comissões', 'commissions', Brand.rose),
-                        ('Custo dos produtos vendidos', 'productsSoldCost', const Color(0xFFFFB547)),
-                        ('Material dos serviços', 'serviceMaterialCost', const Color(0xFF38BDF8)),
-                        ('Produtos usados/perdidos', 'productsUsedCost', const Color(0xFF10B981)),
+                      for (final (label, value, color) in [
+                        ('Custos dos atendimentos', s.money('commissions') + s.money('serviceMaterialCost') + s.money('productsUsedCost'), Brand.rose),
+                        ('Despesas fixas', s.money('fixedExpenses'), const Color(0xFF6366F1)),
+                        ('Despesas variáveis', s.money('variableExpenses'), const Color(0xFF8E2DE2)),
+                        ('Custo dos produtos vendidos', s.money('productsSoldCost'), const Color(0xFFFFB547)),
                       ])
-                        _Bar(label: label, value: s.money(key), total: s.money('totalCosts'), color: color),
+                        _Bar(label: label, value: value, total: s.money('totalCosts'), color: color),
                     ]),
                   ),
+                  const SectionTitle('Custos dos atendimentos'),
+                  SoftCard(
+                    child: Column(children: [
+                      _Line('Comissões', s.money('commissions')),
+                      _Line('Material dos serviços', s.money('serviceMaterialCost')),
+                      _Line('Produtos usados e perdas', s.money('productsUsedCost')),
+                    ]),
+                  ),
+                  SectionTitle('Despesas fixas', trailing: Text(formatMoney(s.money('fixedExpenses')), style: text.titleSmall)),
+                  _CategoryCard(values: s.byCategory('fixedByCategory'), empty: 'Nenhuma despesa fixa (aluguel, água, luz...) no período.'),
+                  SectionTitle('Despesas variáveis', trailing: Text(formatMoney(s.money('variableExpenses')), style: text.titleSmall)),
+                  _CategoryCard(values: s.byCategory('variableByCategory'), empty: 'Nenhuma despesa variável no período.'),
+                  _ReworkSection(rework: s.rework),
+                  const SectionTitle('Produtos'),
+                  _ProductsCard(rows: s.products),
                   const SectionTitle('Ranking de profissionais'),
                   _RankingCard(rows: s.byProfessional, showCommission: true),
                   const SectionTitle('Serviços que mais faturam'),
@@ -257,7 +309,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       ]),
                     ),
                   ],
-                  SectionTitle('Despesas', trailing: Text(formatMoney(s.money('expenses')), style: text.titleSmall)),
+                  SectionTitle('Despesas lançadas',
+                      trailing: TextButton.icon(
+                        onPressed: _repeatFixed,
+                        icon: const Icon(Icons.repeat_rounded, size: 18),
+                        label: const Text('Repetir fixas'),
+                      )),
                   if (_expenses.isEmpty)
                     const SoftCard(child: Text('Nenhuma despesa no período.'))
                   else
@@ -273,7 +330,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                               child: const Icon(Icons.receipt_outlined, color: Color(0xFF7C3AED)),
                             ),
                             title: Text(e.description, style: text.titleSmall),
-                            subtitle: Text('${formatDate(e.date)} · ${e.category}'),
+                            subtitle: Text('${formatDate(e.date)} · ${e.category}${e.fixed ? ' · fixa' : ''}'),
                             trailing: Text(formatMoney(e.amount), style: text.titleSmall),
                             onLongPress: () => _deleteExpense(e),
                           ),
@@ -430,6 +487,130 @@ class _RankingCard extends StatelessWidget {
               ),
             ]),
           ),
+      ]),
+    );
+  }
+}
+
+class _Line extends StatelessWidget {
+  const _Line(this.label, this.value, {this.bold = false, this.color});
+
+  final String label;
+  final double value;
+  final bool bold;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: color);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(children: [
+        Expanded(child: Text(label, style: style)),
+        Text(formatMoney(value), style: style),
+      ]),
+    );
+  }
+}
+
+class _CategoryCard extends StatelessWidget {
+  const _CategoryCard({required this.values, required this.empty});
+
+  final Map<String, double> values;
+  final String empty;
+
+  @override
+  Widget build(BuildContext context) {
+    if (values.isEmpty) return SoftCard(child: Text(empty));
+    return SoftCard(child: Column(children: [for (final e in values.entries) _Line(e.key, e.value)]));
+  }
+}
+
+/// Refações: cliente voltou para refazer e não pagou; só gera custo.
+class _ReworkSection extends StatelessWidget {
+  const _ReworkSection({required this.rework});
+
+  final Map<String, dynamic> rework;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final count = rework['count'] as int? ?? 0;
+    final items = ((rework['items'] as List?) ?? const []).cast<Map<String, dynamic>>();
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SectionTitle('Refações', trailing: Text(formatMoney((rework['totalCost'] as num? ?? 0).toDouble()), style: text.titleSmall)),
+      SoftCard(
+        child: count == 0
+            ? const Text('Nenhuma refação no período. Marque "Refação" ao finalizar quando o cliente voltar para refazer.')
+            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Row(children: [
+                    const Expanded(child: Text('Quantidade', style: TextStyle(fontWeight: FontWeight.w600))),
+                    Text('$count', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+                _Line('Material dos serviços', (rework['materialCost'] as num).toDouble()),
+                _Line('Produtos usados', (rework['productsCost'] as num).toDouble()),
+                const Divider(),
+                for (final i in items)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(children: [
+                      Expanded(
+                        child: Text('${formatDate(DateTime.parse(i['startAt'] as String))} · ${i['customer']} · ${i['service']}',
+                            style: text.bodySmall, maxLines: 2),
+                      ),
+                      Text(formatMoney((i['cost'] as num).toDouble()), style: text.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                    ]),
+                  ),
+              ]),
+      ),
+    ]);
+  }
+}
+
+/// Vendas, uso e estoque de cada produto no período.
+class _ProductsCard extends StatelessWidget {
+  const _ProductsCard({required this.rows});
+
+  final List<Map<String, dynamic>> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    if (rows.isEmpty) return const SoftCard(child: Text('Nenhum produto cadastrado.'));
+    double n(Map<String, dynamic> r, String k) => (r[k] as num? ?? 0).toDouble();
+    final stockValue = rows.fold(0.0, (t, r) => t + n(r, 'stockValue'));
+    final profit = rows.fold(0.0, (t, r) => t + n(r, 'salesProfit'));
+    return SoftCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (final r in rows) ...[
+          Row(children: [
+            Expanded(child: Text(r['name'] as String, style: text.titleSmall)),
+            if (r['lowStock'] == true) const Icon(Icons.warning_amber_rounded, color: Color(0xFFBE123C), size: 18),
+          ]),
+          const SizedBox(height: 2),
+          Text(
+            'Pago ${formatMoney(n(r, 'costPrice'))}'
+            '${n(r, 'salePrice') > 0 ? ' · venda ${formatMoney(n(r, 'salePrice'))}' : ' · uso interno'}'
+            ' · estoque ${formatQuantity(n(r, 'stock'))} ${r['unit']} (${formatMoney(n(r, 'stockValue'))})',
+            style: text.bodySmall?.copyWith(color: Brand.muted),
+          ),
+          if (n(r, 'soldQuantity') > 0 || n(r, 'usedQuantity') > 0 || n(r, 'lostQuantity') > 0)
+            Text(
+              [
+                if (n(r, 'soldQuantity') > 0)
+                  'vendeu ${formatQuantity(n(r, 'soldQuantity'))} = ${formatMoney(n(r, 'salesRevenue'))} (lucro ${formatMoney(n(r, 'salesProfit'))})',
+                if (n(r, 'usedQuantity') > 0) 'usou ${formatQuantity(n(r, 'usedQuantity'))} (${formatMoney(n(r, 'usedCost'))})',
+                if (n(r, 'lostQuantity') > 0) 'perdas ${formatQuantity(n(r, 'lostQuantity'))} (${formatMoney(n(r, 'lostCost'))})',
+              ].join(' · '),
+              style: text.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          const Divider(height: 18),
+        ],
+        _Line('Lucro com vendas de produtos', profit, bold: true),
+        _Line('Valor parado em estoque (preço pago)', stockValue),
       ]),
     );
   }

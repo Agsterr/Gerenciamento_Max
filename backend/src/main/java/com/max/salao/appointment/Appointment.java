@@ -66,6 +66,10 @@ public class Appointment extends TenantEntity {
     @Setter(AccessLevel.NONE)
     private LocalDateTime finishedAt;
 
+    /** Refação: o cliente voltou para refazer e não pagou. O custo continua contando. */
+    @Column(nullable = false)
+    private boolean rework;
+
     /** Observação do agendamento (feita pelo cliente ou pela recepção). */
     private String notes;
 
@@ -111,12 +115,20 @@ public class Appointment extends TenantEntity {
     }
 
     public void finish(LocalDateTime now, BigDecimal finalPrice) {
+        finish(now, finalPrice, false);
+    }
+
+    /** {@code rework}: refação sem cobrança (valor e comissão zerados; material e produtos contam como custo). */
+    public void finish(LocalDateTime now, BigDecimal finalPrice, boolean rework) {
         if (!status.isOpen() && status != AppointmentStatus.IN_PROGRESS) {
             throw new BusinessException("Atendimento não pode ser finalizado no status " + status);
         }
         status = AppointmentStatus.DONE;
         finishedAt = now;
-        if (finalPrice != null) {
+        this.rework = rework;
+        if (rework) {
+            price = BigDecimal.ZERO;
+        } else if (finalPrice != null) {
             price = finalPrice;
         }
         serviceCost = service.getCost();

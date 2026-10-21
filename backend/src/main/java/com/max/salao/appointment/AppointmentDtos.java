@@ -32,6 +32,7 @@ public final class AppointmentDtos {
     public record FinishRequest(
             @DecimalMin("0") BigDecimal price,
             @Size(max = 1000) String serviceNotes,
+            Boolean rework,
             List<@Valid ProductQuantity> usedProducts,
             List<@Valid ProductQuantity> soldProducts) {
     }
@@ -61,7 +62,8 @@ public final class AppointmentDtos {
             String serviceNotes,
             Appointment.Source source,
             LocalDateTime reminderSentAt,
-            LocalDateTime customerConfirmedAt) {
+            LocalDateTime customerConfirmedAt,
+            boolean rework) {
 
         public static AppointmentResponse from(Appointment a) {
             return new AppointmentResponse(a.getId(), a.getStartAt(), a.getEndAt(), a.getStatus(),
@@ -70,7 +72,7 @@ public final class AppointmentDtos {
                     new Ref(a.getService().getId(), a.getService().getName()),
                     a.plannedMinutes(), a.realMinutes(), a.getPrice(), a.getCommissionAmount(),
                     a.getStartedAt(), a.getFinishedAt(), a.getNotes(), a.getServiceNotes(), a.getSource(),
-                    a.getReminderSentAt(), a.getCustomerConfirmedAt());
+                    a.getReminderSentAt(), a.getCustomerConfirmedAt(), a.isRework());
         }
     }
 }

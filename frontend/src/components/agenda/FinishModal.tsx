@@ -20,6 +20,7 @@ export function FinishModal({
   onFinished: () => void;
 }) {
   const [price, setPrice] = useState("");
+  const [rework, setRework] = useState(false);
   const [serviceNotes, setServiceNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [error, setError] = useState<string>();
@@ -30,6 +31,7 @@ export function FinishModal({
     if (appointment) {
       setPrice(String(appointment.price));
       setServiceNotes(appointment.serviceNotes ?? "");
+      setRework(false);
       setLines([]);
       setError(undefined);
     }
@@ -51,7 +53,8 @@ export function FinishModal({
       valid.filter((l) => l.sold === sold).map((l) => ({ productId: Number(l.productId), quantity: Number(l.quantity) }));
     try {
       await api.post(`/api/appointments/${appointment.id}/finish`, {
-        price: Number(price),
+        price: rework ? 0 : Number(price),
+        rework,
         serviceNotes,
         usedProducts: toItems(false),
         soldProducts: toItems(true),
@@ -71,7 +74,19 @@ export function FinishModal({
           <p className="text-sm text-zinc-600">
             {appointment.customer.name} · {appointment.service.name} com {appointment.professional.name}
           </p>
-          <Field label="Valor do serviço (R$)" type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} />
+          <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+            <input type="checkbox" className="mt-1" checked={rework} onChange={(e) => setRework(e.target.checked)} />
+            <span>
+              <strong>Refação (sem cobrança)</strong>
+              <span className="block text-zinc-600">
+                O cliente voltou para refazer. Não entra como receita nem comissão; o material e os produtos usados vão para o custo
+                de refações no relatório.
+              </span>
+            </span>
+          </label>
+          {!rework && (
+            <Field label="Valor do serviço (R$)" type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} />
+          )}
 
           <div>
             <p className="mb-2 text-sm font-medium text-zinc-700">Produtos usados ou vendidos</p>
@@ -107,7 +122,7 @@ export function FinishModal({
           <ServiceNotesField value={serviceNotes} onChange={setServiceNotes} />
 
           <div className="rounded-lg bg-zinc-50 p-3 text-sm">
-            Total a receber: <strong>{formatMoney(Number(price || 0) + sales)}</strong>
+            Total a receber: <strong>{formatMoney((rework ? 0 : Number(price || 0)) + sales)}</strong>
             {sales > 0 && <span className="text-zinc-500"> (inclui {formatMoney(sales)} em produtos)</span>}
           </div>
 

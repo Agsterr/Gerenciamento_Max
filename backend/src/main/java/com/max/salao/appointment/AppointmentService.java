@@ -167,7 +167,7 @@ public class AppointmentService {
     @Transactional
     public Appointment finish(Long id, FinishRequest req) {
         Appointment a = get(id);
-        a.finish(LocalDateTime.now(clock), req.price());
+        a.finish(LocalDateTime.now(clock), req.price(), Boolean.TRUE.equals(req.rework()));
         if (req.serviceNotes() != null) {
             a.setServiceNotes(blankToNull(req.serviceNotes()));
         }

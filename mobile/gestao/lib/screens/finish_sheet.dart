@@ -37,6 +37,9 @@ class _FinishSheetState extends State<_FinishSheet> {
   final List<_Line> _lines = [];
   bool _busy = false;
 
+  /// Refação: cliente voltou para refazer, sem cobrança (o custo entra no relatório).
+  bool _rework = false;
+
   @override
   void initState() {
     super.initState();
@@ -57,7 +60,7 @@ class _FinishSheetState extends State<_FinishSheet> {
     super.dispose();
   }
 
-  double get _priceValue => double.tryParse(_price.text.replaceAll(',', '.')) ?? 0;
+  double get _priceValue => _rework ? 0 : double.tryParse(_price.text.replaceAll(',', '.')) ?? 0;
 
   double get _sales => _lines.where((l) => l.sold && l.product != null).fold(0, (s, l) => s + l.quantity * l.product!.salePrice);
 
@@ -71,6 +74,7 @@ class _FinishSheetState extends State<_FinishSheet> {
     try {
       await widget.api.post('/api/appointments/${widget.appointment.id}/finish', {
         'price': _priceValue,
+        'rework': _rework,
         'serviceNotes': _notes.text,
         'usedProducts': _items(false),
         'soldProducts': _items(true),
@@ -94,13 +98,26 @@ class _FinishSheetState extends State<_FinishSheet> {
           children: [
             Text('Finalizar atendimento', style: Theme.of(context).textTheme.titleLarge),
             Text('${a.customer.name} · ${a.service.name} com ${a.professional.name}'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _price,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: r'Valor do serviço (R$)'),
-              onChanged: (_) => setState(() {}),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(color: const Color(0xFFFFF7E6), borderRadius: BorderRadius.circular(16)),
+              child: SwitchListTile(
+                value: _rework,
+                onChanged: (v) => setState(() => _rework = v),
+                title: const Text('Refação (sem cobrança)', style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('O cliente voltou para refazer. Não conta como receita nem comissão; '
+                    'material e produtos usados vão para o custo de refações.'),
+              ),
             ),
+            if (!_rework) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _price,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: r'Valor do serviço (R$)'),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
             const SizedBox(height: 16),
             Text('Produtos usados ou vendidos', style: Theme.of(context).textTheme.titleSmall),
             for (final l in _lines)

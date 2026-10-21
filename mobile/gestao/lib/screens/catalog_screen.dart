@@ -146,10 +146,13 @@ class CatalogScreen extends StatelessWidget {
             canEdit: true,
             parse: Product.fromJson,
             title: 'produto',
+            onChanged: productPricing,
+            preview: (v) => ProductProfitPreview(cost: _parse(v['costPrice']), price: _parse(v['salePrice'])),
             fields: const [
               FieldSpec('name', 'Nome', required: true),
               FieldSpec('unit', 'Unidade (un, ml, g...)', required: true),
-              FieldSpec('costPrice', r'Custo unitário (R$)', kind: FieldKind.decimal, required: true),
+              FieldSpec('costPrice', r'Preço pago (custo unitário, R$)', kind: FieldKind.decimal, required: true),
+              FieldSpec('markupPercent', 'Quanto quero ganhar (% em cima do custo)', kind: FieldKind.decimal, nullable: true, hint: 'Ex.: 50'),
               FieldSpec('salePrice', r'Preço de venda (R$, 0 = uso interno)', kind: FieldKind.decimal, required: true),
               FieldSpec('minStock', 'Estoque mínimo (alerta)', kind: FieldKind.decimal, required: true),
               FieldSpec('active', 'Ativo', kind: FieldKind.toggle),
@@ -158,6 +161,7 @@ class CatalogScreen extends StatelessWidget {
               'name': p?.name,
               'unit': p?.unit ?? 'un',
               'costPrice': p?.costPrice ?? 0,
+              'markupPercent': p?.markupPercent,
               'salePrice': p?.salePrice ?? 0,
               'minStock': p?.minStock ?? 0,
               'active': p?.active ?? true,
@@ -182,6 +186,11 @@ class CatalogScreen extends StatelessWidget {
                     color: p.lowStock ? const Color(0xFFFFE4E6) : const Color(0xFFDCFCE7),
                     textColor: p.lowStock ? const Color(0xFFBE123C) : const Color(0xFF15803D)),
                 if (p.salePrice > 0) Pill(formatMoney(p.salePrice), icon: Icons.sell_outlined),
+                if (p.markupOnCost case final m?)
+                  Pill('lucro ${formatMoney(p.salePrice - p.costPrice)} (+${formatQuantity(m.roundToDouble())}%)',
+                      icon: Icons.trending_up_rounded,
+                      color: m < 0 ? const Color(0xFFFFE4E6) : const Color(0xFFDCFCE7),
+                      textColor: m < 0 ? const Color(0xFFBE123C) : const Color(0xFF15803D)),
               ],
               trailing: IconButton.filledTonal(
                 tooltip: 'Movimentar estoque',
@@ -264,7 +273,12 @@ class _CrudList<T> extends StatefulWidget {
     required this.id,
     required this.tile,
     this.withPhotos = false,
+    this.onChanged,
+    this.preview,
   });
+
+  final void Function(String key, Map<String, TextEditingController> fields)? onChanged;
+  final Widget Function(Map<String, String> values)? preview;
 
   /// Mostra "Fotos deste serviço" no formulário (só para serviços).
   final bool withPhotos;
@@ -315,6 +329,8 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
       fields: widget.fields,
       initial: widget.toForm(item),
       extra: photos == null ? null : ServicePhotosSection(controller: photos),
+      onChanged: widget.onChanged,
+      preview: widget.preview,
       onSave: (v) async {
         if (item != null) return widget.api.put('${widget.path}/${widget.id(item)}', v);
         final created = await widget.api.post(widget.path, v) as Map<String, dynamic>;
@@ -394,4 +410,51 @@ class _ItemCard extends StatelessWidget {
           ]),
         ),
       );
+}
+
+double _parse(String? v) => double.tryParse((v ?? '').replaceAll(',', '.')) ?? 0;
+
+String _fmt(double v) => formatQuantity((v * 100).roundToDouble() / 100);
+
+/// Custo ou margem mudou: calcula o preço de venda. Preço mudou: mostra quanto % ele dá em cima do custo.
+void productPricing(String key, Map<String, TextEditingController> f) {
+  final cost = _parse(f['costPrice']!.text);
+  final markupText = f['markupPercent']!.text.trim();
+  final markup = markupText.isEmpty ? null : _parse(markupText);
+  if ((key == 'costPrice' || key == 'markupPercent') && markup != null && cost > 0) {
+    f['salePrice']!.text = _fmt(cost * (1 + markup / 100));
+  } else if (key == 'salePrice' && cost > 0) {
+    final price = _parse(f['salePrice']!.text);
+    if (price > 0) f['markupPercent']!.text = formatQuantity(((price - cost) / cost * 1000).roundToDouble() / 10);
+  }
+}
+
+/// Lucro por unidade com o preço digitado.
+class ProductProfitPreview extends StatelessWidget {
+  const ProductProfitPreview({super.key, required this.cost, required this.price});
+
+  final double cost;
+  final double price;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    if (price <= 0) return Text('Preço 0: produto só para uso nos atendimentos.', style: text.bodySmall?.copyWith(color: Brand.muted));
+    final profit = price - cost;
+    final loss = profit < 0;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: loss ? const Color(0xFFFFE4E6) : const Color(0xFFDCFCE7),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        'Lucro por unidade: ${formatMoney(profit)}'
+        '${cost > 0 ? ' · ${formatQuantity((profit / cost * 1000).roundToDouble() / 10)}% em cima do custo' : ''}'
+        ' · margem ${(profit / price * 100).round()}% do preço'
+        '${loss ? ' — vendendo com prejuízo!' : ''}',
+        style: TextStyle(fontWeight: FontWeight.w700, color: loss ? const Color(0xFFBE123C) : const Color(0xFF15803D)),
+      ),
+    );
+  }
 }

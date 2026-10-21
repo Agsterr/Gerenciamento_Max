@@ -35,6 +35,14 @@ public class Product extends TenantEntity {
 
     private boolean active = true;
 
+    /** Quanto o salão quer ganhar em cima do custo, em % (só referência para o preço de venda). */
+    private BigDecimal markupPercent;
+
+    /** Lucro por unidade vendida no preço atual. */
+    public BigDecimal unitProfit() {
+        return salePrice.subtract(costPrice);
+    }
+
     public boolean isLowStock() {
         return stock.compareTo(minStock) <= 0;
     }

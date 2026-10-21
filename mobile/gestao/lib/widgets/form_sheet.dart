@@ -5,13 +5,16 @@ enum FieldKind { text, number, decimal, phone, email, toggle, choices, tags }
 
 class FieldSpec {
   const FieldSpec(this.key, this.label,
-      {this.kind = FieldKind.text, this.required = false, this.hint, this.suggestions = const [], this.loadOptions, this.loadTags, this.emptyHint});
+      {this.kind = FieldKind.text, this.required = false, this.hint, this.suggestions = const [], this.loadOptions, this.loadTags, this.emptyHint, this.nullable = false});
 
   final String key;
   final String label;
   final FieldKind kind;
   final bool required;
   final String? hint;
+
+  /// Número opcional: vazio vai como null (em vez de 0).
+  final bool nullable;
 
   /// Atalhos para preencher o texto (ex.: categorias comuns).
   final List<String> suggestions;
@@ -36,20 +39,28 @@ Future<bool> showFormSheet(
   required Future<void> Function(Map<String, Object?> values) onSave,
   /// Conteúdo extra (ex.: fotos) logo acima do botão Salvar.
   Widget? extra,
+  /// Um campo de texto mudou: permite recalcular outros (ex.: preço de venda a partir da margem).
+  void Function(String key, Map<String, TextEditingController> fields)? onChanged,
+  /// Resumo ao vivo dos valores digitados (ex.: lucro por unidade).
+  Widget Function(Map<String, String> values)? preview,
 }) async {
   final saved = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (_) => _FormSheet(title: title, fields: fields, initial: initial, onSave: onSave, extra: extra),
+    builder: (_) => _FormSheet(
+        title: title, fields: fields, initial: initial, onSave: onSave, extra: extra, onChanged: onChanged, preview: preview),
   );
   return saved ?? false;
 }
 
 class _FormSheet extends StatefulWidget {
-  const _FormSheet({required this.title, required this.fields, required this.initial, required this.onSave, this.extra});
+  const _FormSheet(
+      {required this.title, required this.fields, required this.initial, required this.onSave, this.extra, this.onChanged, this.preview});
 
   final Widget? extra;
+  final void Function(String key, Map<String, TextEditingController> fields)? onChanged;
+  final Widget Function(Map<String, String> values)? preview;
 
   final String title;
   final List<FieldSpec> fields;
@@ -113,7 +124,7 @@ class _FormSheetState extends State<_FormSheet> {
     for (final f in widget.fields.where((f) => f.kind != FieldKind.toggle && f.kind != FieldKind.choices && f.kind != FieldKind.tags)) {
       final raw = _text[f.key]!.text.trim();
       values[f.key] = switch (f.kind) {
-        FieldKind.number || FieldKind.decimal => num.tryParse(raw.replaceAll(',', '.')) ?? 0,
+        FieldKind.number || FieldKind.decimal => num.tryParse(raw.replaceAll(',', '.')) ?? (f.nullable ? null : 0),
         _ => raw.isEmpty ? null : raw,
       };
     }
@@ -204,6 +215,9 @@ class _FormSheetState extends State<_FormSheet> {
                       _ => TextInputType.text,
                     },
                     validator: (v) => f.required && (v ?? '').trim().isEmpty ? 'Obrigatório' : null,
+                    onChanged: widget.onChanged == null && widget.preview == null
+                        ? null
+                        : (_) => setState(() => widget.onChanged?.call(f.key, _text)),
                   ),
                 if (f.suggestions.isNotEmpty)
                   Padding(
@@ -214,6 +228,10 @@ class _FormSheetState extends State<_FormSheet> {
                     ]),
                   ),
                 const SizedBox(height: 12),
+              ],
+              if (widget.preview != null) ...[
+                widget.preview!({for (final e in _text.entries) e.key: e.value.text}),
+                const SizedBox(height: 16),
               ],
               if (widget.extra != null) ...[widget.extra!, const SizedBox(height: 16)],
               GradientButton(label: 'Salvar', icon: Icons.check_rounded, loading: _busy, onPressed: _save),
