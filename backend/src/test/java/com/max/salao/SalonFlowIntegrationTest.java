@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.max.salao.shared.TenantContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ class SalonFlowIntegrationTest {
 
     @Autowired
     ObjectMapper json;
+
+    @Autowired
+    java.time.Clock clock;
 
     /** Uma terça-feira futura (dia de funcionamento padrão). */
     private final LocalDate day = LocalDate.now().plusDays(7).with(TemporalAdjusters.next(DayOfWeek.TUESDAY));
@@ -357,6 +361,37 @@ class SalonFlowIntegrationTest {
         Tenant again = new Tenant(salon.slug, renewed.get("token").asText());
         assertThat(call(again, get("/api/me"), null, status().isOk()).get("salonSlug").asText()).isEqualTo(salon.slug);
         call(null, post("/api/me/token"), null, status().isUnauthorized());
+    }
+
+    @Test
+    void salonClockFollowsTheSalonTimezone() throws Exception {
+        Tenant salon = register();
+        assertThat(call(salon, get("/api/salon"), null, status().isOk()).get("timezone").asText())
+                .isEqualTo("America/Sao_Paulo");
+
+        Map<String, Object> body = new java.util.HashMap<>(Map.of("name", "Salão", "slotMinutes", 30, "hours", List.of(
+                Map.of("dayOfWeek", 2, "openTime", "08:00", "closeTime", "18:00"))));
+        body.put("timezone", "Europe/London");
+        call(salon, put("/api/salon"), body, status().isUnprocessableEntity());
+        body.put("timezone", "America/Rio_Branco");
+        assertThat(call(salon, put("/api/salon"), body, status().isOk()).get("timezone").asText())
+                .isEqualTo("America/Rio_Branco");
+        // app antigo (sem o campo) não troca o fuso
+        body.remove("timezone");
+        assertThat(call(salon, put("/api/salon"), body, status().isOk()).get("timezone").asText())
+                .isEqualTo("America/Rio_Branco");
+
+        Long salonId = jdbc.queryForObject("select id from salon where slug = ?", Long.class, salon.slug);
+        TenantContext.set(salonId);
+        try {
+            var acre = java.time.LocalDateTime.now(java.time.ZoneId.of("America/Rio_Branco"));
+            assertThat(java.time.Duration.between(java.time.LocalDateTime.now(clock), acre).abs().toMinutes()).isLessThan(2);
+        } finally {
+            TenantContext.clear();
+        }
+        // fora de um salão, o padrão é Brasília
+        var sp = java.time.LocalDateTime.now(java.time.ZoneId.of("America/Sao_Paulo"));
+        assertThat(java.time.Duration.between(java.time.LocalDateTime.now(clock), sp).abs().toMinutes()).isLessThan(2);
     }
 
     private record Tenant(String slug, String token) {

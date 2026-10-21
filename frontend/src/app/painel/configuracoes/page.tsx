@@ -6,7 +6,7 @@ import { InstallAppLink } from "@/components/InstallApp";
 import { api, appDownloadUrl } from "@/lib/api";
 import { WeeklyHoursEditor, normalizeHours } from "@/components/WeeklyHoursEditor";
 import { REMINDER_MODES } from "@/lib/format";
-import type { ReminderMode, Role, Salon, User } from "@/lib/types";
+import { TIMEZONES, type ReminderMode, type Role, type Salon, type User } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 export default function SettingsPage() {
@@ -37,6 +37,7 @@ export default function SettingsPage() {
         address: form.address,
         hours: form.hours,
         slotMinutes: Number(form.slotMinutes),
+        timezone: form.timezone,
         reminderMode: form.reminderMode,
       });
       setMessage("Salvo!");
@@ -76,6 +77,13 @@ export default function SettingsPage() {
               <p className="mb-2 font-bold text-brand-ink">Horário de funcionamento</p>
               <WeeklyHoursEditor value={form.hours} onChange={(hours) => setForm({ ...form, hours })} />
             </div>
+            <Select label="Fuso horário do salão" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })}>
+              {TIMEZONES.map((z) => (
+                <option key={z.value} value={z.value}>
+                  {z.label}
+                </option>
+              ))}
+            </Select>
             <Select label="Intervalo entre horários na agenda" value={form.slotMinutes} onChange={(e) => setForm({ ...form, slotMinutes: Number(e.target.value) })}>
               {[10, 15, 20, 30, 45, 60].map((m) => (
                 <option key={m} value={m}>

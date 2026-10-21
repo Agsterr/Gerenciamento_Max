@@ -193,6 +193,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 12),
                     WeeklyHoursEditor(hours: salon.hours, onChanged: (h) => setState(() => salon.hours = h)),
                     const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue: Salon.timezones.containsKey(salon.timezone) ? salon.timezone : 'America/Sao_Paulo',
+                      decoration: const InputDecoration(labelText: 'Fuso horário do salão', prefixIcon: Icon(Icons.public_rounded)),
+                      items: [for (final z in Salon.timezones.entries) DropdownMenuItem(value: z.key, child: Text(z.value))],
+                      onChanged: (v) => setState(() => salon.timezone = v!),
+                    ),
+                    const SizedBox(height: 14),
                     DropdownButtonFormField<int>(
                       initialValue: salon.slotMinutes,
                       decoration: const InputDecoration(labelText: 'Intervalo entre horários', prefixIcon: Icon(Icons.timelapse_rounded)),

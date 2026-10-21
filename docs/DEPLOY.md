@@ -38,6 +38,29 @@ O token do servidor não tem *Zone Read*; nesse caso crie o DNS no painel uma ve
 
 ou rode com `CLOUDFLARE_ZONE_ID=<id da URL da zona> bash /opt/salao-max/cloudflare-hostname.sh`.
 
+## Backup do banco
+
+O serviço `backup` (em `deploy/docker-compose.prod.yml`) faz um `pg_dump` ao subir e depois a cada 24 h,
+guardando os últimos `BACKUP_KEEP_DAYS` (padrão 14) no volume `db_backups`. Ver o log:
+`docker logs salao-max-backup`.
+
+- **Só neste servidor** protege de erro humano ou migração ruim, mas **não** de perder o servidor.
+- **Cópia fora do servidor (recomendado):** crie um bucket **privado** no Cloudflare R2 (ex.: `salao-max-backup`,
+  sem acesso público — nunca use o bucket de fotos, que é público), dê ao token "Object Read & Write" nele e
+  coloque `BACKUP_BUCKET=salao-max-backup` no `.env` do servidor (usa as mesmas `R2_*` das fotos). Faça `docker compose up -d`.
+- **Restaurar** (num banco vazio, com a API parada):
+
+```bash
+cd /opt/salao-max && export COMPOSE_FILE=docker-compose.prod.yml
+docker compose stop api
+docker run --rm -v salao-max_db_backups:/b alpine ls /b            # escolha o arquivo
+docker run --rm -v salao-max_db_backups:/b alpine cat /b/salao-AAAA-MM-DD-HHMM.sql.gz \
+  | gunzip | docker compose exec -T db psql -U salao salao
+docker compose start api
+```
+
+Teste a restauração de vez em quando num banco à parte: um backup que nunca foi restaurado não é garantia.
+
 ## Secrets do GitHub
 
 | Secret | Uso |

@@ -38,17 +38,18 @@ public final class SalonDtos {
             String address,
             @NotNull @Size(min = 1, max = 7, message = "abra pelo menos um dia") List<@Valid DayHoursDto> hours,
             @Min(5) @Max(120) int slotMinutes,
-            /* nulo = mantém (apps antigos não mandam) */ ReminderMode reminderMode) {
+            /* nulo = mantém (apps antigos não mandam) */ ReminderMode reminderMode,
+            /* nulo = mantém; um dos fusos de SalonZones */ String timezone) {
     }
 
     public record SalonResponse(Long id, String name, String slug, String phone, String address,
                                 List<DayHoursDto> hours, String workDays, int slotMinutes,
-                                ReminderMode reminderMode, List<Integer> reminderDays) {
+                                ReminderMode reminderMode, List<Integer> reminderDays, String timezone) {
 
         public static SalonResponse from(Salon s) {
             return new SalonResponse(s.getId(), s.getName(), s.getSlug(), s.getPhone(), s.getAddress(),
                     SalonDtos.hours(s), s.workDays(), s.getSlotMinutes(),
-                    s.getReminderMode(), s.getReminderMode().days());
+                    s.getReminderMode(), s.getReminderMode().days(), s.getTimezone());
         }
     }
 

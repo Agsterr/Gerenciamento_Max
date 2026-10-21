@@ -52,6 +52,7 @@ public class NotificationService {
         n.setAppointmentId(a.getId());
         n.setTitle(title);
         n.setMessage(describe(a));
+        n.setCreatedAt(LocalDateTime.now(clock));
         repository.save(n);
     }
 
@@ -69,6 +70,7 @@ public class NotificationService {
         n.setType(Notification.Type.REMINDERS);
         n.setTitle(count == 1 ? "1 cliente para lembrar" : count + " clientes para lembrar");
         n.setMessage("Horários " + when + " ainda sem confirmação. Abra Lembretes e mande a mensagem pelo WhatsApp.");
+        n.setCreatedAt(LocalDateTime.now(clock));
         repository.save(n);
         return true;
     }
@@ -86,6 +88,7 @@ public class NotificationService {
         n.setAppointmentId(a.getId());
         n.setTitle(title);
         n.setMessage(describe(a));
+        n.setCreatedAt(LocalDateTime.now(clock));
         repository.save(n);
         return true;
     }

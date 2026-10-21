@@ -55,6 +55,10 @@ public class Salon {
     @Column(nullable = false)
     private int slotMinutes = 30;
 
+    /** Fuso do salão (IANA): todos os horários dele são a hora local nesse fuso. */
+    @Column(nullable = false)
+    private String timezone = "America/Sao_Paulo";
+
     /** Lembrete para o cliente confirmar o horário (app do cliente e lista de lembretes do salão). */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

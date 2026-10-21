@@ -74,6 +74,8 @@ export type Salon = {
   hours: DayHours[];
   workDays: string;
   slotMinutes: number;
+  /** Fuso do salão (IANA). */
+  timezone: string;
   reminderMode: ReminderMode;
   /** Dias antes do horário em que o cliente é lembrado (vazio = desligado). */
   reminderDays: number[];
@@ -372,3 +374,11 @@ export type TrialTerms = {
   /** Só na configuração da plataforma: fotos no plano pago. */
   maxPhotosPaid?: number;
 };
+
+/** Fusos do Brasil (sem horário de verão). */
+export const TIMEZONES: { value: string; label: string }[] = [
+  { value: "America/Sao_Paulo", label: "Brasília (maioria dos estados)" },
+  { value: "America/Manaus", label: "Amazonas, MT, MS, RO e RR (1h a menos)" },
+  { value: "America/Rio_Branco", label: "Acre (2h a menos)" },
+  { value: "America/Noronha", label: "Fernando de Noronha (1h a mais)" },
+];

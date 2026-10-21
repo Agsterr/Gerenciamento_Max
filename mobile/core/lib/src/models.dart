@@ -234,7 +234,16 @@ class Salon {
     required this.hours,
     required this.slotMinutes,
     this.reminderMode = ReminderMode.oneDay,
+    this.timezone = 'America/Sao_Paulo',
   });
+
+  /// Fusos do Brasil (sem horário de verão): código -> nome.
+  static const timezones = {
+    'America/Sao_Paulo': 'Brasília (maioria dos estados)',
+    'America/Manaus': 'Amazonas, MT, MS, RO e RR (1h a menos)',
+    'America/Rio_Branco': 'Acre (2h a menos)',
+    'America/Noronha': 'Fernando de Noronha (1h a mais)',
+  };
 
   factory Salon.fromJson(Map<String, dynamic> j) => Salon(
         name: j['name'] as String,
@@ -244,9 +253,11 @@ class Salon {
         hours: (j['hours'] as List).map((e) => DayHours.fromJson(e as Map<String, dynamic>)).toList(),
         slotMinutes: j['slotMinutes'] as int,
         reminderMode: ReminderMode.parse(j['reminderMode'] as String?),
+        timezone: j['timezone'] as String? ?? 'America/Sao_Paulo',
       );
 
   String name;
+  String timezone;
   final String slug;
   String? phone;
   String? address;
@@ -263,6 +274,7 @@ class Salon {
         'address': address,
         'hours': [for (final h in hours) h.toJson()],
         'slotMinutes': slotMinutes,
+        'timezone': timezone,
       };
 }
 

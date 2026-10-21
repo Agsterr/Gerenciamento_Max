@@ -11,6 +11,7 @@ import java.util.Set;
 
 import com.max.salao.shared.BusinessException;
 import com.max.salao.shared.NotFoundException;
+import com.max.salao.shared.SalonZones;
 import com.max.salao.shared.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,9 +22,11 @@ public class SalonService {
     private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
 
     private final SalonRepository salons;
+    private final SalonZones zones;
 
-    public SalonService(SalonRepository salons) {
+    public SalonService(SalonRepository salons, SalonZones zones) {
         this.salons = salons;
+        this.zones = zones;
     }
 
     /** Salão da requisição atual (tenant). */
@@ -43,6 +46,13 @@ public class SalonService {
         salon.setSlotMinutes(req.slotMinutes());
         if (req.reminderMode() != null) {
             salon.setReminderMode(req.reminderMode());
+        }
+        if (req.timezone() != null && !req.timezone().equals(salon.getTimezone())) {
+            if (!SalonZones.isAllowed(req.timezone())) {
+                throw new BusinessException("Fuso horário inválido");
+            }
+            salon.setTimezone(req.timezone());
+            zones.evict(salon.getId());
         }
         return salons.save(salon);
     }

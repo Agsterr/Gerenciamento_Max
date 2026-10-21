@@ -33,7 +33,6 @@ public class StaffReminderJob {
 
     @Scheduled(cron = "${app.staff-reminders.cron:0 */5 * * * *}", zone = "${app.timezone}")
     public void run() {
-        LocalDateTime since = LocalDateTime.now(clock).minusMinutes(LOOKBACK_MINUTES);
         List<Long> salons = jdbc.queryForList("""
                 select distinct r.tenant_id from user_reminder_rule r join salon s on s.id = r.tenant_id
                 where s.blocked = false""", Long.class);
@@ -41,7 +40,8 @@ public class StaffReminderJob {
         for (Long id : salons) {
             try {
                 TenantContext.set(id);
-                sent += service.notifyDue(since);
+                // "agora" na hora local do salão (cada salão tem o seu fuso)
+                sent += service.notifyDue(LocalDateTime.now(clock).minusMinutes(LOOKBACK_MINUTES));
             } catch (RuntimeException e) {
                 log.warn("Lembretes de atendimento do salão {} falharam: {}", id, e.getMessage());
             } finally {
