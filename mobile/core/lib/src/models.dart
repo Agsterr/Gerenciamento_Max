@@ -56,7 +56,15 @@ class SalonSummary {
 }
 
 class PublicService {
-  const PublicService({required this.id, required this.name, this.description, required this.durationMinutes, required this.price});
+  const PublicService({
+    required this.id,
+    required this.name,
+    this.description,
+    required this.durationMinutes,
+    required this.price,
+    this.category,
+    this.professionalIds = const [],
+  });
 
   factory PublicService.fromJson(Map<String, dynamic> j) => PublicService(
         id: j['id'] as int,
@@ -64,6 +72,8 @@ class PublicService {
         description: j['description'] as String?,
         durationMinutes: j['durationMinutes'] as int,
         price: _num(j['price']),
+        category: _category(j['category']),
+        professionalIds: [for (final id in (j['professionalIds'] as List? ?? const [])) id as int],
       );
 
   final int id;
@@ -71,6 +81,26 @@ class PublicService {
   final String? description;
   final int durationMinutes;
   final double price;
+
+  /// Grupo na lista (Cabelo, Unhas...); nulo = "Outros".
+  final String? category;
+
+  /// Quem faz o serviço; vazio = qualquer profissional.
+  final List<int> professionalIds;
+
+  bool doneBy(int professionalId) => professionalIds.isEmpty || professionalIds.contains(professionalId);
+}
+
+String? _category(Object? v) => v is String && v.trim().isNotEmpty ? v.trim() : null;
+
+/// Agrupa por categoria mantendo a ordem de aparição; sem categoria vai para o fim, como "Outros".
+Map<String, List<T>> groupByCategory<T>(Iterable<T> items, String? Function(T) category) {
+  final groups = <String, List<T>>{};
+  for (final item in items) {
+    groups.putIfAbsent(category(item) ?? 'Outros', () => []).add(item);
+  }
+  final others = groups.remove('Outros');
+  return {...groups, if (others != null) 'Outros': others};
 }
 
 class PublicSalon {
@@ -305,6 +335,8 @@ class ServiceItem {
     required this.price,
     required this.cost,
     required this.active,
+    this.category,
+    this.professionalIds = const [],
   });
 
   factory ServiceItem.fromJson(Map<String, dynamic> j) => ServiceItem(
@@ -315,6 +347,8 @@ class ServiceItem {
         price: _num(j['price']),
         cost: _num(j['cost']),
         active: j['active'] as bool,
+        category: _category(j['category']),
+        professionalIds: [for (final id in (j['professionalIds'] as List? ?? const [])) id as int],
       );
 
   final int id;
@@ -324,6 +358,12 @@ class ServiceItem {
   final double price;
   final double cost;
   final bool active;
+  final String? category;
+
+  /// Quem faz o serviço; vazio = qualquer profissional.
+  final List<int> professionalIds;
+
+  bool doneBy(int professionalId) => professionalIds.isEmpty || professionalIds.contains(professionalId);
 }
 
 class Customer {

@@ -87,3 +87,15 @@ export const REMINDER_MODES: { value: import("./types").ReminderMode; label: str
   { value: "TWO_DAYS", label: "2 dias antes" },
   { value: "BOTH", label: "2 dias e 1 dia antes" },
 ];
+
+/** Agrupa serviços por categoria na ordem em que aparecem; sem categoria vai para o fim, como "Outros". */
+export function groupByCategory<T extends { category: string | null }>(items: T[]): [string, T[]][] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const key = item.category?.trim() || "Outros";
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  }
+  const others = groups.get("Outros");
+  groups.delete("Outros");
+  return [...groups.entries(), ...(others ? ([["Outros", others]] as [string, T[]][]) : [])];
+}

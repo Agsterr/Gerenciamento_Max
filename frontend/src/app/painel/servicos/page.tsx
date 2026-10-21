@@ -12,9 +12,16 @@ export default function ServicesPage() {
       path="/api/services"
       ownerOnly
       servicePhotos
-      defaults={{ name: "", description: "", durationMinutes: 30, price: 0, cost: 0, active: true }}
+      defaults={{ name: "", category: "", professionalIds: [], description: "", durationMinutes: 30, price: 0, cost: 0, active: true }}
       fields={[
         { key: "name", label: "Nome", required: true, placeholder: "Corte feminino" },
+        { key: "category", label: "Categoria", placeholder: "Cabelo, Unhas...", suggestions: ["Cabelo", "Unhas", "Estética", "Barba"] },
+        {
+          key: "professionalIds",
+          label: "Quem faz este serviço",
+          type: "professionals",
+          hint: "Sem nenhum marcado, qualquer profissional pode fazer.",
+        },
         { key: "description", label: "Descrição" },
         { key: "durationMinutes", label: "Duração (minutos)", type: "number", required: true },
         { key: "price", label: "Preço (R$)", type: "number", step: "0.01", required: true },
@@ -23,6 +30,7 @@ export default function ServicesPage() {
       ]}
       columns={[
         { label: "Serviço", render: (s) => <span className="font-medium">{s.name}</span> },
+        { label: "Categoria", render: (s) => s.category ?? "—", className: "hidden sm:table-cell" },
         { label: "Duração", render: (s) => `${s.durationMinutes} min` },
         { label: "Preço", render: (s) => formatMoney(s.price) },
         { label: "Custo", render: (s) => formatMoney(s.cost), className: "hidden sm:table-cell" },

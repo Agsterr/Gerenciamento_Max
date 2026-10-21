@@ -6,11 +6,15 @@ import { api } from "@/lib/api";
 import { ServicePhotos, uploadServicePhotos } from "@/components/ServicePhotos";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/useApi";
+import type { Professional } from "@/lib/types";
 
 export type FieldDef = {
   key: string;
   label: string;
-  type?: "text" | "number" | "checkbox" | "tel" | "email";
+  type?: "text" | "number" | "checkbox" | "tel" | "email" | "professionals";
+  /** Atalhos de preenchimento para campos de texto. */
+  suggestions?: string[];
+  hint?: string;
   step?: string;
   required?: boolean;
   placeholder?: string;
@@ -49,6 +53,8 @@ export function CrudPage<T extends { id: number }>({
   const { user } = useAuth();
   const canEdit = !ownerOnly || user?.role === "OWNER";
   const { data, error, reload } = useApi<T[]>(listPath ?? path);
+  const needsProfessionals = fields.some((f) => f.type === "professionals");
+  const { data: professionals } = useApi<Professional[]>(needsProfessionals ? "/api/professionals" : null);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [formError, setFormError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -159,9 +165,39 @@ export function CrudPage<T extends { id: number }>({
                   />
                   {f.label}
                 </label>
+              ) : f.type === "professionals" ? (
+                <fieldset key={f.key}>
+                  <legend className="mb-1 text-sm font-semibold text-brand-ink">{f.label}</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {professionals
+                      ?.filter((p) => p.active)
+                      .map((p) => {
+                        const chosen = ((editing[f.key] as number[] | undefined) ?? []).includes(p.id);
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              const ids = new Set((editing[f.key] as number[] | undefined) ?? []);
+                              if (chosen) ids.delete(p.id);
+                              else ids.add(p.id);
+                              setEditing({ ...editing, [f.key]: [...ids] });
+                            }}
+                            className={`rounded-full px-3 py-1.5 text-sm font-bold ${
+                              chosen ? "bg-brand text-white" : "border border-[#F1E3EB] bg-white text-brand-muted"
+                            }`}
+                          >
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                  </div>
+                  {f.hint && <p className="mt-1 text-xs text-zinc-500">{f.hint}</p>}
+                </fieldset>
               ) : (
                 <Field
                   key={f.key}
+                  list={f.suggestions ? `${f.key}-options` : undefined}
                   label={f.label}
                   type={f.type ?? "text"}
                   step={f.step}
@@ -173,6 +209,15 @@ export function CrudPage<T extends { id: number }>({
                 />
               ),
             )}
+            {fields
+              .filter((f) => f.suggestions)
+              .map((f) => (
+                <datalist key={f.key} id={`${f.key}-options`}>
+                  {f.suggestions!.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
+              ))}
             {servicePhotos && <ServicePhotos serviceId={editing.id as number | undefined} files={files} onFiles={setFiles} />}
             <ErrorMessage message={formError} />
             <Button className="w-full" disabled={busy}>

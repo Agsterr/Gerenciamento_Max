@@ -187,11 +187,17 @@ class _NewAppointmentSheetState extends State<_NewAppointmentSheet> {
               decoration: const InputDecoration(labelText: 'Serviço'),
               isExpanded: true,
               items: [
-                for (final s in _services)
-                  DropdownMenuItem(value: s, child: Text('${s.name} · ${s.durationMinutes} min · ${formatMoney(s.price)}')),
+                for (final s in [..._services]..sort((a, b) => (a.category ?? '\uffff').compareTo(b.category ?? '\uffff')))
+                  DropdownMenuItem(
+                      value: s,
+                      child: Text('${s.category == null ? '' : '${s.category} · '}${s.name} · ${s.durationMinutes} min · ${formatMoney(s.price)}')),
               ],
               onChanged: (s) {
-                setState(() => _service = s);
+                setState(() {
+                  _service = s;
+                  // quem não faz o serviço escolhido sai da seleção
+                  if (_professionalId != null && s != null && !s.doneBy(_professionalId!)) _professionalId = null;
+                });
                 _loadSlots();
               },
             ),
@@ -204,7 +210,7 @@ class _NewAppointmentSheetState extends State<_NewAppointmentSheet> {
                   isExpanded: true,
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Qualquer um')),
-                    for (final p in _professionals) DropdownMenuItem(value: p.id, child: Text(p.name)),
+                    for (final p in _professionals.where((p) => _service?.doneBy(p.id) ?? true)) DropdownMenuItem(value: p.id, child: Text(p.name)),
                   ],
                   onChanged: (v) {
                     setState(() => _professionalId = v);

@@ -4,13 +4,17 @@ import com.max.salao.plan.PlanService;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.max.salao.professional.Professional;
+import com.max.salao.professional.ProfessionalRepository;
 import com.max.salao.shared.NotFoundException;
+import java.util.HashSet;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,22 +35,28 @@ public class ServiceItemController {
             @Min(5) @Max(600) int durationMinutes,
             @NotNull @DecimalMin("0") BigDecimal price,
             @NotNull @DecimalMin("0") BigDecimal cost,
-            boolean active) {
+            boolean active,
+            @Size(max = 40) String category,
+            List<Long> professionalIds) {
     }
 
     public record ServiceResponse(Long id, String name, String description, int durationMinutes,
-                                  BigDecimal price, BigDecimal cost, boolean active) {
+                                  BigDecimal price, BigDecimal cost, boolean active, String category,
+                                  List<Long> professionalIds) {
 
         public static ServiceResponse from(ServiceItem s) {
             return new ServiceResponse(s.getId(), s.getName(), s.getDescription(), s.getDurationMinutes(),
-                    s.getPrice(), s.getCost(), s.isActive());
+                    s.getPrice(), s.getCost(), s.isActive(), s.getCategory(),
+                    s.getProfessionalIds().stream().sorted().toList());
         }
     }
 
     private final ServiceItemRepository repository;
     private final PlanService plans;
+    private final ProfessionalRepository professionals;
 
-    public ServiceItemController(ServiceItemRepository repository, PlanService plans) {
+    public ServiceItemController(ServiceItemRepository repository, PlanService plans, ProfessionalRepository professionals) {
+        this.professionals = professionals;
         this.plans = plans;
         this.repository = repository;
     }
@@ -69,13 +79,19 @@ public class ServiceItemController {
         return ServiceResponse.from(repository.save(apply(s, req)));
     }
 
-    private static ServiceItem apply(ServiceItem s, ServiceRequest req) {
+    private ServiceItem apply(ServiceItem s, ServiceRequest req) {
         s.setName(req.name());
         s.setDescription(req.description());
         s.setDurationMinutes(req.durationMinutes());
         s.setPrice(req.price());
         s.setCost(req.cost());
         s.setActive(req.active());
+        s.setCategory(req.category() == null || req.category().isBlank() ? null : req.category().trim());
+        // só profissionais deste salão (a consulta já filtra pelo tenant)
+        s.getProfessionalIds().clear();
+        if (req.professionalIds() != null && !req.professionalIds().isEmpty()) {
+            professionals.findAllById(req.professionalIds()).stream().map(Professional::getId).forEach(s.getProfessionalIds()::add);
+        }
         return s;
     }
 }

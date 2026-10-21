@@ -102,11 +102,12 @@ public class AppointmentService {
         }
         Long professionalId = cmd.professionalId() != null
                 ? cmd.professionalId()
-                : pickFreeProfessional(salon, start, end);
+                : pickFreeProfessional(salon, service, start, end);
         Professional professional = professionals.findByIdForUpdate(professionalId)
                 .filter(Professional::isActive)
                 .orElseThrow(() -> new NotFoundException("Profissional não encontrado"));
         if (!cmd.force()) {
+            assertDoes(professional, service);
             availability.assertBookable(salon, professional.getId(), start, end, null);
         }
 
@@ -137,6 +138,7 @@ public class AppointmentService {
         LocalDateTime start = req.startAt().withSecond(0).withNano(0);
         LocalDateTime end = start.plusMinutes(durationOf(service, req.durationMinutes()));
         if (!req.force()) {
+            assertDoes(professional, service);
             availability.assertBookable(salonService.current(), professional.getId(), start, end, a.getId());
         }
 
@@ -200,6 +202,7 @@ public class AppointmentService {
                 .filter(Professional::isActive)
                 .orElseThrow(() -> new NotFoundException("Profissional não encontrado"));
         LocalDateTime end = start.plusMinutes(a.plannedMinutes());
+        assertDoes(professional, a.getService());
         availability.assertBookable(salonService.current(), professional.getId(), start, end, a.getId());
         a.setProfessional(professional);
         a.setStartAt(start);
@@ -221,12 +224,19 @@ public class AppointmentService {
     }
 
     /** Primeiro profissional ativo sem conflito no intervalo (aceita qualquer minuto, não só a grade). */
-    private Long pickFreeProfessional(Salon salon, LocalDateTime start, LocalDateTime end) {
+    private Long pickFreeProfessional(Salon salon, ServiceItem service, LocalDateTime start, LocalDateTime end) {
         return professionals.findByActiveTrueOrderByName().stream()
                 .map(Professional::getId)
+                .filter(service::canBeDoneBy)
                 .filter(id -> availability.isBookable(salon, id, start, end))
                 .findFirst()
                 .orElseThrow(() -> new BusinessException("Nenhum profissional livre nesse horário"));
+    }
+
+    private static void assertDoes(Professional professional, ServiceItem service) {
+        if (!service.canBeDoneBy(professional.getId())) {
+            throw new BusinessException(professional.getName() + " não faz o serviço " + service.getName());
+        }
     }
 
     private static int durationOf(ServiceItem service, Integer manualMinutes) {

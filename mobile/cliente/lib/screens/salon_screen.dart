@@ -25,6 +25,9 @@ class _SalonScreenState extends State<SalonScreen> {
   List<Photo> _photos = const [];
 
   PublicService? _service;
+
+  /// Filtro das fotos por categoria (nulo = todas).
+  String? _photoCategory;
   int? _professionalId;
   DateTime? _day;
   List<Slot>? _slots;
@@ -244,29 +247,56 @@ class _SalonScreenState extends State<SalonScreen> {
   List<Widget> _steps(PublicSalon salon) {
     final text = Theme.of(context).textTheme;
     final servicePhotos = _service == null ? const <Photo>[] : _photos.where((p) => p.serviceId == _service!.id).toList();
+    final groups = groupByCategory(salon.services, (s) => s.category);
+    final categoryOf = {for (final s in salon.services) s.id: s.category ?? 'Outros'};
+    final shown = _photoCategory == null ? _photos : _photos.where((p) => categoryOf[p.serviceId] == _photoCategory).toList();
     return [
       if (_photos.isNotEmpty) ...[
         const SectionTitle('Nossos trabalhos'),
-        PhotoGrid(photos: _photos, maxItems: 6),
-        if (_photos.length > 6)
+        if (groups.length > 1)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              for (final c in [null, ...groups.keys])
+                Padding(
+                  padding: const EdgeInsets.only(right: 8, bottom: 8),
+                  child: ChoiceChip(
+                    label: Text(c ?? 'Todas'),
+                    selected: _photoCategory == c,
+                    onSelected: (_) => setState(() => _photoCategory = c),
+                  ),
+                ),
+            ]),
+          ),
+        if (shown.isEmpty) const Text('Ainda não há fotos desta categoria.') else PhotoGrid(photos: shown, maxItems: 6),
+        if (shown.length > 6)
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _AllPhotos(name: salon.name, photos: _photos))),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _AllPhotos(name: salon.name, photos: shown))),
               icon: const Icon(Icons.photo_library_outlined),
-              label: Text('Ver todas as ${_photos.length} fotos'),
+              label: Text('Ver todas as ${shown.length} fotos'),
             ),
           ),
       ],
       const SectionTitle('1. Escolha o serviço'),
       if (salon.services.isEmpty) const Text('Nenhum serviço disponível no momento.'),
-      for (final s in salon.services)
+      for (final group in groups.entries) ...[
+        if (groups.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 8),
+            child: Text(group.key, style: text.titleSmall?.copyWith(color: Brand.muted)),
+          ),
+        for (final s in group.value)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: SoftCard(
             border: Border.all(color: _service?.id == s.id ? Brand.rose : Colors.transparent, width: 2),
             onTap: () {
-              setState(() => _service = s);
+              setState(() {
+                _service = s;
+                if (_professionalId != null && !s.doneBy(_professionalId!)) _professionalId = null;
+              });
               _loadSlots();
             },
             child: Row(children: [
@@ -283,6 +313,7 @@ class _SalonScreenState extends State<SalonScreen> {
             ]),
           ),
         ),
+      ],
       if (servicePhotos.isNotEmpty) ...[
         Padding(
           padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -304,7 +335,7 @@ class _SalonScreenState extends State<SalonScreen> {
                 _loadSlots();
               },
             ),
-            for (final p in salon.professionals)
+            for (final p in salon.professionals.where((p) => _service!.doneBy(p.id)))
               _ProfessionalOption(
                 name: p.name,
                 selected: _professionalId == p.id,

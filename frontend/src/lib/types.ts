@@ -102,6 +102,10 @@ export type Service = {
   price: number;
   cost: number;
   active: boolean;
+  /** Grupo do serviço (Cabelo, Unhas...). */
+  category: string | null;
+  /** Quem faz o serviço; vazio = qualquer profissional. */
+  professionalIds: number[];
 };
 
 export type Customer = {
@@ -219,7 +223,16 @@ export type PublicSalon = {
   address: string | null;
   workDays: string;
   hours: DayHours[];
-  services: { id: number; name: string; description: string | null; durationMinutes: number; price: number }[];
+  services: {
+    id: number;
+    name: string;
+    description: string | null;
+    durationMinutes: number;
+    price: number;
+    category: string | null;
+    /** Vazio = qualquer profissional faz. */
+    professionalIds: number[];
+  }[];
   professionals: Ref[];
   reminderDays: number[];
 };

@@ -47,16 +47,29 @@ class CatalogScreen extends StatelessWidget {
             parse: ServiceItem.fromJson,
             title: 'serviço',
             withPhotos: true,
-            fields: const [
-              FieldSpec('name', 'Nome', required: true),
-              FieldSpec('description', 'Descrição'),
-              FieldSpec('durationMinutes', 'Duração (minutos)', kind: FieldKind.number, required: true),
-              FieldSpec('price', r'Preço (R$)', kind: FieldKind.decimal, required: true),
-              FieldSpec('cost', r'Custo de material (R$)', kind: FieldKind.decimal),
-              FieldSpec('active', 'Ativo (aparece no agendamento online)', kind: FieldKind.toggle),
+            fields: [
+              const FieldSpec('name', 'Nome', required: true),
+              const FieldSpec('category', 'Categoria', hint: 'Ex.: Cabelo, Unhas', suggestions: ['Cabelo', 'Unhas', 'Estética', 'Barba']),
+              FieldSpec(
+                'professionalIds',
+                'Quem faz este serviço',
+                kind: FieldKind.choices,
+                emptyHint: 'Sem nenhum marcado, qualquer profissional pode fazer.',
+                loadOptions: () async => {
+                  for (final p in (await session.api.get('/api/professionals') as List).map((e) => Professional.fromJson(e as Map<String, dynamic>)))
+                    if (p.active) p.id: p.name,
+                },
+              ),
+              const FieldSpec('description', 'Descrição'),
+              const FieldSpec('durationMinutes', 'Duração (minutos)', kind: FieldKind.number, required: true),
+              const FieldSpec('price', r'Preço (R$)', kind: FieldKind.decimal, required: true),
+              const FieldSpec('cost', r'Custo de material (R$)', kind: FieldKind.decimal),
+              const FieldSpec('active', 'Ativo (aparece no agendamento online)', kind: FieldKind.toggle),
             ],
             toForm: (s) => {
               'name': s?.name,
+              'category': s?.category,
+              'professionalIds': s?.professionalIds ?? const <int>[],
               'description': s?.description,
               'durationMinutes': s?.durationMinutes ?? 30,
               'price': s?.price,
@@ -70,6 +83,7 @@ class CatalogScreen extends StatelessWidget {
               leading: ServiceIcon(s.name),
               title: s.name,
               pills: [
+                if (s.category != null) Pill(s.category!, icon: Icons.folder_outlined),
                 Pill('${s.durationMinutes} min', icon: Icons.schedule_rounded),
                 if (s.price > 0)
                   Pill('margem ${((s.price - s.cost) / s.price * 100).round()}%',

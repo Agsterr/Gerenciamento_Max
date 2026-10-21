@@ -64,6 +64,7 @@ public class AppointmentController {
         var serviceItem = services.findById(serviceId).orElseThrow(() -> new NotFoundException("Serviço não encontrado"));
         var candidates = professionals.findByActiveTrueOrderByName().stream()
                 .filter(p -> professionalId == null || p.getId().equals(professionalId))
+                .filter(p -> serviceItem.canBeDoneBy(p.getId()))
                 .toList();
         return availability.slots(salonService.current(), serviceItem, candidates, date);
     }

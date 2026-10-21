@@ -364,6 +364,43 @@ class SalonFlowIntegrationTest {
     }
 
     @Test
+    void servicesHaveCategoryAndOnlyTheirProfessionalsCanBeBooked() throws Exception {
+        Tenant salon = register();
+        long hairdresser = id(call(salon, post("/api/professionals"),
+                Map.of("name", "Bia", "commissionPercent", 30, "active", true), status().isCreated()));
+        long manicure = id(call(salon, post("/api/professionals"),
+                Map.of("name", "Nina", "commissionPercent", 30, "active", true), status().isCreated()));
+        long nails = id(call(salon, post("/api/services"),
+                Map.of("name", "Esmaltação", "durationMinutes", 60, "price", 40, "cost", 2, "active", true,
+                        "category", "Unhas", "professionalIds", List.of(manicure)), status().isCreated()));
+        long cut = id(call(salon, post("/api/services"),
+                Map.of("name", "Corte", "durationMinutes", 60, "price", 80, "cost", 0, "active", true,
+                        "category", "Cabelo"), status().isCreated()));
+
+        String base = "/api/public/salons/" + salon.slug;
+        JsonNode info = call(null, get(base), null, status().isOk());
+        JsonNode nailsInfo = info.get("services").get(0).get("name").asText().equals("Esmaltação")
+                ? info.get("services").get(0) : info.get("services").get(1);
+        assertThat(nailsInfo.get("category").asText()).isEqualTo("Unhas");
+        assertThat(nailsInfo.get("professionalIds")).hasSize(1);
+
+        // horários de unhas só da manicure; corte (sem restrição) qualquer uma
+        JsonNode slots = call(null, get(base + "/availability?serviceId=" + nails + "&date=" + day), null, status().isOk());
+        assertThat(slots.get(0).get("professionalIds")).extracting(JsonNode::asLong).containsExactly(manicure);
+        JsonNode cutSlots = call(null, get(base + "/availability?serviceId=" + cut + "&date=" + day), null, status().isOk());
+        assertThat(cutSlots.get(0).get("professionalIds")).hasSize(2);
+
+        var wrong = Map.of("serviceId", nails, "professionalId", hairdresser, "startAt", day + "T10:00:00",
+                "name", "Maria", "phone", "(11) 99999-0000");
+        call(null, post(base + "/bookings"), wrong, status().isUnprocessableEntity());
+
+        // "qualquer profissional": o app escolhe quem faz
+        var any = Map.of("serviceId", nails, "startAt", day + "T10:00:00", "name", "Maria", "phone", "(11) 99999-0000");
+        assertThat(call(null, post(base + "/bookings"), any, status().isCreated()).get("professionalName").asText())
+                .isEqualTo("Nina");
+    }
+
+    @Test
     void salonClockFollowsTheSalonTimezone() throws Exception {
         Tenant salon = register();
         assertThat(call(salon, get("/api/salon"), null, status().isOk()).get("timezone").asText())

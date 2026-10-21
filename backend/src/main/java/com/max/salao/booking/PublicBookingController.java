@@ -33,7 +33,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/public/salons/{slug}")
 public class PublicBookingController {
 
-    public record PublicService(Long id, String name, String description, int durationMinutes, BigDecimal price) {
+    /** professionalIds vazio = qualquer profissional faz o serviço. */
+    public record PublicService(Long id, String name, String description, int durationMinutes, BigDecimal price,
+                                String category, List<Long> professionalIds) {
     }
 
     public record PublicProfessional(Long id, String name) {
@@ -95,7 +97,8 @@ public class PublicBookingController {
                 SalonDtos.hours(s),
                 service.activeServices().stream()
                         .map(x -> new PublicService(x.getId(), x.getName(), x.getDescription(),
-                                x.getDurationMinutes(), x.getPrice()))
+                                x.getDurationMinutes(), x.getPrice(), x.getCategory(),
+                                x.getProfessionalIds().stream().sorted().toList()))
                         .toList(),
                 service.activeProfessionals().stream().map(p -> new PublicProfessional(p.getId(), p.getName()))
                         .toList(),

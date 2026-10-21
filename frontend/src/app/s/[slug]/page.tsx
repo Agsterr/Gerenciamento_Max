@@ -9,7 +9,7 @@ import { AppPromo } from "@/components/InstallApp";
 import { Icon, serviceIcon } from "@/components/Icon";
 import { ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";
-import { bookableDays, formatMoney } from "@/lib/format";
+import { bookableDays, formatMoney, groupByCategory } from "@/lib/format";
 import type { Booking, Photo, PublicSalon, Slot } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
@@ -25,6 +25,7 @@ export default function PublicBookingPage() {
 
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [professionalId, setProfessionalId] = useState<number | null>(null);
+  const [photoCategory, setPhotoCategory] = useState<string | null>(null);
   const [date, setDate] = useState<string | null>(null);
   const [time, setTime] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -32,7 +33,10 @@ export default function PublicBookingPage() {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
-  const days = useMemo(() => (salon ? bookableDays(salon.workDays) : []), [salon]);
+  const days = useMemo(
+    () => (salon ? bookableDays(salon.workDays) : []),
+    [salon],
+  );
 
   useEffect(() => {
     if (!date && days.length) setDate(days[0]);
@@ -41,7 +45,8 @@ export default function PublicBookingPage() {
 
   const slotsPath =
     serviceId && date
-      ? `${base}/availability?serviceId=${serviceId}&date=${date}` + (professionalId ? `&professionalId=${professionalId}` : "")
+      ? `${base}/availability?serviceId=${serviceId}&date=${date}` +
+        (professionalId ? `&professionalId=${professionalId}` : "")
       : null;
   const { data: slots, loading } = useApi<Slot[]>(slotsPath);
 
@@ -50,8 +55,21 @@ export default function PublicBookingPage() {
 
   const service = salon.services.find((s) => s.id === serviceId);
   const servicePhotos = photos?.filter((p) => p.serviceId === serviceId) ?? [];
-  const photoServices = salon.services.filter((s) => photos?.some((p) => p.serviceId === s.id));
-  const shownPhotos = photos?.filter((p) => photoFilter === null || p.serviceId === photoFilter) ?? [];
+  const categoryOf = (id: number | null) =>
+    salon.services.find((s) => s.id === id)?.category ?? "Outros";
+  const groups = groupByCategory(salon.services);
+  const categories = groups.map(([name]) => name);
+  const photoServices = salon.services.filter(
+    (s) =>
+      photos?.some((p) => p.serviceId === s.id) &&
+      (photoCategory === null || categoryOf(s.id) === photoCategory),
+  );
+  const shownPhotos =
+    photos?.filter(
+      (p) =>
+        (photoFilter === null || p.serviceId === photoFilter) &&
+        (photoCategory === null || categoryOf(p.serviceId) === photoCategory),
+    ) ?? [];
 
   async function book(e: React.FormEvent) {
     e.preventDefault();
@@ -95,7 +113,9 @@ export default function PublicBookingPage() {
                 <Icon name="pin" className="h-4 w-4 shrink-0" /> {salon.address}
               </p>
             )}
-            <p className="mt-1 text-sm font-semibold text-white/90">Agende seu horário online</p>
+            <p className="mt-1 text-sm font-semibold text-white/90">
+              Agende seu horário online
+            </p>
           </div>
         </div>
         <div className="relative mx-auto mt-5 max-w-xl">
@@ -103,7 +123,8 @@ export default function PublicBookingPage() {
             href={`/s/${slug}/meus-horarios`}
             className="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/40 backdrop-blur transition hover:bg-white/30"
           >
-            <Icon name="search" className="h-4 w-4" /> Já agendou? Ver ou remarcar meus horários
+            <Icon name="search" className="h-4 w-4" /> Já agendou? Ver ou
+            remarcar meus horários
           </Link>
         </div>
       </header>
@@ -112,14 +133,39 @@ export default function PublicBookingPage() {
         {photos && photos.length > 0 && (
           <section className="mt-7">
             <h2 className="mb-3 text-lg font-extrabold">Nossos trabalhos</h2>
+            {categories.length > 1 && (
+              <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+                {[null, ...categories].map((c) => (
+                  <button
+                    key={c ?? "todas"}
+                    onClick={() => {
+                      setPhotoCategory(c);
+                      setPhotoFilter(null);
+                    }}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-bold ${
+                      photoCategory === c
+                        ? "bg-brand-ink text-white"
+                        : "border border-[#F1E3EB] bg-white text-brand-muted"
+                    }`}
+                  >
+                    {c ?? "Todas"}
+                  </button>
+                ))}
+              </div>
+            )}
             {photoServices.length > 0 && (
               <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-                {[{ id: null as number | null, name: "Todos" }, ...photoServices].map((s) => (
+                {[
+                  { id: null as number | null, name: "Todos" },
+                  ...photoServices,
+                ].map((s) => (
                   <button
                     key={s.id ?? 0}
                     onClick={() => setPhotoFilter(s.id)}
                     className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-bold ${
-                      photoFilter === s.id ? "bg-brand text-white" : "border border-[#F1E3EB] bg-white text-brand-muted"
+                      photoFilter === s.id
+                        ? "bg-brand text-white"
+                        : "border border-[#F1E3EB] bg-white text-brand-muted"
                     }`}
                   >
                     {s.name}
@@ -127,9 +173,15 @@ export default function PublicBookingPage() {
                 ))}
               </div>
             )}
-            <Gallery key={photoFilter ?? 0} photos={allPhotos ? shownPhotos : shownPhotos.slice(0, 9)} />
+            <Gallery
+              key={photoFilter ?? 0}
+              photos={allPhotos ? shownPhotos : shownPhotos.slice(0, 9)}
+            />
             {!allPhotos && shownPhotos.length > 9 && (
-              <button onClick={() => setAllPhotos(true)} className="mt-2 text-sm font-bold text-brand-rose hover:underline">
+              <button
+                onClick={() => setAllPhotos(true)}
+                className="mt-2 text-sm font-bold text-brand-rose hover:underline"
+              >
                 Ver todas as {shownPhotos.length} fotos
               </button>
             )}
@@ -138,35 +190,68 @@ export default function PublicBookingPage() {
 
         <Step n={1} title="Escolha o serviço">
           <div className="space-y-3">
-            {salon.services.map((s) => {
-              const active = serviceId === s.id;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setServiceId(s.id)}
-                  className={`shadow-soft flex w-full items-center gap-4 rounded-2xl border-2 bg-white p-4 text-left transition ${
-                    active ? "border-brand-rose" : "border-transparent hover:border-brand-pink/40"
-                  }`}
-                >
-                  <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${active ? "bg-brand text-white" : "bg-[#FFEAF2] text-brand-rose"}`}>
-                    <Icon name={serviceIcon(s.name)} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-extrabold">{s.name}</span>
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#F6EEF3] px-2 py-0.5 text-xs font-bold text-brand-muted">
-                      <Icon name="clock" className="h-3.5 w-3.5" /> {s.durationMinutes} min
-                    </span>
-                  </span>
-                  <span className="font-extrabold text-brand-rose">{formatMoney(s.price)}</span>
-                </button>
-              );
-            })}
-            {salon.services.length === 0 && <p className="text-sm text-brand-muted">Nenhum serviço disponível no momento.</p>}
+            {groups.map(([category, items]) => (
+              <div key={category} className="space-y-3">
+                {groups.length > 1 && (
+                  <h3 className="pt-1 text-sm font-extrabold text-brand-muted">
+                    {category}
+                  </h3>
+                )}
+                {items.map((s) => {
+                  const active = serviceId === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        setServiceId(s.id);
+                        if (
+                          professionalId &&
+                          s.professionalIds.length > 0 &&
+                          !s.professionalIds.includes(professionalId)
+                        )
+                          setProfessionalId(null);
+                      }}
+                      className={`shadow-soft flex w-full items-center gap-4 rounded-2xl border-2 bg-white p-4 text-left transition ${
+                        active
+                          ? "border-brand-rose"
+                          : "border-transparent hover:border-brand-pink/40"
+                      }`}
+                    >
+                      <span
+                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${active ? "bg-brand text-white" : "bg-[#FFEAF2] text-brand-rose"}`}
+                      >
+                        <Icon name={serviceIcon(s.name)} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-extrabold">{s.name}</span>
+                        <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#F6EEF3] px-2 py-0.5 text-xs font-bold text-brand-muted">
+                          <Icon name="clock" className="h-3.5 w-3.5" />{" "}
+                          {s.durationMinutes} min
+                        </span>
+                      </span>
+                      <span className="font-extrabold text-brand-rose">
+                        {formatMoney(s.price)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+            {salon.services.length === 0 && (
+              <p className="text-sm text-brand-muted">
+                Nenhum serviço disponível no momento.
+              </p>
+            )}
           </div>
           {servicePhotos.length > 0 && (
             <div className="mt-4">
-              <p className="mb-2 text-sm font-bold text-brand-muted">Fotos de {service?.name}</p>
-              <Gallery key={serviceId ?? 0} photos={servicePhotos.slice(0, 6)} />
+              <p className="mb-2 text-sm font-bold text-brand-muted">
+                Fotos de {service?.name}
+              </p>
+              <Gallery
+                key={serviceId ?? 0}
+                photos={servicePhotos.slice(0, 6)}
+              />
             </div>
           )}
         </Step>
@@ -174,16 +259,41 @@ export default function PublicBookingPage() {
         {service && (
           <Step n={2} title="Com quem?">
             <div className="flex gap-3 overflow-x-auto pb-1">
-              {[{ id: null, name: "Qualquer um" }, ...salon.professionals].map((p) => {
+              {[
+                { id: null, name: "Qualquer um" },
+                ...salon.professionals.filter(
+                  (p) =>
+                    service.professionalIds.length === 0 ||
+                    service.professionalIds.includes(p.id),
+                ),
+              ].map((p) => {
                 const active = professionalId === p.id;
                 return (
-                  <button key={p.id ?? 0} onClick={() => setProfessionalId(p.id)} className="w-20 shrink-0 text-center">
-                    <span className={`mx-auto block w-fit rounded-full p-[3px] ${active ? "bg-brand" : ""}`}>
+                  <button
+                    key={p.id ?? 0}
+                    onClick={() => setProfessionalId(p.id)}
+                    className="w-20 shrink-0 text-center"
+                  >
+                    <span
+                      className={`mx-auto block w-fit rounded-full p-[3px] ${active ? "bg-brand" : ""}`}
+                    >
                       <span className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-[#B794F6] to-[#7C3AED] font-extrabold text-white">
-                        {p.id === null ? <Icon name="shuffle" /> : p.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                        {p.id === null ? (
+                          <Icon name="shuffle" />
+                        ) : (
+                          p.name
+                            .split(" ")
+                            .map((w) => w[0])
+                            .slice(0, 2)
+                            .join("")
+                        )}
                       </span>
                     </span>
-                    <span className={`mt-1 block truncate text-sm ${active ? "font-extrabold text-brand-rose" : "font-semibold"}`}>{p.name}</span>
+                    <span
+                      className={`mt-1 block truncate text-sm ${active ? "font-extrabold text-brand-rose" : "font-semibold"}`}
+                    >
+                      {p.name}
+                    </span>
                   </button>
                 );
               })}
@@ -202,23 +312,46 @@ export default function PublicBookingPage() {
                     key={d}
                     onClick={() => setDate(d)}
                     className={`min-w-15 rounded-2xl px-2 py-2.5 text-center transition ${
-                      active ? "bg-brand shadow-glow text-white" : "border-2 border-[#F1E3EB] bg-white"
+                      active
+                        ? "bg-brand shadow-glow text-white"
+                        : "border-2 border-[#F1E3EB] bg-white"
                     }`}
                   >
-                    <span className="block text-xs font-semibold capitalize opacity-80">{dt.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}</span>
-                    <span className="block text-xl font-extrabold">{dt.getDate()}</span>
+                    <span className="block text-xs font-semibold capitalize opacity-80">
+                      {dt
+                        .toLocaleDateString("pt-BR", { weekday: "short" })
+                        .replace(".", "")}
+                    </span>
+                    <span className="block text-xl font-extrabold">
+                      {dt.getDate()}
+                    </span>
                   </button>
                 );
               })}
             </div>
-            <SlotPicker slots={slots} loading={loading} value={time} onChange={setTime} />
+            <SlotPicker
+              slots={slots}
+              loading={loading}
+              value={time}
+              onChange={setTime}
+            />
           </Step>
         )}
 
         {time && (
           <Step n={4} title="Seus dados">
-            <form id="booking" onSubmit={book} className="shadow-soft space-y-3 rounded-2xl bg-white p-4">
-              <Field label="Nome" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+            <form
+              id="booking"
+              onSubmit={book}
+              className="shadow-soft space-y-3 rounded-2xl bg-white p-4"
+            >
+              <Field
+                label="Nome"
+                required
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
               <Field
                 label="WhatsApp"
                 required
@@ -233,7 +366,8 @@ export default function PublicBookingPage() {
               <p className="flex items-start gap-1.5 text-xs text-brand-muted">
                 <Icon name="shield" className="h-4 w-4 shrink-0" />
                 <span>
-                  Seus dados vão apenas para {salon.name}. Ao agendar você concorda com a{" "}
+                  Seus dados vão apenas para {salon.name}. Ao agendar você
+                  concorda com a{" "}
                   <a href="/privacidade" className="underline">
                     Política de Privacidade
                   </a>
@@ -254,9 +388,13 @@ export default function PublicBookingPage() {
             <div className="min-w-0 flex-1">
               <p className="truncate font-extrabold">{service.name}</p>
               <p className="text-sm text-brand-muted">
-                {time && date ? `${new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })} · ${time}` : "Escolha um horário"}
+                {time && date
+                  ? `${new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })} · ${time}`
+                  : "Escolha um horário"}
               </p>
-              <p className="font-extrabold text-brand-rose">{formatMoney(service.price)}</p>
+              <p className="font-extrabold text-brand-rose">
+                {formatMoney(service.price)}
+              </p>
             </div>
             <button
               form="booking"
@@ -272,7 +410,15 @@ export default function PublicBookingPage() {
   );
 }
 
-function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+function Step({
+  n,
+  title,
+  children,
+}: {
+  n: number;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="mt-7">
       <h2 className="mb-3 text-lg font-extrabold">
