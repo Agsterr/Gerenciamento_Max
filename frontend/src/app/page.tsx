@@ -4,12 +4,15 @@ import { Icon } from "@/components/Icon";
 import { PhoneFrame } from "@/components/PhoneFrame";
 
 const FEATURES = [
-  { icon: "calendar", title: "Agenda inteligente", text: "Horários livres por profissional, sem encaixes duplicados. Encaixe manual quando precisar." },
-  { icon: "phone", title: "Agendamento online", text: "Seu link próprio: o cliente marca em 1 minuto, só com nome e WhatsApp." },
-  { icon: "chart", title: "Lucro de verdade", text: "Receita, custos, comissões e despesas. Saiba quanto sobra no fim do mês." },
-  { icon: "clock", title: "Controle de tempo", text: "Compare a duração prevista com o tempo real de cada atendimento." },
+  { icon: "calendar", title: "Agenda por profissional", text: "Cada cabeleireira, manicure ou barbeiro tem a sua agenda, sem encaixes duplicados. Encaixe manual quando precisar." },
+  { icon: "scissors", title: "Cabelo, unhas e mais", text: "Organize os serviços por categoria e escolha quem faz cada um: a cliente só vê horário de quem realmente atende." },
+  { icon: "phone", title: "Agendamento online", text: "Seu link próprio: o cliente marca em 1 minuto, só com nome e WhatsApp, e remarca ou cancela sozinho." },
+  { icon: "palette", title: "Portfólio de fotos", text: "Mostre seus trabalhos por serviço e categoria, na página de agendamento e no app do cliente." },
+  { icon: "sparkles", title: "Lembretes e confirmação", text: "Mande o lembrete pelo WhatsApp com o link para o cliente confirmar. O app dele também avisa sozinho." },
+  { icon: "clock", title: "Seu horário, do seu jeito", text: "Horário de cada dia da semana, pausas como o almoço e fuso do seu estado." },
+  { icon: "chart", title: "Lucro de verdade", text: "Receita, custos, comissões e despesas, com ajuda para calcular o preço certo de cada serviço." },
   { icon: "box", title: "Produtos e estoque", text: "Venda e uso nos atendimentos, com alerta de estoque baixo." },
-  { icon: "users", title: "Equipe e clientes", text: "Perfis de dono e funcionário, histórico e observações de cada cliente." },
+  { icon: "users", title: "Equipe e clientes", text: "Perfis de dono e funcionário, histórico e anotações de cada cliente. Entre uma vez e fique conectado." },
 ];
 
 const STEPS = [
@@ -50,7 +53,7 @@ export default function Home() {
                 Agenda cheia, organizada e <span className="text-brand">lucrando</span>.
               </h1>
               <p className="mt-5 max-w-xl text-lg text-white/75">
-                Agenda, agendamento online, clientes, estoque e financeiro do seu salão em um só lugar — no celular e no computador.
+                Agenda, agendamento online, fotos, clientes, estoque e financeiro do seu salão em um só lugar — no celular e no computador.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link href="/cadastro" className="bg-brand shadow-glow inline-flex items-center gap-2 rounded-2xl px-6 py-4 font-bold">
