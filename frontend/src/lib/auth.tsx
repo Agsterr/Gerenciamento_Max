@@ -24,7 +24,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     api
       .get<User>("/api/me")
-      .then(setUser)
+      .then((u) => {
+        setUser(u);
+        // login salvo: renova a validade a cada visita (30 dias a partir do último uso)
+        api
+          .post<{ token: string }>("/api/me/token")
+          .then((r) => tokenStore.set(r.token))
+          .catch(() => undefined);
+      })
       .catch(() => tokenStore.clear())
       .finally(() => setReady(true));
   }, []);

@@ -14,7 +14,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _form = GlobalKey<FormState>();
-  final _email = TextEditingController();
+  late final _email = TextEditingController(text: widget.session.lastEmail);
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   final _salonName = TextEditingController();

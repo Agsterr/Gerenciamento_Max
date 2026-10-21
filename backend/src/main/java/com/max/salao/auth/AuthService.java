@@ -78,6 +78,14 @@ public class AuthService {
         return toResponse(user, salonOf(user));
     }
 
+    /** Renova o token de quem já está logado (sessão deslizante: quem usa o app não precisa entrar de novo). */
+    @Transactional(readOnly = true)
+    public TokenResponse refresh(Long userId) {
+        AppUser user = users.findById(userId).filter(AppUser::isActive)
+                .orElseThrow(() -> new BadCredentialsException("Sessão inválida. Entre novamente."));
+        return token(user, salonOf(user));
+    }
+
     /** Nulo para o admin da plataforma. */
     private Salon salonOf(AppUser user) {
         return user.getSalonId() == null ? null : salons.findById(user.getSalonId()).orElseThrow();

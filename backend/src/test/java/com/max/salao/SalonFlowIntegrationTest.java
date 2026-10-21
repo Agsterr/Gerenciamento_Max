@@ -350,6 +350,15 @@ class SalonFlowIntegrationTest {
                 Map.of("name", "Outra", "phone", phone), status().isOk())).isEmpty();
     }
 
+    @Test
+    void loggedUserRenewsTokenToStaySignedIn() throws Exception {
+        Tenant salon = register();
+        JsonNode renewed = call(salon, post("/api/me/token"), null, status().isOk());
+        Tenant again = new Tenant(salon.slug, renewed.get("token").asText());
+        assertThat(call(again, get("/api/me"), null, status().isOk()).get("salonSlug").asText()).isEqualTo(salon.slug);
+        call(null, post("/api/me/token"), null, status().isUnauthorized());
+    }
+
     private record Tenant(String slug, String token) {
     }
 

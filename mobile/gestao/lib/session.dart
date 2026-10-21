@@ -10,6 +10,7 @@ class Session extends ChangeNotifier {
   Session({http.Client? httpClient}) : _httpClient = httpClient;
 
   static const _tokenKey = 'jwt';
+  static const _emailKey = 'last_email';
   final _storage = const FlutterSecureStorage();
   final http.Client? _httpClient;
 
@@ -25,16 +26,21 @@ class Session extends ChangeNotifier {
 
   User get user => _user!;
 
+  /// Último e-mail usado, para já vir preenchido na tela de login.
+  String? lastEmail;
+
   Future<void> restore() async {
     state = SessionState.restoring;
     notifyListeners();
     _token = await _storage.read(key: _tokenKey);
+    lastEmail = await _storage.read(key: _emailKey);
     if (_token == null) {
       state = SessionState.signedOut;
     } else {
       try {
         _user = User.fromJson(await api.get('/api/me') as Map<String, dynamic>);
         state = SessionState.signedIn;
+        _renew();
       } on AccountBlockedException {
         return; // _blocked já trocou o estado e limpou a sessão.
       } on ApiException catch (e) {
@@ -45,8 +51,22 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String email, String password) =>
-      _authenticate(api.post('/api/auth/login', {'email': email, 'password': password}));
+  /// Login fica salvo: a cada abertura o token é renovado (validade de 30 dias a partir do último uso).
+  Future<void> _renew() async {
+    try {
+      final json = await api.post('/api/me/token') as Map<String, dynamic>;
+      _token = json['token'] as String;
+      await _storage.write(key: _tokenKey, value: _token);
+    } catch (_) {
+      // sem rede: segue com o token atual
+    }
+  }
+
+  Future<void> login(String email, String password) async {
+    await _authenticate(api.post('/api/auth/login', {'email': email, 'password': password}));
+    lastEmail = email;
+    await _storage.write(key: _emailKey, value: email);
+  }
 
   Future<void> register(Map<String, String> data) => _authenticate(api.post('/api/auth/register', data));
 

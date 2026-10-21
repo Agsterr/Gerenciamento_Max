@@ -51,6 +51,12 @@ public class AuthController {
         return service.me(Long.valueOf(jwt.getSubject()));
     }
 
+    /** Token novo com validade renovada; os apps chamam ao abrir para manter o login. */
+    @PostMapping("/api/me/token")
+    public TokenResponse refresh(@AuthenticationPrincipal Jwt jwt) {
+        return service.refresh(Long.valueOf(jwt.getSubject()));
+    }
+
     /** Exclui a conta do usuário logado (e o salão, se for o último dono). */
     @PostMapping("/api/me/delete")
     public DeleteAccountResponse deleteMe(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody DeleteAccountRequest req) {

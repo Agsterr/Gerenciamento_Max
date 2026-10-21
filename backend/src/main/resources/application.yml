@@ -36,7 +36,9 @@ app:
   jwt:
     # Troque em produção (mínimo 32 caracteres)!
     secret: ${JWT_SECRET:dev-secret-troque-em-producao-0123456789abcdef}
-    ttl: 12h
+    # Sessão longa para não pedir login todo dia; os apps renovam o token a cada abertura
+    # (/api/me/token). Bloqueio e exclusão continuam valendo na hora (AccountStatusFilter).
+    ttl: ${JWT_TTL:30d}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
   # Administrador da plataforma (bloqueio de salões/usuários, APKs). Vazio = não cria.
