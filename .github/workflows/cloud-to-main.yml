@@ -66,3 +66,7 @@ jobs:
             gh workflow run mobile-release.yml --ref main
             echo "### APK fora da loja disparado" >> "$GITHUB_STEP_SUMMARY"
           fi
+          if echo "$CHANGED" | grep -qE '^mobile/|^\.github/workflows/play-release\.yml$'; then
+            gh workflow run play-release.yml --ref main
+            echo "### Google Play (teste fechado) disparado" >> "$GITHUB_STEP_SUMMARY"
+          fi
