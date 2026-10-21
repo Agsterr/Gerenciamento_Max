@@ -80,6 +80,7 @@ export type Salon = {
   /** Fuso do salão (IANA). */
   timezone: string;
   reminderMode: ReminderMode;
+  releaseSlotOnCancel: boolean;
   /** Dias antes do horário em que o cliente é lembrado (vazio = desligado). */
   reminderDays: number[];
 };

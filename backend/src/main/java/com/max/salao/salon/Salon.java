@@ -64,6 +64,10 @@ public class Salon {
     @Column(nullable = false)
     private ReminderMode reminderMode = ReminderMode.ONE_DAY;
 
+    /** Quando o cliente cancela, a vaga volta para a agenda (outra pessoa pode marcar). Desligado: só avisa o salão. */
+    @Column(nullable = false)
+    private boolean releaseSlotOnCancel = true;
+
     // ---- Precificação ----
 
     /** Taxa média de cartão/maquininha + impostos sobre o faturamento (%). */

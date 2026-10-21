@@ -202,7 +202,11 @@ public class PublicBookingService {
     public Appointment cancel(String token) {
         Appointment a = find(token);
         requireChangeWindow(a, "Cancelamento");
-        a.cancel();
+        if (salonService.current().isReleaseSlotOnCancel()) {
+            a.cancel();
+        } else {
+            a.cancelKeepingSlot();
+        }
         notifications.notifySalon(Notification.Type.CANCELED, a);
         return a;
     }

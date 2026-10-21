@@ -47,6 +47,9 @@ public class SalonService {
         if (req.reminderMode() != null) {
             salon.setReminderMode(req.reminderMode());
         }
+        if (req.releaseSlotOnCancel() != null) {
+            salon.setReleaseSlotOnCancel(req.releaseSlotOnCancel());
+        }
         if (req.timezone() != null && !req.timezone().equals(salon.getTimezone())) {
             if (!SalonZones.isAllowed(req.timezone())) {
                 throw new BusinessException("Fuso horário inválido");

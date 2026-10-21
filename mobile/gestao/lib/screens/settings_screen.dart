@@ -230,7 +230,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       items: [for (final m in ReminderMode.values) DropdownMenuItem(value: m, child: Text(m.label))],
                       onChanged: (v) => setState(() => salon.reminderMode = v!),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 6),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Liberar a vaga quando o cliente cancelar'),
+                      subtitle: Text(
+                        salon.releaseSlotOnCancel
+                            ? 'O horário volta para a agenda e outra pessoa pode marcar.'
+                            : 'O horário continua bloqueado e você só recebe o aviso.',
+                        style: text.bodySmall?.copyWith(color: Brand.muted),
+                      ),
+                      value: salon.releaseSlotOnCancel,
+                      onChanged: (v) => setState(() => salon.releaseSlotOnCancel = v),
+                    ),
+                    const SizedBox(height: 8),
                     GradientButton(label: 'Salvar funcionamento', icon: Icons.save_outlined, onPressed: salon.hours.isEmpty ? null : _saveSalon),
                   ]),
                 ),

@@ -326,6 +326,39 @@ class SalonFlowIntegrationTest {
     }
 
     @Test
+    void customerCancelFreesTheSlotOnlyWhenSalonAllows() throws Exception {
+        Tenant salon = register();
+        call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                status().isCreated());
+        long service = id(call(salon, post("/api/services"),
+                Map.of("name", "Corte", "durationMinutes", 60, "price", 80, "cost", 0, "active", true),
+                status().isCreated()));
+        String bookings = "/api/public/salons/" + salon.slug + "/bookings";
+        Map<String, Object> at10 = Map.of("serviceId", service, "startAt", day + "T10:00:00",
+                "name", "Márcia Souza", "phone", "(11) 97777-6666");
+        Map<String, Object> at12 = Map.of("serviceId", service, "startAt", day + "T12:00:00",
+                "name", "Márcia Souza", "phone", "(11) 97777-6666");
+
+        // padrão: cancelou, a vaga volta e outra pessoa marca o mesmo horário
+        assertThat(call(salon, get("/api/salon"), null, status().isOk()).get("releaseSlotOnCancel").asBoolean()).isTrue();
+        String first = call(null, post(bookings), at10, status().isCreated()).get("token").asText();
+        call(null, post(bookings + "/" + first + "/cancel"), null, status().isOk());
+        call(null, post(bookings), at10, status().isCreated());
+
+        // salão não libera: cancelou, o horário continua bloqueado e o salão só recebe o aviso
+        JsonNode current = call(salon, get("/api/salon"), null, status().isOk());
+        Map<String, Object> body = new java.util.HashMap<>(Map.of("name", "Salão", "slotMinutes", 30,
+                "hours", json.convertValue(current.get("hours"), List.class)));
+        body.put("releaseSlotOnCancel", false);
+        assertThat(call(salon, put("/api/salon"), body, status().isOk()).get("releaseSlotOnCancel").asBoolean()).isFalse();
+        String held = call(null, post(bookings), at12, status().isCreated()).get("token").asText();
+        call(null, post(bookings + "/" + held + "/cancel"), null, status().isOk());
+        call(null, post(bookings), at12, status().isUnprocessableEntity());
+        assertThat(call(salon, get("/api/notifications"), null, status().isOk()).get("items").get(0).get("type").asText())
+                .isEqualTo("CANCELED");
+    }
+
+    @Test
     void lookupIsRateLimited() throws Exception {
         Tenant salon = register();
         String base = "/api/public/salons/" + salon.slug;

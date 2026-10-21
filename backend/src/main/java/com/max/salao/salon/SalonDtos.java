@@ -39,17 +39,19 @@ public final class SalonDtos {
             @NotNull @Size(min = 1, max = 7, message = "abra pelo menos um dia") List<@Valid DayHoursDto> hours,
             @Min(5) @Max(120) int slotMinutes,
             /* nulo = mantém (apps antigos não mandam) */ ReminderMode reminderMode,
-            /* nulo = mantém; um dos fusos de SalonZones */ String timezone) {
+            /* nulo = mantém; um dos fusos de SalonZones */ String timezone,
+            /* nulo = mantém (apps antigos não mandam) */ Boolean releaseSlotOnCancel) {
     }
 
     public record SalonResponse(Long id, String name, String slug, String phone, String address,
                                 List<DayHoursDto> hours, String workDays, int slotMinutes,
-                                ReminderMode reminderMode, List<Integer> reminderDays, String timezone) {
+                                ReminderMode reminderMode, List<Integer> reminderDays, String timezone,
+                                boolean releaseSlotOnCancel) {
 
         public static SalonResponse from(Salon s) {
             return new SalonResponse(s.getId(), s.getName(), s.getSlug(), s.getPhone(), s.getAddress(),
                     SalonDtos.hours(s), s.workDays(), s.getSlotMinutes(),
-                    s.getReminderMode(), s.getReminderMode().days(), s.getTimezone());
+                    s.getReminderMode(), s.getReminderMode().days(), s.getTimezone(), s.isReleaseSlotOnCancel());
         }
     }
 

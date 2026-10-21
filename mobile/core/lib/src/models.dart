@@ -353,6 +353,7 @@ class Salon {
     required this.slotMinutes,
     this.reminderMode = ReminderMode.oneDay,
     this.timezone = 'America/Sao_Paulo',
+    this.releaseSlotOnCancel = true,
   });
 
   /// Fusos do Brasil (sem horário de verão): código -> nome.
@@ -372,10 +373,14 @@ class Salon {
         slotMinutes: j['slotMinutes'] as int,
         reminderMode: ReminderMode.parse(j['reminderMode'] as String?),
         timezone: j['timezone'] as String? ?? 'America/Sao_Paulo',
+        releaseSlotOnCancel: j['releaseSlotOnCancel'] as bool? ?? true,
       );
 
   String name;
   String timezone;
+
+  /// Cliente cancelou: a vaga volta para a agenda (false = só avisa o salão e mantém o horário bloqueado).
+  bool releaseSlotOnCancel;
   final String slug;
   String? phone;
   String? address;
@@ -393,6 +398,7 @@ class Salon {
         'hours': [for (final h in hours) h.toJson()],
         'slotMinutes': slotMinutes,
         'timezone': timezone,
+        'releaseSlotOnCancel': releaseSlotOnCancel,
       };
 }
 

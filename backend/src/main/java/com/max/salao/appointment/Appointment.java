@@ -94,6 +94,10 @@ public class Appointment extends TenantEntity {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    /** Cancelado pelo cliente com a vaga mantida pelo salão (ainda conta como ocupada na agenda). */
+    @Setter(AccessLevel.NONE)
+    private boolean slotHeld;
+
     /** Quando o salão mandou o lembrete de confirmação (WhatsApp). */
     private LocalDateTime reminderSentAt;
 
@@ -146,6 +150,12 @@ public class Appointment extends TenantEntity {
     public void cancel() {
         requireOpen();
         status = AppointmentStatus.CANCELED;
+    }
+
+    /** Cancelado pelo cliente, mas o salão escolheu não liberar a vaga: o horário segue bloqueado na agenda. */
+    public void cancelKeepingSlot() {
+        cancel();
+        slotHeld = true;
     }
 
     public void noShow() {

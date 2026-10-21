@@ -27,6 +27,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     /** Agendamentos que ocupam a agenda e cruzam o intervalo [from, to). */
     @Query("""
             select a from Appointment a
-            where a.status not in :freeing and a.startAt < :to and a.endAt > :from""")
+            where (a.status not in :freeing or a.slotHeld = true) and a.startAt < :to and a.endAt > :from""")
     List<Appointment> findBusy(LocalDateTime from, LocalDateTime to, Collection<AppointmentStatus> freeing);
 }

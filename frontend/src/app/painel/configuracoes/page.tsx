@@ -39,6 +39,7 @@ export default function SettingsPage() {
         slotMinutes: Number(form.slotMinutes),
         timezone: form.timezone,
         reminderMode: form.reminderMode,
+        releaseSlotOnCancel: form.releaseSlotOnCancel,
       });
       setMessage("Salvo!");
       reload();
@@ -106,6 +107,21 @@ export default function SettingsPage() {
               O app do cliente avisa sozinho e, em <strong>Lembretes</strong>, você manda a mensagem pelo WhatsApp com o link para ele
               confirmar.
             </p>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={form.releaseSlotOnCancel}
+                onChange={(e) => setForm({ ...form, releaseSlotOnCancel: e.target.checked })}
+              />
+              <span>
+                <strong>Liberar a vaga quando o cliente cancelar</strong>
+                <span className="block text-xs text-zinc-500">
+                  Ligado: o horário volta para a agenda e outra pessoa pode marcar. Desligado: o horário continua bloqueado e você só
+                  recebe o aviso.
+                </span>
+              </span>
+            </label>
             <ErrorMessage message={error} />
             {message && <p className="text-sm text-emerald-700">{message}</p>}
             <Button className="w-full sm:w-auto" disabled={form.hours.length === 0}>Salvar</Button>
