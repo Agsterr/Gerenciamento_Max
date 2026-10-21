@@ -57,7 +57,11 @@ export default function PromotionsPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    {k.kitFullPrice != null && <p className="text-xs text-zinc-400 line-through">{formatMoney(k.kitFullPrice)}</p>}
+                    {k.kitFullPrice != null && (
+                      <p className="text-xs text-zinc-500">
+                        De <span className="line-through">{formatMoney(k.kitFullPrice)}</span> por
+                      </p>
+                    )}
                     <p className="font-bold text-brand-rose">
                       {formatMoney(k.price)} <span className="text-xs text-emerald-700">-{k.kitDiscountPercent}%</span>
                     </p>
@@ -242,7 +246,7 @@ function KitModal({
             onChange={(e) => setForm({ ...f, kitDiscountPercent: Number(e.target.value) })}
           />
           <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
-            Separado: {formatMoney(full)} · <strong>Pacote: {formatMoney(price)}</strong> · cliente economiza {formatMoney(full - price)} · {minutes} min
+            De {formatMoney(full)} por <strong>{formatMoney(price)}</strong> · cliente economiza {formatMoney(full - price)} · {minutes} min
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={f.active ?? true} onChange={(e) => setForm({ ...f, active: e.target.checked })} />

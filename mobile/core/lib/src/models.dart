@@ -169,7 +169,15 @@ class PublicPromotion {
   final DateTime endsOn;
   final List<int> serviceIds;
 
-  /// Texto curto: "Semana da escova: 20% de desconto até 30/11".
+  /// Serviços da promoção com o preço normal e o promocional ("de ... por ...").
+  /// Sem serviços escolhidos vale para todos, menos pacotes.
+  List<(String name, double from, double to)> offers(List<PublicService> services) => [
+        for (final s in services)
+          if (serviceIds.isEmpty ? s.kitItems.isEmpty : serviceIds.contains(s.id))
+            (s.name, s.price, (s.price * (100 - discountPercent)).round() / 100),
+      ];
+
+  /// Texto curto: "Semana da escova: 20% de desconto".
   String get headline => '$name: ${formatQuantity(discountPercent)}% de desconto';
 }
 

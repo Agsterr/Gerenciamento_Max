@@ -140,11 +140,17 @@ export default function PublicBookingPage() {
                     {p.name} · {p.discountPercent}% de desconto
                   </p>
                   {p.description && <p className="text-brand-muted">{p.description}</p>}
+                  {salon.services
+                    .filter((s) => (p.serviceIds.length === 0 ? s.kitItems.length === 0 : p.serviceIds.includes(s.id)))
+                    .slice(0, 6)
+                    .map((s) => (
+                      <p key={s.id}>
+                        {s.name}: de <span className="line-through">{formatMoney(s.price)}</span> por{" "}
+                        <strong className="text-brand-rose">{formatMoney(Math.round(s.price * (100 - p.discountPercent)) / 100)}</strong>
+                      </p>
+                    ))}
                   <p className="text-brand-muted">
-                    Para horários de {formatDate(p.startsOn)} a {formatDate(p.endsOn)}
-                    {p.serviceIds.length > 0 &&
-                      ` em ${salon.services.filter((s) => p.serviceIds.includes(s.id)).map((s) => s.name).join(", ")}`}
-                    .
+                    Para horários de {formatDate(p.startsOn)} a {formatDate(p.endsOn)}.
                   </p>
                 </div>
               </div>
@@ -422,7 +428,9 @@ export default function PublicBookingPage() {
               <p className="font-extrabold text-brand-rose">
                 {promoPriceOn(service, date) != null ? (
                   <>
-                    <span className="mr-1 text-sm font-semibold text-zinc-400 line-through">{formatMoney(service.price)}</span>
+                    <span className="mr-1 text-sm font-semibold text-zinc-500">
+                      De <span className="line-through">{formatMoney(service.price)}</span> por
+                    </span>
                     {formatMoney(promoPriceOn(service, date)!)}
                   </>
                 ) : (
@@ -472,7 +480,12 @@ function PriceTag({ price, promo, full }: { price: number; promo: number | null;
   const old = promo != null ? price : full != null && full > price ? full : null;
   return (
     <span className="text-right font-extrabold text-brand-rose">
-      {old != null && <span className="block text-xs font-semibold text-zinc-400 line-through">{formatMoney(old)}</span>}
+      {old != null && (
+        <span className="block text-xs font-semibold text-zinc-500">
+          De <span className="line-through">{formatMoney(old)}</span>
+        </span>
+      )}
+      {old != null && <span className="text-xs font-semibold text-zinc-500">por </span>}
       {formatMoney(promo ?? price)}
     </span>
   );

@@ -173,6 +173,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     child: PromoBanner(
                       promotion: p.promotion,
                       salonName: p.salon.name,
+                      offers: p.offers,
                       onTap: () => _open(SalonSummary(name: p.salon.name, slug: p.salon.slug)),
                     ),
                   ),
@@ -280,11 +281,13 @@ class _Benefit extends StatelessWidget {
 
 /// Faixa de promoção (tela inicial e página do salão).
 class PromoBanner extends StatelessWidget {
-  const PromoBanner({super.key, required this.promotion, this.salonName, this.serviceNames = const [], this.onTap});
+  const PromoBanner({super.key, required this.promotion, this.salonName, this.offers = const [], this.onTap});
 
   final PublicPromotion promotion;
   final String? salonName;
-  final List<String> serviceNames;
+
+  /// Serviços com o preço normal e o promocional.
+  final List<(String, double, double)> offers;
   final VoidCallback? onTap;
 
   @override
@@ -310,9 +313,19 @@ class PromoBanner extends StatelessWidget {
                 if (salonName != null) Text(salonName!, style: text.bodySmall?.copyWith(fontWeight: FontWeight.w800, color: Brand.muted)),
                 Text(p.headline, style: text.titleSmall),
                 if (p.description != null) Text(p.description!, style: text.bodySmall),
+                for (final (name, from, to) in offers.take(4))
+                  Text.rich(
+                    TextSpan(children: [
+                      TextSpan(text: '$name: de '),
+                      TextSpan(text: formatMoney(from), style: const TextStyle(decoration: TextDecoration.lineThrough)),
+                      const TextSpan(text: ' por '),
+                      TextSpan(text: formatMoney(to), style: const TextStyle(fontWeight: FontWeight.w800, color: Brand.rose)),
+                    ]),
+                    style: text.bodySmall,
+                  ),
+                if (offers.length > 4) Text('e mais ${offers.length - 4} serviço(s)', style: text.bodySmall),
                 Text(
-                  'Para horários de ${formatDate(p.startsOn)} a ${formatDate(p.endsOn)}'
-                  '${serviceNames.isEmpty ? '' : ' em ${serviceNames.join(', ')}'}',
+                  'Para horários de ${formatDate(p.startsOn)} a ${formatDate(p.endsOn)}',
                   style: text.bodySmall?.copyWith(color: Brand.muted),
                 ),
               ]),

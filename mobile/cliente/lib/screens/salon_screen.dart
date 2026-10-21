@@ -257,7 +257,7 @@ class _SalonScreenState extends State<SalonScreen> {
           padding: const EdgeInsets.only(top: 12),
           child: PromoBanner(
             promotion: p,
-            serviceNames: [for (final s in salon.services) if (p.serviceIds.contains(s.id)) s.name],
+            offers: p.offers(salon.services),
           ),
         ),
       if (_photos.isNotEmpty) ...[
@@ -544,8 +544,20 @@ class _Price extends StatelessWidget {
     final old = promo != null ? price : (full != null && full! > price ? full : null);
     return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
       if (old != null)
-        Text(formatMoney(old), style: text.bodySmall?.copyWith(decoration: TextDecoration.lineThrough, color: Brand.muted)),
-      Text(formatMoney(promo ?? price), style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800)),
+        Text.rich(
+          TextSpan(children: [
+            const TextSpan(text: 'De '),
+            TextSpan(text: formatMoney(old), style: const TextStyle(decoration: TextDecoration.lineThrough)),
+          ]),
+          style: text.bodySmall?.copyWith(color: Brand.muted),
+        ),
+      Text.rich(
+        TextSpan(children: [
+          if (old != null) TextSpan(text: 'por ', style: text.bodySmall?.copyWith(color: Brand.muted)),
+          TextSpan(text: formatMoney(promo ?? price)),
+        ]),
+        style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800),
+      ),
     ]);
   }
 }

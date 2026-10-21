@@ -105,8 +105,16 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
                                 ),
                                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                                   if (k.kitFullPrice != null)
-                                    Text(formatMoney(k.kitFullPrice!),
-                                        style: text.bodySmall?.copyWith(decoration: TextDecoration.lineThrough, color: Brand.muted)),
+                                    Text.rich(
+                                      TextSpan(children: [
+                                        const TextSpan(text: 'De '),
+                                        TextSpan(
+                                            text: formatMoney(k.kitFullPrice!),
+                                            style: const TextStyle(decoration: TextDecoration.lineThrough)),
+                                        const TextSpan(text: ' por'),
+                                      ]),
+                                      style: text.bodySmall?.copyWith(color: Brand.muted),
+                                    ),
                                   Text(formatMoney(k.price), style: text.titleSmall?.copyWith(color: Brand.rose)),
                                   Text('-${formatQuantity(k.kitDiscountPercent ?? 0)}%',
                                       style: text.bodySmall?.copyWith(color: const Color(0xFF15803D), fontWeight: FontWeight.w700)),
@@ -272,7 +280,7 @@ class _KitSheetState extends State<_KitSheet> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(14)),
             child: Text(
-              'Separado: ${formatMoney(full)} · Pacote: ${formatMoney(price)} · '
+              'De ${formatMoney(full)} por ${formatMoney(price)} · '
               'cliente economiza ${formatMoney(full - price)} · $minutes min',
               style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF15803D)),
             ),
