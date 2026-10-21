@@ -7,6 +7,7 @@ import 'background.dart';
 import 'booking_store.dart';
 import 'confirm_reminders.dart';
 import 'promo_alerts.dart';
+import 'push.dart';
 import 'screens/booking_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/salon_screen.dart';
@@ -17,7 +18,10 @@ Future<void> main() async {
   await LocalReminders.instance.init();
   final store = await BookingStore.load();
   await scheduleBackgroundChecks();
-  runApp(ClienteApp(store: store, api: ApiClient(), updates: AppUpdateService(app: 'cliente')));
+  final api = ApiClient();
+  // não segura a abertura do app: o push liga em paralelo
+  Push.start(api, store);
+  runApp(ClienteApp(store: store, api: api, updates: AppUpdateService(app: 'cliente')));
 }
 
 class ClienteApp extends StatefulWidget {

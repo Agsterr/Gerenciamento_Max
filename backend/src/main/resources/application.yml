@@ -58,6 +58,10 @@ app:
     play-package: ${PLAY_PACKAGE:io.github.agsterr.salaomax.gestao}
     service-account-json: ${PLAY_SERVICE_ACCOUNT_JSON_BASE64:}
     cron: ${BILLING_SYNC_CRON:0 0 5 * * *}
+  # Push (Firebase Cloud Messaging) para o app do cliente: JSON da conta de serviço do Firebase.
+  push:
+    service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:}
+    cron: ${PUSH_CRON:0 */5 * * * *}
   # E-mails (recuperar senha, avisos): Resend (https://resend.com). Sem a chave, o e-mail não é enviado.
   mail:
     resend-api-key: ${RESEND_API_KEY:}

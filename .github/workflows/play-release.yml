@@ -38,6 +38,11 @@ permissions:
 env:
   API_URL: https://salaomax.focodev.com.br
   SITE_URL: https://salaomax.focodev.com.br
+  # Push do app do cliente (Firebase). Sem os secrets, o app sai sem push (veja docs/PUSH.md).
+  FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+  FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_CLIENTE }}
+  FIREBASE_SENDER_ID: ${{ secrets.FIREBASE_SENDER_ID }}
+  FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
   # Variável do repositório PLAY_RELEASE_STATUS: deixe "draft" até a 1ª versão ser aprovada, depois "completed".
   RELEASE_STATUS: ${{ (github.event.inputs.status != '' && github.event.inputs.status != 'auto') && github.event.inputs.status || vars.PLAY_RELEASE_STATUS || 'draft' }}
   TRACK: ${{ github.event.inputs.track || vars.PLAY_TRACK || 'alpha' }}
@@ -125,7 +130,11 @@ jobs:
             --build-number=${{ steps.version.outputs.code }} \
             --dart-define=DISTRIBUTION=play \
             --dart-define=API_URL=${API_URL} \
-            --dart-define=SITE_URL=${SITE_URL}
+            --dart-define=SITE_URL=${SITE_URL} \
+            --dart-define=FIREBASE_API_KEY=${FIREBASE_API_KEY} \
+            --dart-define=FIREBASE_APP_ID=${FIREBASE_APP_ID} \
+            --dart-define=FIREBASE_SENDER_ID=${FIREBASE_SENDER_ID} \
+            --dart-define=FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
 
       - name: Guardar AAB
         if: steps.skip.outputs.skip != 'true'

@@ -45,6 +45,8 @@ class BookingStore extends ChangeNotifier {
   static const _askedNotificationsKey = 'notifications.asked';
   static const _seenPromosKey = 'promotions.seen';
   static const _promoOffKey = 'promotions.off';
+  static const _pushTokenKey = 'push.token';
+  static const _pushRegisteredKey = 'push.registeredAt';
   static const _promoAllOffKey = 'promotions.allOff';
 
   final SharedPreferences _prefs;
@@ -121,6 +123,19 @@ class BookingStore extends ChangeNotifier {
     await _prefs.setStringList(_promoOffKey, off.toList());
     notifyListeners();
   }
+
+  /// Código deste celular no Firebase (push).
+  String? get pushToken => _prefs.getString(_pushTokenKey);
+
+  Future<void> setPushToken(String token) => _prefs.setString(_pushTokenKey, token);
+
+  /// Reenvia o código aos salões no máximo uma vez por dia (e quando muda).
+  bool get pushRegistrationDue {
+    final at = _prefs.getInt(_pushRegisteredKey);
+    return at == null || DateTime.now().millisecondsSinceEpoch - at > const Duration(days: 1).inMilliseconds;
+  }
+
+  Future<void> markPushRegistered() => _prefs.setInt(_pushRegisteredKey, DateTime.now().millisecondsSinceEpoch);
 
   /// Promoções já avisadas ("slug:id"), para não repetir o alerta.
   Set<String> get seenPromotions => (_prefs.getStringList(_seenPromosKey) ?? const <String>[]).toSet();

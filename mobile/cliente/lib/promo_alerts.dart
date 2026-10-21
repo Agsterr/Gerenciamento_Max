@@ -62,15 +62,21 @@ Future<List<SalonPromotion>> checkPromotions(ApiClient api, BookingStore store,
 
 /// Conta ao salão que o cliente abriu a página dele (e se quer avisos de promoção).
 /// Identifica pelo código de um agendamento salvo ou pelo nome + WhatsApp; sem nenhum dos dois, não manda.
-Future<void> sendPresence(ApiClient api, BookingStore store, String slug) async {
+///
+/// Com push ligado manda também o código do celular (mesmo sem saber quem é), para o salão poder avisar.
+/// [visit] false: só atualiza a escolha/celular, sem contar como visita.
+Future<void> sendPresence(ApiClient api, BookingStore store, String slug, {bool visit = true}) async {
   final token = store.bookings.where((b) => b.slug == slug).firstOrNull?.token;
-  if (token == null && !store.signedIn) return;
+  final push = store.pushToken;
+  if (token == null && !store.signedIn && push == null) return;
   try {
     await api.post('/api/public/salons/$slug/presence', {
       'token': ?token,
-      if (token == null) 'name': store.name,
-      if (token == null) 'phone': store.phone,
+      if (token == null && store.signedIn) 'name': store.name,
+      if (token == null && store.signedIn) 'phone': store.phone,
       'promoNotifications': store.promoAlertsOn(slug),
+      'pushToken': ?push,
+      if (!visit) 'visit': false,
     });
   } catch (_) {
     // informação para o salão; sem rede não atrapalha o cliente

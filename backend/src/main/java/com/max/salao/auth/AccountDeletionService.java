@@ -19,7 +19,7 @@ public class AccountDeletionService {
 
     /** Ordem respeita as chaves estrangeiras. */
     private static final String[] TENANT_TABLES = {
-            "notification", "user_reminder_rule", "portfolio_photo", "stock_movement", "appointment", "expense", "product", "customer", "promotion", "service_item", "professional"};
+            "notification", "push_device", "user_reminder_rule", "portfolio_photo", "stock_movement", "appointment", "expense", "product", "customer", "promotion", "service_item", "professional"};
 
     private final AppUserRepository users;
     private final PasswordEncoder passwordEncoder;

@@ -43,6 +43,12 @@ class SalonFlowIntegrationTest {
     @Autowired
     java.time.Clock clock;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.max.salao.push.PushSender push;
+
+    @Autowired
+    com.max.salao.push.PromotionPushService pushService;
+
     /** Uma terça-feira futura (dia de funcionamento padrão). */
     private final LocalDate day = LocalDate.now().plusDays(7).with(TemporalAdjusters.next(DayOfWeek.TUESDAY));
 
@@ -613,6 +619,40 @@ class SalonFlowIntegrationTest {
                 "notifyCustomers", false), status().isCreated());
         assertThat(call(null, get(base), null, status().isOk()).get("promotions").get(0).get("notifyCustomers").asBoolean())
                 .isFalse();
+    }
+
+    @Test
+    void startedPromotionIsPushedOnceToDevicesThatAcceptIt() throws Exception {
+        Tenant salon = register();
+        call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                status().isCreated());
+        long cut = id(call(salon, post("/api/services"), Map.of("name", "Corte", "durationMinutes", 60, "price", 100,
+                "cost", 0, "active", true), status().isCreated()));
+        String base = "/api/public/salons/" + salon.slug;
+        // dois celulares abriram o salão; um desligou os avisos
+        call(null, post(base + "/presence"), Map.of("pushToken", "cel-sim", "promoNotifications", true), status().isNoContent());
+        call(null, post(base + "/presence"), Map.of("pushToken", "cel-nao", "promoNotifications", false), status().isNoContent());
+        call(salon, post("/api/promotions"), Map.of("name", "Semana do corte", "discountPercent", 20,
+                "startsOn", LocalDate.now().toString(), "endsOn", day.toString(), "active", true,
+                "serviceIds", List.of(cut)), status().isCreated());
+
+        var sent = new java.util.ArrayList<String>();
+        org.mockito.Mockito.when(push.send(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyMap())).thenAnswer(inv -> {
+            sent.add(inv.getArgument(0) + " | " + inv.getArgument(2) + " | " + ((Map<?, ?>) inv.getArgument(3)).get("serviceId"));
+            return com.max.salao.push.PushSender.Result.SENT;
+        });
+        Long tenant = jdbc.queryForObject("select id from salon where slug = ?", Long.class, salon.slug);
+        try {
+            com.max.salao.shared.TenantContext.set(tenant);
+            assertThat(pushService.sendDue()).isEqualTo(1);
+            assertThat(pushService.sendDue()).isEqualTo(0); // não repete
+        } finally {
+            com.max.salao.shared.TenantContext.clear();
+        }
+        assertThat(sent).singleElement().asString()
+                .startsWith("cel-sim | Corte de R$ 100,00 por R$ 80,00 · até ")
+                .endsWith(" | " + cut);
     }
 
     @Test

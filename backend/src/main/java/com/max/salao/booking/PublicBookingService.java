@@ -48,6 +48,7 @@ public class PublicBookingService {
     private final AppointmentService appointmentService;
     private final AvailabilityService availabilityService;
     private final Clock clock;
+    private final com.max.salao.push.PushDeviceRepository pushDevices;
     private final com.max.salao.promotion.PromotionService promotionService;
     private final NotificationService notifications;
     private final PlanService plans;
@@ -56,7 +57,9 @@ public class PublicBookingService {
                                 ProfessionalRepository professionals, CustomerRepository customers,
                                 AppointmentRepository appointments, AppointmentService appointmentService,
                                 AvailabilityService availabilityService, Clock clock, NotificationService notifications, PlanService plans,
-                                com.max.salao.promotion.PromotionService promotionService) {
+                                com.max.salao.promotion.PromotionService promotionService,
+                                com.max.salao.push.PushDeviceRepository pushDevices) {
+        this.pushDevices = pushDevices;
         this.promotionService = promotionService;
         this.plans = plans;
         this.salonService = salonService;
@@ -125,7 +128,8 @@ public class PublicBookingService {
 
     /** Última visita ao salão e escolha de avisos de promoção do cliente identificado. */
     @Transactional
-    public void presence(String token, String name, String phone, Boolean promoNotifications) {
+    public void presence(String token, String name, String phone, Boolean promoNotifications, String pushToken,
+                         boolean visit) {
         java.util.Optional<Customer> customer = token != null && !token.isBlank()
                 ? appointments.findByPublicToken(token).map(Appointment::getCustomer)
                 : java.util.Optional.empty();
@@ -134,11 +138,24 @@ public class PublicBookingService {
                     .filter(c -> firstName(c.getName()).equals(firstName(name)));
         }
         customer.ifPresent(c -> {
-            c.setLastSeenAt(LocalDateTime.now(clock));
+            if (visit) {
+                c.setLastSeenAt(LocalDateTime.now(clock));
+            }
             if (promoNotifications != null) {
                 c.setPromoNotifications(promoNotifications);
             }
         });
+        if (pushToken != null && !pushToken.isBlank()) {
+            com.max.salao.push.PushDevice d = pushDevices.findByToken(pushToken)
+                    .orElseGet(com.max.salao.push.PushDevice::new);
+            d.setToken(pushToken);
+            customer.ifPresent(c -> d.setCustomerId(c.getId()));
+            if (promoNotifications != null) {
+                d.setPromoNotifications(promoNotifications);
+            }
+            d.setUpdatedAt(LocalDateTime.now(clock));
+            pushDevices.save(d);
+        }
     }
 
     /**

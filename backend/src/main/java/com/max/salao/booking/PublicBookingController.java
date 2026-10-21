@@ -58,7 +58,9 @@ public class PublicBookingController {
      * nome + WhatsApp (o mesmo critério de "Meus agendamentos"). promoNotifications nulo = não mudou.
      */
     public record PresenceRequest(@Size(max = 64) String token, @Size(max = 120) String name,
-                                  @Size(max = 30) String phone, Boolean promoNotifications) {
+                                  @Size(max = 30) String phone, Boolean promoNotifications,
+                                  // celular para push (Firebase); visit=false só atualiza a escolha, sem contar visita
+                                  @Size(max = 512) String pushToken, Boolean visit) {
     }
 
     public record PublicProfessional(Long id, String name) {
@@ -198,7 +200,8 @@ public class PublicBookingController {
     @PostMapping("/presence")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void presence(@Valid @RequestBody PresenceRequest req) {
-        service.presence(req.token(), req.name(), req.phone(), req.promoNotifications());
+        service.presence(req.token(), req.name(), req.phone(), req.promoNotifications(), req.pushToken(),
+                !Boolean.FALSE.equals(req.visit()));
     }
 
     /** "Meus agendamentos": consulta pelo mesmo nome e WhatsApp usados ao agendar. */

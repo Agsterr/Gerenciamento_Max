@@ -7,22 +7,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.Date;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.max.salao.shared.BusinessException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
+import com.max.salao.shared.GoogleAccessToken;
 import org.springframework.stereotype.Component;
 
 /** Android Publisher API v3, autenticada com a conta de serviço (OAuth2 por JWT assinado). */
@@ -37,8 +28,7 @@ class GooglePlayBilling implements PlayBilling {
     private final ObjectMapper json;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
-    private volatile String accessToken;
-    private volatile Instant accessExpiry = Instant.EPOCH;
+    private final GoogleAccessToken tokens;
 
     @org.springframework.beans.factory.annotation.Autowired
     GooglePlayBilling(BillingProperties props, ObjectMapper json) {
@@ -50,6 +40,7 @@ class GooglePlayBilling implements PlayBilling {
         this.props = props;
         this.json = json;
         this.api = api;
+        this.tokens = new GoogleAccessToken(json, props::serviceAccountJson, SCOPE, http);
     }
 
     @Override
@@ -98,43 +89,8 @@ class GooglePlayBilling implements PlayBilling {
         }
     }
 
-    private synchronized String accessToken() throws IOException, InterruptedException {
-        if (accessToken != null && Instant.now().isBefore(accessExpiry.minusSeconds(60))) {
-            return accessToken;
-        }
-        JsonNode account = json.readTree(props.serviceAccountJson());
-        String tokenUri = account.path("token_uri").asText("https://oauth2.googleapis.com/token");
-        try {
-            Instant now = Instant.now();
-            JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                    .issuer(account.path("client_email").asText())
-                    .claim("scope", SCOPE)
-                    .audience(tokenUri)
-                    .issueTime(Date.from(now))
-                    .expirationTime(Date.from(now.plusSeconds(3600)))
-                    .build();
-            SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claims);
-            jwt.sign(new RSASSASigner(privateKey(account.path("private_key").asText())));
-            String form = "grant_type=" + encode("urn:ietf:params:oauth:grant-type:jwt-bearer") + "&assertion=" + encode(jwt.serialize());
-            HttpResponse<String> res = http.send(HttpRequest.newBuilder(URI.create(tokenUri)).timeout(Duration.ofSeconds(15))
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .POST(HttpRequest.BodyPublishers.ofString(form)).build(), HttpResponse.BodyHandlers.ofString());
-            if (res.statusCode() / 100 != 2) {
-                throw new IllegalStateException("Google recusou a conta de serviço (" + res.statusCode() + "): " + res.body());
-            }
-            JsonNode token = json.readTree(res.body());
-            accessToken = token.path("access_token").asText();
-            accessExpiry = now.plusSeconds(token.path("expires_in").asLong(3600));
-            return accessToken;
-        } catch (java.security.GeneralSecurityException | com.nimbusds.jose.JOSEException e) {
-            throw new IllegalStateException("Chave da conta de serviço inválida", e);
-        }
-    }
-
-    private static RSAPrivateKey privateKey(String pem) throws java.security.GeneralSecurityException {
-        String body = pem.replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "").replaceAll("\\s", "");
-        return (RSAPrivateKey) KeyFactory.getInstance("RSA")
-                .generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(body)));
+    private String accessToken() throws IOException, InterruptedException {
+        return tokens.get();
     }
 
     private static String encode(String v) {
