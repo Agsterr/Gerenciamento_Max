@@ -32,7 +32,13 @@ class AccountBlockedException extends ApiException {
 
 /// Cliente HTTP mínimo para a API. Converte erros (ProblemDetail) em [ApiException].
 class ApiClient {
-  ApiClient({String? baseUrl, this.token, this.onUnauthorized, this.onAccountBlocked, http.Client? httpClient})
+  ApiClient(
+      {String? baseUrl,
+      this.token,
+      this.onUnauthorized,
+      this.onAccountBlocked,
+      this.reauthenticate,
+      http.Client? httpClient})
       : baseUrl = baseUrl ?? AppConfig.apiUrl,
         _http = httpClient ?? http.Client();
 
@@ -49,6 +55,10 @@ class ApiClient {
   /// Chamado quando a API responde 401 com token (sessão expirada).
   final void Function()? onUnauthorized;
 
+  /// Chamado no 401 com token (token de 24h vencido): se o usuário marcou "Manter conectado", entra de novo
+  /// com a senha salva e devolve true; a requisição é repetida uma vez com o token novo.
+  final Future<bool> Function()? reauthenticate;
+
   static const _timeout = Duration(seconds: 20);
 
   Future<dynamic> get(String path) => _send('GET', path);
@@ -62,22 +72,28 @@ class ApiClient {
   /// Envio de arquivo (multipart/form-data), ex.: fotos do portfólio.
   Future<dynamic> upload(String path,
       {required List<int> bytes, required String filename, String field = 'file', Map<String, String> fields = const {}}) {
-    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'))
-      ..fields.addAll(fields)
-      ..files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
-    return _execute(request, timeout: const Duration(seconds: 90));
+    return _execute(
+      () => http.MultipartRequest('POST', Uri.parse('$baseUrl$path'))
+        ..fields.addAll(fields)
+        ..files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename)),
+      timeout: const Duration(seconds: 90),
+    );
   }
 
   Future<dynamic> _send(String method, String path, [Object? body]) {
-    final request = http.Request(method, Uri.parse('$baseUrl$path'));
-    if (body != null) {
-      request.headers['Content-Type'] = 'application/json';
-      request.body = jsonEncode(body);
-    }
-    return _execute(request);
+    return _execute(() {
+      final request = http.Request(method, Uri.parse('$baseUrl$path'));
+      if (body != null) {
+        request.headers['Content-Type'] = 'application/json';
+        request.body = jsonEncode(body);
+      }
+      return request;
+    });
   }
 
-  Future<dynamic> _execute(http.BaseRequest request, {Duration timeout = _timeout}) async {
+  /// [build] cria a requisição de novo a cada tentativa (uma requisição HTTP não pode ser reenviada).
+  Future<dynamic> _execute(http.BaseRequest Function() build, {Duration timeout = _timeout, bool retried = false}) async {
+    final request = build();
     final jwt = token?.call();
     if (jwt != null) request.headers['Authorization'] = 'Bearer $jwt';
     request.headers['Accept'] = 'application/json';
@@ -105,7 +121,12 @@ class ApiClient {
       onAccountBlocked?.call(reason);
       throw AccountBlockedException(reason);
     }
-    if (res.statusCode == 401 && jwt != null) onUnauthorized?.call();
+    if (res.statusCode == 401 && jwt != null) {
+      if (!retried && reauthenticate != null && await reauthenticate!()) {
+        return _execute(build, timeout: timeout, retried: true);
+      }
+      onUnauthorized?.call();
+    }
     final code = problem?['code'];
     throw ApiException(res.statusCode, _message(problem, res.statusCode), code: code is String ? code : null);
   }

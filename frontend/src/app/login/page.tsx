@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Card, ErrorMessage, Field, PasswordField } from "@/components/ui";
-import { api } from "@/lib/api";
+import { api, credStore } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { User } from "@/lib/types";
 
@@ -25,6 +25,8 @@ export default function LoginPage() {
         password: form.get("password"),
       });
       signIn(res.token, res.user);
+      if (form.get("keep")) credStore.set(String(form.get("email")), String(form.get("password")));
+      else credStore.clear();
       router.push(res.user.role === "PLATFORM_ADMIN" ? "/plataforma" : "/painel");
     } catch (err) {
       setError((err as Error).message);
@@ -43,6 +45,10 @@ export default function LoginPage() {
         <form onSubmit={onSubmit} className="space-y-3">
           <Field label="E-mail" name="email" type="email" required autoComplete="email" />
           <PasswordField label="Senha" name="password" required autoComplete="current-password" />
+          <label className="flex items-center gap-2 text-sm text-zinc-700">
+            <input type="checkbox" name="keep" className="h-4 w-4" />
+            Manter conectado
+          </label>
           <Link href="/esqueci-senha" className="block text-right text-sm font-semibold text-brand-rose hover:underline">
             Esqueci minha senha
           </Link>

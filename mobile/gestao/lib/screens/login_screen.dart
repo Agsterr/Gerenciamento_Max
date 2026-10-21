@@ -14,6 +14,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _form = GlobalKey<FormState>();
+  bool _keep = false;
   late final _email = TextEditingController(text: widget.session.lastEmail);
   final _password = TextEditingController();
   final _confirm = TextEditingController();
@@ -55,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
           'password': _password.text,
         });
       } else {
-        await widget.session.login(_email.text.trim(), _password.text);
+        await widget.session.login(_email.text.trim(), _password.text, keepSignedIn: _keep);
       }
     } catch (e) {
       // Conta bloqueada: a Session já troca para a tela de bloqueio.
@@ -180,6 +181,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onFieldSubmitted: (_) => _submit(),
                               ),
                             ],
+                            if (!_register)
+                              InkWell(
+                                onTap: () => setState(() => _keep = !_keep),
+                                child: Row(children: [
+                                  Checkbox(value: _keep, onChanged: (v) => setState(() => _keep = v ?? false)),
+                                  const Text('Manter conectado'),
+                                ]),
+                              ),
                             if (!_register)
                               Align(
                                 alignment: Alignment.centerRight,

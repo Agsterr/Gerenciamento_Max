@@ -11,6 +11,8 @@ class Session extends ChangeNotifier {
 
   static const _tokenKey = 'jwt';
   static const _emailKey = 'last_email';
+  // "Manter conectado": com ele marcado a senha fica no Keystore/Keychain e o app entra de novo quando o token de 24h vence.
+  static const _passwordKey = 'saved_password';
   final _storage = const FlutterSecureStorage();
   final http.Client? _httpClient;
 
@@ -22,7 +24,14 @@ class Session extends ChangeNotifier {
   String? blockedReason;
 
   late final ApiClient api =
-      ApiClient(token: () => _token, onUnauthorized: signOut, onAccountBlocked: _blocked, httpClient: _httpClient);
+      ApiClient(
+      token: () => _token,
+      onUnauthorized: signOut,
+      onAccountBlocked: _blocked,
+      reauthenticate: _reauthenticate,
+      httpClient: _httpClient);
+
+  Future<bool>? _relogin;
 
   User get user => _user!;
 
@@ -40,7 +49,6 @@ class Session extends ChangeNotifier {
       try {
         _user = User.fromJson(await api.get('/api/me') as Map<String, dynamic>);
         state = SessionState.signedIn;
-        _renew();
       } on AccountBlockedException {
         return; // _blocked já trocou o estado e limpou a sessão.
       } on ApiException catch (e) {
@@ -51,21 +59,37 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Login fica salvo: a cada abertura o token é renovado (validade de 30 dias a partir do último uso).
-  Future<void> _renew() async {
+  /// Token de 24h vencido: entra de novo com a senha salva (só existe se marcou "Manter conectado").
+  /// Várias requisições ao mesmo tempo compartilham um único login.
+  Future<bool> _reauthenticate() => _relogin ??= _doRelogin().whenComplete(() => _relogin = null);
+
+  Future<bool> _doRelogin() async {
+    final email = await _storage.read(key: _emailKey);
+    final password = await _storage.read(key: _passwordKey);
+    if (email == null || password == null) return false;
+    // Sem o token vencido: um Bearer inválido derruba até o endpoint de login.
+    final anonymous = ApiClient(onAccountBlocked: _blocked, httpClient: _httpClient);
     try {
-      final json = await api.post('/api/me/token') as Map<String, dynamic>;
+      final json = await anonymous.post('/api/auth/login', {'email': email, 'password': password}) as Map<String, dynamic>;
       _token = json['token'] as String;
       await _storage.write(key: _tokenKey, value: _token);
-    } catch (_) {
-      // sem rede: segue com o token atual
+      return true;
+    } on ApiException catch (e) {
+      if (e.status == 401 || e.status == 400) await _storage.delete(key: _passwordKey); // senha mudou
+      if (e.status == 0) rethrow; // sem rede: não desloga
+      return false;
     }
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String email, String password, {bool keepSignedIn = false}) async {
     await _authenticate(api.post('/api/auth/login', {'email': email, 'password': password}));
     lastEmail = email;
     await _storage.write(key: _emailKey, value: email);
+    if (keepSignedIn) {
+      await _storage.write(key: _passwordKey, value: password);
+    } else {
+      await _storage.delete(key: _passwordKey);
+    }
   }
 
   Future<void> register(Map<String, String> data) => _authenticate(api.post('/api/auth/register', data));
@@ -84,6 +108,7 @@ class Session extends ChangeNotifier {
     _user = null;
     blockedReason = null;
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _passwordKey);
     state = SessionState.signedOut;
     notifyListeners();
   }
@@ -97,6 +122,7 @@ class Session extends ChangeNotifier {
     state = SessionState.blocked;
     notifyListeners();
     _storage.delete(key: _tokenKey).catchError((Object _) {});
+    _storage.delete(key: _passwordKey).catchError((Object _) {});
   }
 
   /// Exclusão de conta (App Store 5.1.1(v) / Google Play). Retorna true se o salão foi apagado.

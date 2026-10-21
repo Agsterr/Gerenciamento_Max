@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api, tokenStore } from "./api";
+import { api, credStore, tokenStore } from "./api";
 import type { User } from "./types";
 
 type AuthState = {
@@ -24,25 +24,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     api
       .get<User>("/api/me")
-      .then((u) => {
-        setUser(u);
-        // login salvo: renova a validade a cada visita (30 dias a partir do último uso)
-        api
-          .post<{ token: string }>("/api/me/token")
-          .then((r) => tokenStore.set(r.token))
-          .catch(() => undefined);
-      })
+      .then(setUser)
       .catch(() => tokenStore.clear())
       .finally(() => setReady(true));
   }, []);
 
   const signIn = useCallback((token: string, u: User) => {
     tokenStore.set(token);
+    credStore.clear(); // nova sessão: a senha salva só vale se o login marcar "Manter conectado"
     setUser(u);
   }, []);
 
   const signOut = useCallback(() => {
     tokenStore.clear();
+    credStore.clear();
     setUser(null);
   }, []);
 

@@ -20,10 +20,51 @@ export const tokenStore = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
+/** "Manter conectado": e-mail e senha ficam neste aparelho para entrar de novo quando o token de 24h vencer. */
+const CRED_KEY = "salao.cred";
+export const credStore = {
+  get: (): { email: string; password: string } | null => {
+    try {
+      const raw = typeof window === "undefined" ? null : localStorage.getItem(CRED_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  },
+  set: (email: string, password: string) => localStorage.setItem(CRED_KEY, JSON.stringify({ email, password })),
+  clear: () => localStorage.removeItem(CRED_KEY),
+};
+
+let relogin: Promise<boolean> | null = null;
+
+/** Entra de novo com a senha salva (sem o token vencido). Várias requisições juntas compartilham um login só. */
+function reauthenticate(): Promise<boolean> {
+  const cred = credStore.get();
+  if (!cred) return Promise.resolve(false);
+  relogin ??= fetch(BASE_URL + "/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cred),
+  })
+    .then(async (res) => {
+      if (res.ok) {
+        tokenStore.set((await res.json()).token);
+        return true;
+      }
+      if (res.status === 400 || res.status === 401 || res.status === 403) credStore.clear();
+      return false;
+    })
+    .catch(() => false)
+    .finally(() => {
+      relogin = null;
+    });
+  return relogin;
+}
+
 /** Link direto do APK mais recente (instalação fora da loja). */
 export const appDownloadUrl = (app: "gestao" | "cliente") => `${BASE_URL}/api/app/download/latest?app=${app}`;
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, retried = false): Promise<T> {
   const headers: Record<string, string> = {};
   const token = tokenStore.get();
   if (token && !path.startsWith("/api/public")) headers.Authorization = `Bearer ${token}`;
@@ -38,8 +79,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
   const problem = res.ok ? null : await res.json().catch(() => null);
   const blocked = res.status === 403 && problem?.code === ACCOUNT_BLOCKED;
+  if (res.status === 401 && token && !retried && (await reauthenticate())) {
+    return request<T>(method, path, body, true);
+  }
   if ((res.status === 401 || blocked) && token) {
     tokenStore.clear();
+    credStore.clear();
     if (typeof window !== "undefined" && window.location.pathname.startsWith("/painel")) {
       window.location.href = "/login";
     }
