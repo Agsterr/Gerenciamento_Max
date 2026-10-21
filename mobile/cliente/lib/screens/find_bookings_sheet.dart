@@ -40,6 +40,13 @@ class _FindBookingsSheetState extends State<_FindBookingsSheet> {
   bool _busy = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Salão escolhido na lista "Meus salões" e cliente já identificada: mostra os horários direto.
+    if (widget.slug != null && widget.store.signedIn) WidgetsBinding.instance.addPostFrameCallback((_) => _search());
+  }
+
+  @override
   void dispose() {
     _name.dispose();
     _phone.dispose();

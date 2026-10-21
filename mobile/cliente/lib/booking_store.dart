@@ -25,12 +25,21 @@ class SavedBooking {
   Map<String, dynamic> toJson() => {'slug': slug, 'token': token, 'salonName': salonName, 'seen': seen};
 }
 
+/// Salão que a cliente já abriu pelo link (ou onde já agendou), para voltar com um toque.
+class SavedSalon {
+  const SavedSalon({required this.slug, required this.name});
+
+  final String slug;
+  final String name;
+}
+
 /// Dados guardados só no aparelho: agendamentos feitos e (opcionalmente) nome/telefone.
 /// Não há conta: o código do agendamento é a "chave" para consultar e cancelar.
 class BookingStore extends ChangeNotifier {
   BookingStore._(this._prefs);
 
   static const _bookingsKey = 'bookings';
+  static const _salonsKey = 'salons';
   static const _nameKey = 'customer.name';
   static const _phoneKey = 'customer.phone';
   static const _askedNotificationsKey = 'notifications.asked';
@@ -42,6 +51,27 @@ class BookingStore extends ChangeNotifier {
   List<SavedBooking> get bookings => (_prefs.getStringList(_bookingsKey) ?? [])
       .map((s) => SavedBooking.fromJson(jsonDecode(s) as Map<String, dynamic>))
       .toList();
+
+  /// Salões usados neste aparelho, o mais recente primeiro: abertos pelo link + os dos agendamentos salvos.
+  List<SavedSalon> get salons {
+    final out = <String, SavedSalon>{};
+    for (final s in _prefs.getStringList(_salonsKey) ?? const <String>[]) {
+      final j = jsonDecode(s) as Map<String, dynamic>;
+      out[j['slug'] as String] = SavedSalon(slug: j['slug'] as String, name: j['name'] as String);
+    }
+    for (final b in bookings) {
+      out.putIfAbsent(b.slug, () => SavedSalon(slug: b.slug, name: b.salonName));
+    }
+    return out.values.toList();
+  }
+
+  /// Guarda o salão como usado (move para o topo). Chamado quando a página do salão abre.
+  Future<void> rememberSalon(String slug, String name) async {
+    final current = (_prefs.getStringList(_salonsKey) ?? const <String>[])
+        .where((s) => (jsonDecode(s) as Map<String, dynamic>)['slug'] != slug);
+    await _prefs.setStringList(_salonsKey, [jsonEncode({'slug': slug, 'name': name}), ...current].take(30).toList());
+    notifyListeners();
+  }
 
   String? get name => _prefs.getString(_nameKey);
   String? get phone => _prefs.getString(_phoneKey);

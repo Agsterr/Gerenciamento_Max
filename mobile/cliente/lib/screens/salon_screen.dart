@@ -67,6 +67,7 @@ class _SalonScreenState extends State<SalonScreen> {
         _day = _days(salon).firstOrNull;
       });
       _loadPhotos();
+      widget.store.rememberSalon(widget.slug, salon.name);
     } catch (e) {
       setState(() => _error = e.toString());
     }

@@ -5,6 +5,7 @@ import 'package:salao_core/salao_core.dart';
 
 import '../booking_store.dart';
 import 'about_screen.dart';
+import 'find_bookings_sheet.dart';
 import 'salon_screen.dart';
 
 /// Busca o salão pelo nome ou pelo link compartilhado (…/s/nome-do-salao).
@@ -81,7 +82,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final recent = {for (final b in widget.store.bookings) b.slug: b.salonName};
+    final saved = widget.store.salons;
     final typing = _query.text.trim().length >= 2;
 
     return ListView(
@@ -154,12 +155,21 @@ class _SearchScreenState extends State<SearchScreen> {
               SectionTitle(_results.isEmpty && !_loading ? 'Nenhum salão encontrado' : 'Resultados'),
               for (final s in _results) Padding(padding: const EdgeInsets.only(bottom: 12), child: _SalonCard(salon: s, onTap: () => _open(s))),
             ] else ...[
-              if (recent.isNotEmpty) ...[
-                const SectionTitle('Agendar de novo'),
-                for (final e in recent.entries)
+              if (saved.isNotEmpty) ...[
+                const SectionTitle('Meus salões'),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text('Toque no salão para ver seus horários.', style: text.bodySmall?.copyWith(color: Brand.muted)),
+                ),
+                for (final e in saved)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: _SalonCard(salon: SalonSummary(name: e.value, slug: e.key), onTap: () => _open(SalonSummary(name: e.value, slug: e.key)), recent: true),
+                    child: _SalonCard(
+                      salon: SalonSummary(name: e.name, slug: e.slug),
+                      recent: true,
+                      onTap: () => showFindBookingsSheet(context, api: widget.api, store: widget.store, slug: e.slug, salonName: e.name),
+                      onBook: () => _open(SalonSummary(name: e.name, slug: e.slug)),
+                    ),
                   ),
               ],
               const SectionTitle('Por que agendar pelo app'),
@@ -175,10 +185,13 @@ class _SearchScreenState extends State<SearchScreen> {
 }
 
 class _SalonCard extends StatelessWidget {
-  const _SalonCard({required this.salon, required this.onTap, this.recent = false});
+  const _SalonCard({required this.salon, required this.onTap, this.onBook, this.recent = false});
 
   final SalonSummary salon;
   final VoidCallback onTap;
+
+  /// Em "Meus salões": atalho para agendar de novo (o toque no cartão abre os horários).
+  final VoidCallback? onBook;
   final bool recent;
 
   @override
@@ -193,15 +206,18 @@ class _SalonCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(salon.name, style: text.titleMedium),
             const SizedBox(height: 2),
-            Text(recent ? 'Você já agendou aqui' : (salon.address ?? 'Agendamento online'),
+            Text(recent ? 'Ver meus horários' : (salon.address ?? 'Agendamento online'),
                 style: text.bodySmall?.copyWith(color: Brand.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
           ]),
         ),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: const Color(0xFFFFEAF2), borderRadius: BorderRadius.circular(12)),
-          child: const Icon(Icons.arrow_forward_rounded, color: Brand.rose, size: 20),
-        ),
+        if (onBook != null)
+          TextButton(onPressed: onBook, child: const Text('Agendar'))
+        else
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: const Color(0xFFFFEAF2), borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.arrow_forward_rounded, color: Brand.rose, size: 20),
+          ),
       ]),
     );
   }
