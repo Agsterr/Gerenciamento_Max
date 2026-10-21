@@ -11,6 +11,7 @@ import com.max.salao.appointment.AvailabilityService.Slot;
 import com.max.salao.catalog.ServiceItem;
 import com.max.salao.customer.Customer;
 import com.max.salao.professional.Professional;
+import com.max.salao.promotion.Promotion;
 import com.max.salao.salon.Salon;
 import com.max.salao.salon.SalonDtos;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,7 +38,17 @@ public class PublicBookingController {
 
     /** professionalIds vazio = qualquer profissional faz o serviço. */
     public record PublicService(Long id, String name, String description, int durationMinutes, BigDecimal price,
-                                String category, List<Long> professionalIds) {
+                                String category, List<Long> professionalIds,
+                                // pacote: serviços incluídos e o preço somado sem desconto
+                                List<String> kitItems, BigDecimal kitFullPrice,
+                                // promoção que vale hoje (o preço final é o do dia do horário)
+                                BigDecimal promoPrice, Long promotionId, String promoName, BigDecimal promoPercent,
+                                java.time.LocalDate promoStartsOn, java.time.LocalDate promoEndsOn) {
+    }
+
+    /** Promoção em andamento ou que ainda vai começar; serviceIds vazio = vale para todos. */
+    public record PublicPromotion(Long id, String name, String description, BigDecimal discountPercent,
+                                  java.time.LocalDate startsOn, java.time.LocalDate endsOn, List<Long> serviceIds) {
     }
 
     public record PublicProfessional(Long id, String name) {
@@ -46,7 +57,8 @@ public class PublicBookingController {
     /** reminderDays: dias antes do horário em que o app do cliente avisa para confirmar (vazio = desligado). */
     public record SalonInfo(String name, String slug, String phone, String address, String workDays,
                             List<SalonDtos.DayHoursDto> hours, List<PublicService> services,
-                            List<PublicProfessional> professionals, List<Integer> reminderDays) {
+                            List<PublicProfessional> professionals, List<Integer> reminderDays,
+                            List<PublicPromotion> promotions) {
     }
 
     public record BookingRequest(
@@ -102,17 +114,40 @@ public class PublicBookingController {
     public SalonInfo info() {
         Salon s = service.salon();
         var active = service.activeProfessionals();
+        var today = service.today();
+        var promos = service.promotions();
         return new SalonInfo(s.getName(), s.getSlug(), s.getPhone(), s.getAddress(), s.workDays(),
                 SalonDtos.hours(s),
                 service.activeServices().stream()
                         // serviço que nenhum profissional ativo faz não aparece para o cliente
                         .filter(x -> active.isEmpty() || active.stream().anyMatch(x::canBeDoneBy))
-                        .map(x -> new PublicService(x.getId(), x.getName(), x.getDescription(),
-                                x.getDurationMinutes(), x.getPrice(), x.getCategory(), whoDoes(x, active)))
+                        .map(x -> publicService(x, active, promos, today))
                         .toList(),
                 active.stream().map(p -> new PublicProfessional(p.getId(), p.getName()))
                         .toList(),
-                s.getReminderMode().days());
+                s.getReminderMode().days(),
+                promos.stream().map(p -> new PublicPromotion(p.getId(), p.getName(), p.getDescription(),
+                        p.getDiscountPercent(), p.getStartsOn(), p.getEndsOn(),
+                        p.getServiceIds().stream().sorted().toList())).toList());
+    }
+
+    private PublicService publicService(ServiceItem x, List<Professional> active, List<Promotion> promos,
+                                        java.time.LocalDate today) {
+        // promoção de hoje ou, se ainda não começou, a próxima (o cliente vê a data em que vale)
+        var promo = promos.stream()
+                .filter(p -> p.covers(x))
+                .min(java.util.Comparator.comparing((Promotion p) -> p.getStartsOn().isAfter(today))
+                        .thenComparing(p -> p.getDiscountPercent().negate()));
+        return new PublicService(x.getId(), x.getName(), x.getDescription(), x.getDurationMinutes(), x.getPrice(),
+                x.getCategory(), whoDoes(x, active),
+                x.getKitItems().stream().map(ServiceItem::getName).sorted().toList(),
+                x.isKit() ? x.kitFullPrice() : null,
+                promo.map(p -> p.apply(x.getPrice())).orElse(null),
+                promo.map(Promotion::getId).orElse(null),
+                promo.map(Promotion::getName).orElse(null),
+                promo.map(Promotion::getDiscountPercent).orElse(null),
+                promo.map(Promotion::getStartsOn).orElse(null),
+                promo.map(Promotion::getEndsOn).orElse(null));
     }
 
     @GetMapping("/availability")

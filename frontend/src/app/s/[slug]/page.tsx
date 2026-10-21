@@ -9,7 +9,7 @@ import { AppPromo } from "@/components/InstallApp";
 import { Icon, serviceIcon } from "@/components/Icon";
 import { ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";
-import { bookableDays, formatMoney, groupByCategory } from "@/lib/format";
+import { bookableDays, formatDate, formatMoney, groupByCategory, promoPriceOn } from "@/lib/format";
 import type { Booking, Photo, PublicSalon, Slot } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
@@ -130,6 +130,27 @@ export default function PublicBookingPage() {
       </header>
 
       <div className="mx-auto max-w-xl px-4">
+        {salon.promotions.length > 0 && (
+          <section className="mt-6 space-y-2">
+            {salon.promotions.map((p) => (
+              <div key={p.id} className="flex items-start gap-3 rounded-2xl bg-gradient-to-r from-amber-100 to-rose-100 p-4">
+                <Icon name="sparkles" className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                <div className="text-sm">
+                  <p className="font-extrabold text-brand-ink">
+                    {p.name} · {p.discountPercent}% de desconto
+                  </p>
+                  {p.description && <p className="text-brand-muted">{p.description}</p>}
+                  <p className="text-brand-muted">
+                    Para horários de {formatDate(p.startsOn)} a {formatDate(p.endsOn)}
+                    {p.serviceIds.length > 0 &&
+                      ` em ${salon.services.filter((s) => p.serviceIds.includes(s.id)).map((s) => s.name).join(", ")}`}
+                    .
+                  </p>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
         {photos && photos.length > 0 && (
           <section className="mt-7">
             <h2 className="mb-3 text-lg font-extrabold">Nossos trabalhos</h2>
@@ -224,14 +245,20 @@ export default function PublicBookingPage() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block font-extrabold">{s.name}</span>
+                        {s.kitItems.length > 0 && (
+                          <span className="block text-xs text-brand-muted">Inclui {s.kitItems.join(" + ")}</span>
+                        )}
+                        {s.promoName && (
+                          <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                            {s.promoName}: -{s.promoPercent}% {s.promoStartsOn && s.promoEndsOn && `de ${formatDate(s.promoStartsOn)} a ${formatDate(s.promoEndsOn)}`}
+                          </span>
+                        )}
                         <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#F6EEF3] px-2 py-0.5 text-xs font-bold text-brand-muted">
                           <Icon name="clock" className="h-3.5 w-3.5" />{" "}
                           {s.durationMinutes} min
                         </span>
                       </span>
-                      <span className="font-extrabold text-brand-rose">
-                        {formatMoney(s.price)}
-                      </span>
+                      <PriceTag price={s.price} promo={promoPriceOn(s)} full={s.kitFullPrice} />
                     </button>
                   );
                 })}
@@ -393,7 +420,14 @@ export default function PublicBookingPage() {
                   : "Escolha um horário"}
               </p>
               <p className="font-extrabold text-brand-rose">
-                {formatMoney(service.price)}
+                {promoPriceOn(service, date) != null ? (
+                  <>
+                    <span className="mr-1 text-sm font-semibold text-zinc-400 line-through">{formatMoney(service.price)}</span>
+                    {formatMoney(promoPriceOn(service, date)!)}
+                  </>
+                ) : (
+                  formatMoney(service.price)
+                )}
               </p>
             </div>
             <button
@@ -431,4 +465,15 @@ function Step({
 
 function Centered({ children }: { children: React.ReactNode }) {
   return <p className="p-12 text-center text-zinc-500">{children}</p>;
+}
+
+/** Preço do serviço: pacote mostra a soma riscada; promoção mostra o preço normal riscado. */
+function PriceTag({ price, promo, full }: { price: number; promo: number | null; full: number | null }) {
+  const old = promo != null ? price : full != null && full > price ? full : null;
+  return (
+    <span className="text-right font-extrabold text-brand-rose">
+      {old != null && <span className="block text-xs font-semibold text-zinc-400 line-through">{formatMoney(old)}</span>}
+      {formatMoney(promo ?? price)}
+    </span>
+  );
 }

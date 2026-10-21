@@ -55,6 +55,19 @@ class _FinanceScreenState extends State<FinanceScreen> {
     }
   }
 
+  /// Atalhos de período.
+  static List<(String, DateTimeRange)> _presets() {
+    final today = dateOnly(DateTime.now());
+    return [
+      ('Hoje', DateTimeRange(start: today, end: today)),
+      ('7 dias', DateTimeRange(start: today.subtract(const Duration(days: 6)), end: today)),
+      ('Este mês', DateTimeRange(start: DateTime(today.year, today.month), end: today)),
+      ('Mês passado', DateTimeRange(start: DateTime(today.year, today.month - 1), end: DateTime(today.year, today.month, 0))),
+      ('30 dias', DateTimeRange(start: today.subtract(const Duration(days: 29)), end: today)),
+      ('Este ano', DateTimeRange(start: DateTime(today.year), end: today)),
+    ];
+  }
+
   Future<void> _pickRange() async {
     final r = await showDateRangePicker(
       context: context,
@@ -238,7 +251,42 @@ class _FinanceScreenState extends State<FinanceScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(children: [
+                      for (final (label, range) in _presets())
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(label),
+                            selected: range == _range,
+                            onSelected: (_) {
+                              setState(() => _range = range);
+                              _load();
+                            },
+                          ),
+                        ),
+                      ActionChip(avatar: const Icon(Icons.date_range_rounded, size: 18), label: const Text('Escolher'), onPressed: _pickRange),
+                    ]),
+                  ),
+                  const SectionTitle('Lucros'),
+                  SoftCard(
+                    child: Column(children: [
+                      _Line('Lucro dos serviços', s.money('servicesProfit'), color: _tone(s.money('servicesProfit'))),
+                      Text('Receita − comissões − material − produtos usados',
+                          style: text.bodySmall?.copyWith(color: Brand.muted)),
+                      const SizedBox(height: 6),
+                      _Line('Lucro dos produtos', s.money('productsProfit'), color: _tone(s.money('productsProfit'))),
+                      Text('Vendas − preço pago − perdas', style: text.bodySmall?.copyWith(color: Brand.muted)),
+                      const Divider(),
+                      _Line('Lucro antes das despesas', s.money('operatingProfit')),
+                      _Line('Despesas (fixas + variáveis)', -s.money('expenses')),
+                      const Divider(),
+                      _Line('Lucro líquido', s.money('profit'), bold: true, color: _tone(s.money('profit'))),
+                    ]),
+                  ),
+                  const SizedBox(height: 4),
                   GridView.count(
                     crossAxisCount: 2,
                     shrinkWrap: true,
@@ -287,6 +335,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   SectionTitle('Despesas variáveis', trailing: Text(formatMoney(s.money('variableExpenses')), style: text.titleSmall)),
                   _CategoryCard(values: s.byCategory('variableByCategory'), empty: 'Nenhuma despesa variável no período.'),
                   _ReworkSection(rework: s.rework),
+                  _PromotionsSection(data: (s.json['promotions'] as Map<String, dynamic>?) ?? const {}),
                   const SectionTitle('Produtos'),
                   _ProductsCard(rows: s.products),
                   const SectionTitle('Ranking de profissionais'),
@@ -350,6 +399,8 @@ class _FinanceScreenState extends State<FinanceScreen> {
   }
 
   static String _minutes(double? m) => m == null ? '—' : '${m.round()} min';
+
+  static Color _tone(double v) => v < 0 ? const Color(0xFFBE123C) : const Color(0xFF15803D);
 }
 
 class _HeaderStat extends StatelessWidget {
@@ -613,5 +664,36 @@ class _ProductsCard extends StatelessWidget {
         _Line('Valor parado em estoque (preço pago)', stockValue),
       ]),
     );
+  }
+}
+
+/// Descontos dados por promoções e pacotes vendidos.
+class _PromotionsSection extends StatelessWidget {
+  const _PromotionsSection({required this.data});
+
+  final Map<String, dynamic> data;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = data['appointments'] as int? ?? 0;
+    final kits = data['kitsSold'] as int? ?? 0;
+    if (count == 0 && kits == 0) return const SizedBox.shrink();
+    final text = Theme.of(context).textTheme;
+    final rows = ((data['byPromotion'] as List?) ?? const []).cast<Map<String, dynamic>>();
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const SectionTitle('Promoções e pacotes'),
+      SoftCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('$count atendimento(s) com promoção · $kits pacote(s) vendido(s)', style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          _Line('Descontos dados', (data['discounts'] as num? ?? 0).toDouble()),
+          _Line('Receita com pacotes', (data['kitsRevenue'] as num? ?? 0).toDouble()),
+          for (final r in rows)
+            Text('${r['name']}: ${r['count']} · receita ${formatMoney((r['revenue'] as num).toDouble())} · '
+                'desconto ${formatMoney((r['commission'] as num).toDouble())}',
+                style: text.bodySmall?.copyWith(color: Brand.muted)),
+        ]),
+      ),
+    ]);
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../booking_store.dart';
+import '../promo_alerts.dart';
 import 'about_screen.dart';
 import 'find_bookings_sheet.dart';
 import 'salon_screen.dart';
@@ -25,11 +26,20 @@ class _SearchScreenState extends State<SearchScreen> {
   List<SalonSummary> _results = [];
   bool _loading = false;
   String? _error;
+  List<SalonPromotion> _promos = const [];
 
   @override
   void initState() {
     super.initState();
     widget.store.addListener(_refresh);
+    _loadPromos();
+  }
+
+  /// Promoções dos salões que o cliente já usou (e o aviso das novas).
+  Future<void> _loadPromos() async {
+    if (widget.store.salons.isEmpty) return;
+    final promos = await checkPromotions(widget.api, widget.store);
+    if (mounted) setState(() => _promos = promos);
   }
 
   @override
@@ -155,6 +165,18 @@ class _SearchScreenState extends State<SearchScreen> {
               SectionTitle(_results.isEmpty && !_loading ? 'Nenhum salão encontrado' : 'Resultados'),
               for (final s in _results) Padding(padding: const EdgeInsets.only(bottom: 12), child: _SalonCard(salon: s, onTap: () => _open(s))),
             ] else ...[
+              if (_promos.isNotEmpty) ...[
+                const SectionTitle('Promoções nos seus salões'),
+                for (final p in _promos)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: PromoBanner(
+                      promotion: p.promotion,
+                      salonName: p.salon.name,
+                      onTap: () => _open(SalonSummary(name: p.salon.name, slug: p.salon.slug)),
+                    ),
+                  ),
+              ],
               if (saved.isNotEmpty) ...[
                 const SectionTitle('Meus salões'),
                 Padding(
@@ -251,6 +273,53 @@ class _Benefit extends StatelessWidget {
             ]),
           ),
         ]),
+      ),
+    );
+  }
+}
+
+/// Faixa de promoção (tela inicial e página do salão).
+class PromoBanner extends StatelessWidget {
+  const PromoBanner({super.key, required this.promotion, this.salonName, this.serviceNames = const [], this.onTap});
+
+  final PublicPromotion promotion;
+  final String? salonName;
+  final List<String> serviceNames;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final p = promotion;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(colors: [Color(0xFFFFF1C7), Color(0xFFFFE0EC)]),
+          ),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Icon(Icons.local_offer_rounded, color: Color(0xFFD97706)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                if (salonName != null) Text(salonName!, style: text.bodySmall?.copyWith(fontWeight: FontWeight.w800, color: Brand.muted)),
+                Text(p.headline, style: text.titleSmall),
+                if (p.description != null) Text(p.description!, style: text.bodySmall),
+                Text(
+                  'Para horários de ${formatDate(p.startsOn)} a ${formatDate(p.endsOn)}'
+                  '${serviceNames.isEmpty ? '' : ' em ${serviceNames.join(', ')}'}',
+                  style: text.bodySmall?.copyWith(color: Brand.muted),
+                ),
+              ]),
+            ),
+            if (onTap != null) const Icon(Icons.chevron_right_rounded, color: Brand.muted),
+          ]),
+        ),
       ),
     );
   }

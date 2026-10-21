@@ -58,7 +58,17 @@ public class ReportService {
             Map<String, BigDecimal> fixedByCategory,
             Map<String, BigDecimal> variableByCategory,
             Rework rework,
-            List<ProductReport> products) {
+            List<ProductReport> products,
+            // lucro separado: serviços (receita − comissões − material − produtos usados) e produtos (venda − custo)
+            BigDecimal servicesProfit,
+            BigDecimal productsProfit,
+            BigDecimal operatingProfit,
+            Promotions promotions) {
+    }
+
+    /** Descontos dados por promoções e pacotes vendidos no período. */
+    public record Promotions(long appointments, BigDecimal discounts, List<Ranking> byPromotion,
+                             long kitsSold, BigDecimal kitsRevenue) {
     }
 
     /** Refações do período: atendimentos sem cobrança que só geraram custo. */
@@ -122,6 +132,11 @@ public class ReportService {
 
         // refação não entra no ticket médio (não houve cobrança)
         long paid = done.stream().filter(a -> !a.isRework()).count();
+        // uso nos atendimentos pesa nos serviços; perdas de estoque pesam nos produtos
+        BigDecimal lossCost = sum(ofType(moves, StockMovement.Type.LOSS), StockMovement::totalCost);
+        BigDecimal servicesProfit = servicesRevenue.subtract(commissions).subtract(materialCost)
+                .subtract(usedCost.subtract(lossCost));
+        BigDecimal productsProfit = productSales.subtract(soldCost).subtract(lossCost);
         List<Expense> fixed = expenses.stream().filter(e -> ExpenseCategories.isFixed(e.getCategory())).toList();
         List<Expense> variable = expenses.stream().filter(e -> !ExpenseCategories.isFixed(e.getCategory())).toList();
 
@@ -149,7 +164,23 @@ public class ReportService {
                 byCategory(fixed),
                 byCategory(variable),
                 rework(done, moves),
-                productReport(moves));
+                productReport(moves),
+                servicesProfit,
+                productsProfit,
+                servicesProfit.add(productsProfit),
+                promotions(done));
+    }
+
+    private static Promotions promotions(List<Appointment> done) {
+        List<Appointment> promo = done.stream().filter(a -> a.getPromotion() != null).toList();
+        List<Appointment> kits = done.stream().filter(a -> a.getService().isKit()).toList();
+        return new Promotions(promo.size(), sum(done, Appointment::getDiscountAmount),
+                promo.stream().collect(Collectors.groupingBy(a -> a.getPromotion().getName())).entrySet().stream()
+                        .map(e -> new Ranking(e.getKey(), e.getValue().size(), sum(e.getValue(), Appointment::getPrice),
+                                sum(e.getValue(), Appointment::getDiscountAmount), null))
+                        .sorted(Comparator.comparing(Ranking::revenue).reversed())
+                        .toList(),
+                kits.size(), sum(kits, Appointment::getPrice));
     }
 
     private static Map<String, BigDecimal> byCategory(List<Expense> expenses) {

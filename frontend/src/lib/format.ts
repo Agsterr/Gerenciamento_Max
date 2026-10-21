@@ -99,3 +99,12 @@ export function groupByCategory<T extends { category: string | null }>(items: T[
   groups.delete("Outros");
   return [...groups.entries(), ...(others ? ([["Outros", others]] as [string, T[]][]) : [])];
 }
+
+type Promo = { promoPrice: number | null; promoStartsOn: string | null; promoEndsOn: string | null };
+
+/** Preço promocional que vale no dia (data "YYYY-MM-DD"); sem dia, o de hoje. Nulo = preço normal. */
+export function promoPriceOn(s: Promo, day?: string | null): number | null {
+  if (s.promoPrice == null || !s.promoStartsOn || !s.promoEndsOn) return null;
+  const d = day ?? new Date().toLocaleDateString("sv-SE");
+  return d >= s.promoStartsOn && d <= s.promoEndsOn ? s.promoPrice : null;
+}

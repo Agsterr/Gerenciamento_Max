@@ -15,6 +15,7 @@ const NAV = [
   { href: "/painel/servicos", label: "Serviços", ownerOnly: false },
   { href: "/painel/profissionais", label: "Profissionais", ownerOnly: false },
   { href: "/painel/produtos", label: "Produtos", ownerOnly: false },
+  { href: "/painel/promocoes", label: "Pacotes e promoções", ownerOnly: false },
   { href: "/painel/portfolio", label: "Portfólio", ownerOnly: false },
   { href: "/painel/financeiro", label: "Financeiro e relatórios", ownerOnly: true },
   { href: "/painel/precificacao", label: "Precificação", ownerOnly: true },

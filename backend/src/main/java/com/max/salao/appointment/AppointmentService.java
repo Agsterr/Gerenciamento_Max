@@ -13,6 +13,7 @@ import com.max.salao.catalog.ServiceItemRepository;
 import com.max.salao.customer.Customer;
 import com.max.salao.customer.CustomerRepository;
 import com.max.salao.product.ProductService;
+import com.max.salao.promotion.PromotionService;
 import com.max.salao.product.StockMovement;
 import com.max.salao.professional.Professional;
 import com.max.salao.professional.ProfessionalRepository;
@@ -46,11 +47,13 @@ public class AppointmentService {
     private final ProductService productService;
     private final SalonService salonService;
     private final Clock clock;
+    private final PromotionService promotions;
 
     public AppointmentService(AppointmentRepository appointments, ProfessionalRepository professionals,
                               ServiceItemRepository services, CustomerRepository customers,
                               AvailabilityService availability, ProductService productService,
-                              SalonService salonService, Clock clock) {
+                              SalonService salonService, Clock clock, PromotionService promotions) {
+        this.promotions = promotions;
         this.appointments = appointments;
         this.professionals = professionals;
         this.services = services;
@@ -117,7 +120,7 @@ public class AppointmentService {
         a.setService(service);
         a.setStartAt(start);
         a.setEndAt(end);
-        a.setPrice(service.getPrice());
+        applyPrice(a, service, start);
         a.setNotes(cmd.notes());
         a.setSource(cmd.source());
         return appointments.save(a);
@@ -146,7 +149,7 @@ public class AppointmentService {
         a.setProfessional(professional);
         a.setStartAt(start);
         a.setEndAt(end);
-        a.setPrice(service.getPrice());
+        applyPrice(a, service, start);
         a.setNotes(req.notes());
         return a;
     }
@@ -231,6 +234,14 @@ public class AppointmentService {
                 .filter(id -> availability.isBookable(salon, id, start, end))
                 .findFirst()
                 .orElseThrow(() -> new BusinessException("Nenhum profissional livre nesse horário"));
+    }
+
+    /** Preço do serviço no dia do horário, já com a melhor promoção que vale. */
+    private void applyPrice(Appointment a, ServiceItem service, LocalDateTime start) {
+        PromotionService.Price p = promotions.priceOn(service, start.toLocalDate());
+        a.setPrice(p.price());
+        a.setDiscountAmount(p.discount());
+        a.setPromotion(p.promotion());
     }
 
     private static void assertDoes(Professional professional, ServiceItem service) {

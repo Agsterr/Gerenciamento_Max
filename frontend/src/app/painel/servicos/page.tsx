@@ -12,6 +12,7 @@ export default function ServicesPage() {
       path="/api/services"
       ownerOnly
       servicePhotos
+      filter={(s) => s.kitServiceIds.length === 0}
       defaults={{ name: "", category: "", professionalIds: [], description: "", durationMinutes: 30, price: 0, cost: 0, active: true }}
       fields={[
         { key: "name", label: "Nome", required: true, placeholder: "Corte feminino" },

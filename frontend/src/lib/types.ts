@@ -108,6 +108,23 @@ export type Service = {
   category: string | null;
   /** Quem faz o serviço; vazio = qualquer profissional. */
   professionalIds: number[];
+  /** Pacote: serviços incluídos (vazio = serviço comum), % de desconto e soma sem desconto. */
+  kitServiceIds: number[];
+  kitDiscountPercent: number | null;
+  kitFullPrice: number | null;
+};
+
+export type Promotion = {
+  id: number;
+  name: string;
+  description: string | null;
+  discountPercent: number;
+  startsOn: string;
+  endsOn: string;
+  active: boolean;
+  /** Vazio = todos os serviços (menos pacotes). */
+  serviceIds: number[];
+  serviceNames: string[];
 };
 
 export type Customer = {
@@ -176,6 +193,8 @@ export type Appointment = {
   customerConfirmedAt: string | null;
   /** Refação: cliente voltou para refazer e não pagou. */
   rework: boolean;
+  discountAmount: number;
+  promotionName: string | null;
 };
 
 export type Slot = { time: string; professionalIds: number[] };
@@ -234,6 +253,10 @@ export type Summary = {
     items: { appointmentId: number; startAt: string; customer: string; service: string; professional: string; cost: number }[];
   };
   products: ProductReport[];
+  servicesProfit: number;
+  productsProfit: number;
+  operatingProfit: number;
+  promotions: { appointments: number; discounts: number; byPromotion: Ranking[]; kitsSold: number; kitsRevenue: number };
 };
 
 export type ProductReport = {
@@ -274,6 +297,24 @@ export type PublicSalon = {
     category: string | null;
     /** Vazio = qualquer profissional faz. */
     professionalIds: number[];
+    kitItems: string[];
+    kitFullPrice: number | null;
+    /** Promoção que vale hoje ou a próxima (o preço final depende do dia do horário). */
+    promoPrice: number | null;
+    promotionId: number | null;
+    promoName: string | null;
+    promoPercent: number | null;
+    promoStartsOn: string | null;
+    promoEndsOn: string | null;
+  }[];
+  promotions: {
+    id: number;
+    name: string;
+    description: string | null;
+    discountPercent: number;
+    startsOn: string;
+    endsOn: string;
+    serviceIds: number[];
   }[];
   professionals: Ref[];
   reminderDays: number[];

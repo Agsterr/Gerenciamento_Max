@@ -48,13 +48,16 @@ public class PublicBookingService {
     private final AppointmentService appointmentService;
     private final AvailabilityService availabilityService;
     private final Clock clock;
+    private final com.max.salao.promotion.PromotionService promotionService;
     private final NotificationService notifications;
     private final PlanService plans;
 
     public PublicBookingService(SalonService salonService, ServiceItemRepository services,
                                 ProfessionalRepository professionals, CustomerRepository customers,
                                 AppointmentRepository appointments, AppointmentService appointmentService,
-                                AvailabilityService availabilityService, Clock clock, NotificationService notifications, PlanService plans) {
+                                AvailabilityService availabilityService, Clock clock, NotificationService notifications, PlanService plans,
+                                com.max.salao.promotion.PromotionService promotionService) {
+        this.promotionService = promotionService;
         this.plans = plans;
         this.salonService = salonService;
         this.services = services;
@@ -73,6 +76,14 @@ public class PublicBookingService {
 
     public List<ServiceItem> activeServices() {
         return services.findByActiveTrueOrderByName();
+    }
+
+    public java.time.LocalDate today() {
+        return LocalDate.now(clock);
+    }
+
+    public List<com.max.salao.promotion.Promotion> promotions() {
+        return promotionService.current(today());
     }
 
     public List<Professional> activeProfessionals() {

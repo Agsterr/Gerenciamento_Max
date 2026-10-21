@@ -507,6 +507,74 @@ class SalonFlowIntegrationTest {
     }
 
     @Test
+    void kitsAndPromotionsChangeThePriceAndShowUpForTheCustomer() throws Exception {
+        Tenant salon = register();
+        call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                status().isCreated());
+        long cut = id(call(salon, post("/api/services"), Map.of("name", "Corte", "durationMinutes", 60, "price", 100,
+                "cost", 10, "active", true), status().isCreated()));
+        long brush = id(call(salon, post("/api/services"), Map.of("name", "Escova", "durationMinutes", 30, "price", 50,
+                "cost", 5, "active", true), status().isCreated()));
+        JsonNode kit = call(salon, post("/api/services"), Map.of("name", "Corte + escova", "durationMinutes", 90,
+                "price", 0, "cost", 0, "active", true, "kitServiceIds", List.of(cut, brush), "kitDiscountPercent", 20),
+                status().isCreated());
+        assertThat(kit.get("price").decimalValue()).isEqualByComparingTo("120"); // (100 + 50) − 20%
+        assertThat(kit.get("durationMinutes").asInt()).isEqualTo(90);
+        assertThat(kit.get("kitFullPrice").decimalValue()).isEqualByComparingTo("150");
+        assertThat(kit.get("category").asText()).isEqualTo("Pacotes");
+
+        // corte subiu: o pacote acompanha
+        call(salon, put("/api/services/" + cut), Map.of("name", "Corte", "durationMinutes", 60, "price", 110,
+                "cost", 10, "active", true), status().isOk());
+        JsonNode all = call(salon, get("/api/services"), null, status().isOk());
+        for (JsonNode x : all) {
+            if (x.get("id").asLong() == kit.get("id").asLong()) {
+                assertThat(x.get("price").decimalValue()).isEqualByComparingTo("128");
+            }
+        }
+
+        LocalDate today = LocalDate.now();
+        call(salon, post("/api/promotions"), Map.of("name", "Semana do corte", "discountPercent", 30,
+                "startsOn", today.toString(), "endsOn", day.toString(), "active", true, "serviceIds", List.of(cut)),
+                status().isCreated());
+
+        String base = "/api/public/salons/" + salon.slug;
+        JsonNode info = call(null, get(base), null, status().isOk());
+        assertThat(info.get("promotions")).hasSize(1);
+        for (JsonNode x : info.get("services")) {
+            switch (x.get("name").asText()) {
+                case "Corte" -> {
+                    assertThat(x.get("promoPrice").decimalValue()).isEqualByComparingTo("77");
+                    assertThat(x.get("promoName").asText()).isEqualTo("Semana do corte");
+                }
+                case "Corte + escova" -> {
+                    assertThat(x.get("kitItems")).hasSize(2);
+                    assertThat(x.get("promoPrice").isNull()).isTrue();
+                }
+                default -> assertThat(x.get("promoPrice").isNull()).isTrue();
+            }
+        }
+
+        JsonNode booked = call(null, post(base + "/bookings"), Map.of("serviceId", cut, "startAt", day + "T10:00:00",
+                "name", "Maria", "phone", "(11) 99999-0000"), status().isCreated());
+        assertThat(booked.get("price").decimalValue()).isEqualByComparingTo("77");
+        // depois do fim da promoção volta ao preço normal
+        JsonNode later = call(null, post(base + "/bookings"), Map.of("serviceId", cut,
+                "startAt", day.plusDays(7) + "T10:00:00", "name", "Maria", "phone", "(11) 99999-0000"),
+                status().isCreated());
+        assertThat(later.get("price").decimalValue()).isEqualByComparingTo("110");
+
+        JsonNode agenda = call(salon, get("/api/appointments?from=" + day), null, status().isOk());
+        long appointment = agenda.get(0).get("id").asLong();
+        assertThat(agenda.get(0).get("promotionName").asText()).isEqualTo("Semana do corte");
+        call(salon, post("/api/appointments/" + appointment + "/finish"), Map.of(), status().isOk());
+        JsonNode s = call(salon, get("/api/reports/summary?from=" + day + "&to=" + day), null, status().isOk());
+        assertThat(s.get("promotions").get("discounts").decimalValue()).isEqualByComparingTo("33");
+        assertThat(s.get("servicesProfit").decimalValue()).isEqualByComparingTo("67"); // 77 − 10 de material
+        assertThat(s.get("operatingProfit").decimalValue()).isEqualByComparingTo("67");
+    }
+
+    @Test
     void salonClockFollowsTheSalonTimezone() throws Exception {
         Tenant salon = register();
         assertThat(call(salon, get("/api/salon"), null, status().isOk()).get("timezone").asText())

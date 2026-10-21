@@ -6,6 +6,7 @@ import '../session.dart';
 import '../widgets/weekly_hours_editor.dart';
 import 'my_reminders_screen.dart';
 import 'portfolio_screen.dart';
+import 'promotions_screen.dart';
 import 'reminders_screen.dart';
 import 'subscribe_screen.dart';
 
@@ -234,13 +235,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ]),
                 ),
               ],
-              const SectionTitle('Lembretes e portfólio'),
+              const SectionTitle('Lembretes, portfólio e promoções'),
               SoftCard(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Column(children: [
                   tile(Icons.mark_chat_read_outlined, 'Lembretes dos clientes', () => _open(RemindersScreen(api: _session.api))),
                   tile(Icons.alarm_rounded, 'Meus lembretes de atendimento', () => _open(MyRemindersScreen(api: _session.api))),
                   tile(Icons.photo_library_outlined, 'Portfólio de fotos', () => _open(PortfolioScreen(api: _session.api))),
+                  tile(Icons.local_offer_outlined, 'Pacotes e promoções', () => _open(PromotionsScreen(session: _session))),
                 ]),
               ),
               if (_plan != null && (_plan!.billingAvailable || _plan!.managedByPlay)) ...[

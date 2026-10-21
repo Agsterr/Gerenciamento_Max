@@ -111,6 +111,30 @@ class LocalReminders {
     }
   }
 
+  /// Aviso imediato (ex.: promoção nova num salão que o cliente usa).
+  Future<void> showNow({required String key, required String title, required String body, String payload = ''}) async {
+    if (!_ready) return;
+    try {
+      await _plugin.show(
+        id: idFor(key),
+        title: title,
+        body: body,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'promocoes',
+            'Promoções',
+            channelDescription: 'Promoções dos salões que você usa',
+            importance: Importance.defaultImportance,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('Falha ao mostrar aviso: $e');
+    }
+  }
+
   /// Payload sem o grupo ("grupo|payload" -> "payload"), ou nulo se for de outro grupo.
   static String? payloadOf(String? tapped, String group) =>
       tapped != null && tapped.startsWith('$group|') ? tapped.substring(group.length + 1) : null;

@@ -43,6 +43,7 @@ class BookingStore extends ChangeNotifier {
   static const _nameKey = 'customer.name';
   static const _phoneKey = 'customer.phone';
   static const _askedNotificationsKey = 'notifications.asked';
+  static const _seenPromosKey = 'promotions.seen';
 
   final SharedPreferences _prefs;
 
@@ -101,6 +102,12 @@ class BookingStore extends ChangeNotifier {
     await _prefs.setStringList(_bookingsKey, list.map((b) => jsonEncode(b.toJson())).toList());
     notifyListeners();
   }
+
+  /// Promoções já avisadas ("slug:id"), para não repetir o alerta.
+  Set<String> get seenPromotions => (_prefs.getStringList(_seenPromosKey) ?? const <String>[]).toSet();
+
+  Future<void> markPromotionsSeen(Iterable<String> keys) =>
+      _prefs.setStringList(_seenPromosKey, {...seenPromotions, ...keys}.toList());
 
   /// Já pedimos permissão de notificação (para não insistir).
   bool get askedNotifications => _prefs.getBool(_askedNotificationsKey) ?? false;

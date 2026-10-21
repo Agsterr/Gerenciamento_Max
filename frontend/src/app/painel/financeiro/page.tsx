@@ -21,9 +21,12 @@ function monthEnd(offset = 0) {
 }
 
 const PRESETS: [string, () => [string, string]][] = [
+  ["Hoje", () => [isoDate(), isoDate()]],
   ["Este mês", () => [monthStart(), isoDate()]],
   ["Mês passado", () => [monthStart(-1), monthEnd(-1)]],
   ["Últimos 7 dias", () => [isoDate(new Date(Date.now() - 6 * 86400000)), isoDate()]],
+  ["Últimos 30 dias", () => [isoDate(new Date(Date.now() - 29 * 86400000)), isoDate()]],
+  ["Este ano", () => [`${new Date().getFullYear()}-01-01`, isoDate()]],
 ];
 
 export default function FinancePage() {
@@ -71,7 +74,19 @@ export default function FinancePage() {
             <Stat label="Ticket médio" value={formatMoney(s.averageTicket)} hint={`${s.appointmentsDone - s.rework.count} atendimentos pagos`} />
           </div>
 
+          <Card>
+            <h2 className="mb-3 font-semibold">Lucros</h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <ProfitBox label="Lucro dos serviços" value={s.servicesProfit} hint="Receita − comissões − material − produtos usados" />
+              <ProfitBox label="Lucro dos produtos" value={s.productsProfit} hint="Vendas − preço pago − perdas" />
+              <ProfitBox label="Lucro antes das despesas" value={s.operatingProfit} hint="Serviços + produtos" />
+              <ProfitBox label="Lucro líquido" value={s.profit} hint={`Depois de ${formatMoney(s.expenses)} em despesas`} strong />
+            </div>
+          </Card>
+
           <Statement s={s} />
+
+          <PromotionsCard s={s} />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <ReworkCard s={s} />
@@ -113,6 +128,53 @@ export default function FinancePage() {
         </div>
       )}
     </>
+  );
+}
+
+function ProfitBox({ label, value, hint, strong }: { label: string; value: number; hint: string; strong?: boolean }) {
+  return (
+    <div className={`rounded-xl p-3 ${strong ? "bg-brand-ink text-white" : "bg-zinc-50"}`}>
+      <p className={`text-sm ${strong ? "text-white/70" : "text-zinc-500"}`}>{label}</p>
+      <p className={`text-xl font-extrabold ${strong ? "" : value < 0 ? "text-rose-700" : "text-emerald-700"}`}>{formatMoney(value)}</p>
+      <p className={`text-xs ${strong ? "text-white/60" : "text-zinc-500"}`}>{hint}</p>
+    </div>
+  );
+}
+
+function PromotionsCard({ s }: { s: Summary }) {
+  const p = s.promotions;
+  if (p.appointments === 0 && p.kitsSold === 0) return null;
+  return (
+    <Card>
+      <h2 className="mb-3 font-semibold">Promoções e pacotes</h2>
+      <dl className="mb-3 space-y-1 text-sm">
+        <Row label="Atendimentos com promoção" value={p.appointments} />
+        <Row label="Descontos dados" value={formatMoney(p.discounts)} />
+        <Row label="Pacotes vendidos" value={`${p.kitsSold} (${formatMoney(p.kitsRevenue)})`} />
+      </dl>
+      {p.byPromotion.length > 0 && (
+        <table className="w-full text-sm">
+          <thead className="text-left text-zinc-500">
+            <tr>
+              <th className="py-1 font-medium">Promoção</th>
+              <th className="py-1 font-medium">Atendimentos</th>
+              <th className="py-1 font-medium">Receita</th>
+              <th className="py-1 font-medium">Desconto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {p.byPromotion.map((r) => (
+              <tr key={r.name} className="border-t border-zinc-100">
+                <td className="py-1.5">{r.name}</td>
+                <td>{r.count}</td>
+                <td>{formatMoney(r.revenue)}</td>
+                <td>{formatMoney(r.commission)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
   );
 }
 

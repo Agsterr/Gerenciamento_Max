@@ -45,6 +45,7 @@ class CatalogScreen extends StatelessWidget {
             path: '/api/services',
             canEdit: owner,
             parse: ServiceItem.fromJson,
+            where: (s) => !s.isKit,
             title: 'serviço',
             withPhotos: true,
             fields: [
@@ -275,7 +276,11 @@ class _CrudList<T> extends StatefulWidget {
     this.withPhotos = false,
     this.onChanged,
     this.preview,
+    this.where,
   });
+
+  /// Mostra só parte da lista (ex.: serviços sem os pacotes, que têm tela própria).
+  final bool Function(T item)? where;
 
   final void Function(String key, Map<String, TextEditingController> fields)? onChanged;
   final Widget Function(Map<String, String> values)? preview;
@@ -314,7 +319,8 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
     setState(() => _error = null);
     try {
       final json = await widget.api.get(widget.path) as List;
-      if (mounted) setState(() => _items = json.map((e) => widget.parse(e as Map<String, dynamic>)).toList());
+      final items = json.map((e) => widget.parse(e as Map<String, dynamic>));
+      if (mounted) setState(() => _items = (widget.where == null ? items : items.where(widget.where!)).toList());
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     }

@@ -34,6 +34,8 @@ type Props<T extends { id: number }> = {
   ownerOnly?: boolean;
   rowActions?: (row: T, reload: () => void) => React.ReactNode;
   listPath?: string;
+  /** Mostra só parte da lista (ex.: serviços sem os pacotes). */
+  filter?: (row: T) => boolean;
   toolbar?: React.ReactNode;
   /** Mostra "Fotos deste serviço" no formulário (só para serviços). */
   servicePhotos?: boolean;
@@ -53,6 +55,7 @@ export function CrudPage<T extends { id: number }>({
   ownerOnly,
   rowActions,
   listPath,
+  filter,
   toolbar,
   servicePhotos,
   onFieldChange,
@@ -60,7 +63,8 @@ export function CrudPage<T extends { id: number }>({
 }: Props<T>) {
   const { user } = useAuth();
   const canEdit = !ownerOnly || user?.role === "OWNER";
-  const { data, error, reload } = useApi<T[]>(listPath ?? path);
+  const { data: all, error, reload } = useApi<T[]>(listPath ?? path);
+  const data = filter ? all?.filter(filter) : all;
   const needsProfessionals = fields.some((f) => f.type === "professionals");
   const needsCategories = fields.some((f) => f.type === "categories");
   const { data: serviceCategories } = useApi<{ category: string | null }[]>(needsCategories ? "/api/services" : null);

@@ -70,6 +70,13 @@ public class Appointment extends TenantEntity {
     @Column(nullable = false)
     private boolean rework;
 
+    /** Promoção aplicada no preço (se houver) e quanto ela descontou. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    private com.max.salao.promotion.Promotion promotion;
+
+    @Column(nullable = false)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
     /** Observação do agendamento (feita pelo cliente ou pela recepção). */
     private String notes;
 

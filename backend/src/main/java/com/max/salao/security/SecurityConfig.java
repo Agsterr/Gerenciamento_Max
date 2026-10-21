@@ -51,8 +51,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/reports/**", "/api/expenses/**", "/api/users/**", "/api/pricing/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/salon").hasRole("OWNER")
                         .requestMatchers("/api/billing/**").hasRole("OWNER")
-                        .requestMatchers(HttpMethod.POST, "/api/professionals/**", "/api/services/**").hasRole("OWNER")
-                        .requestMatchers(HttpMethod.PUT, "/api/professionals/**", "/api/services/**").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.POST, "/api/professionals/**", "/api/services/**", "/api/promotions/**").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.PUT, "/api/professionals/**", "/api/services/**", "/api/promotions/**").hasRole("OWNER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/promotions/**").hasRole("OWNER")
                         // Demais rotas são do salão: o admin da plataforma não tem tenant
                         .anyRequest().hasAnyRole("OWNER", "STAFF"))
                 .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))

@@ -1,5 +1,7 @@
 // Modelos espelhando os DTOs da API. Valores monetários chegam como número JSON.
 
+import 'format.dart' show formatQuantity;
+
 double _num(Object? v) => (v as num?)?.toDouble() ?? 0;
 DateTime _date(Object? v) => DateTime.parse(v as String);
 List<int> _ints(Object? v) => v == null ? const [] : (v as List).cast<int>();
@@ -64,6 +66,13 @@ class PublicService {
     required this.price,
     this.category,
     this.professionalIds = const [],
+    this.kitItems = const [],
+    this.kitFullPrice,
+    this.promoPrice,
+    this.promoName,
+    this.promoPercent,
+    this.promoStartsOn,
+    this.promoEndsOn,
   });
 
   factory PublicService.fromJson(Map<String, dynamic> j) => PublicService(
@@ -74,6 +83,13 @@ class PublicService {
         price: _num(j['price']),
         category: _category(j['category']),
         professionalIds: [for (final id in (j['professionalIds'] as List? ?? const [])) id as int],
+        kitItems: [for (final n in (j['kitItems'] as List? ?? const [])) n as String],
+        kitFullPrice: (j['kitFullPrice'] as num?)?.toDouble(),
+        promoPrice: (j['promoPrice'] as num?)?.toDouble(),
+        promoName: j['promoName'] as String?,
+        promoPercent: (j['promoPercent'] as num?)?.toDouble(),
+        promoStartsOn: j['promoStartsOn'] == null ? null : _date(j['promoStartsOn']),
+        promoEndsOn: j['promoEndsOn'] == null ? null : _date(j['promoEndsOn']),
       );
 
   final int id;
@@ -81,6 +97,26 @@ class PublicService {
   final String? description;
   final int durationMinutes;
   final double price;
+
+  /// Pacote: serviços incluídos e a soma deles sem desconto.
+  final List<String> kitItems;
+  final double? kitFullPrice;
+
+  /// Promoção de hoje ou a próxima; o preço promocional vale para horários entre as datas.
+  final double? promoPrice;
+  final String? promoName;
+  final double? promoPercent;
+  final DateTime? promoStartsOn;
+  final DateTime? promoEndsOn;
+
+  /// Preço promocional para um horário neste dia (hoje, se nulo); nulo = preço normal.
+  double? promoPriceOn([DateTime? day]) {
+    final start = promoStartsOn, end = promoEndsOn;
+    if (promoPrice == null || start == null || end == null) return null;
+    final d = DateTime(
+        (day ?? DateTime.now()).year, (day ?? DateTime.now()).month, (day ?? DateTime.now()).day);
+    return d.isBefore(start) || d.isAfter(end) ? null : promoPrice;
+  }
 
   /// Grupo na lista (Cabelo, Unhas...); nulo = "Outros".
   final String? category;
@@ -103,6 +139,40 @@ Map<String, List<T>> groupByCategory<T>(Iterable<T> items, String? Function(T) c
   return {...groups, 'Outros': ?others};
 }
 
+/// Promoção do salão vista pelo cliente; serviceIds vazio = todos os serviços (menos pacotes).
+class PublicPromotion {
+  const PublicPromotion({
+    required this.id,
+    required this.name,
+    this.description,
+    required this.discountPercent,
+    required this.startsOn,
+    required this.endsOn,
+    this.serviceIds = const [],
+  });
+
+  factory PublicPromotion.fromJson(Map<String, dynamic> j) => PublicPromotion(
+        id: j['id'] as int,
+        name: j['name'] as String,
+        description: j['description'] as String?,
+        discountPercent: _num(j['discountPercent']),
+        startsOn: _date(j['startsOn']),
+        endsOn: _date(j['endsOn']),
+        serviceIds: [for (final id in (j['serviceIds'] as List? ?? const [])) id as int],
+      );
+
+  final int id;
+  final String name;
+  final String? description;
+  final double discountPercent;
+  final DateTime startsOn;
+  final DateTime endsOn;
+  final List<int> serviceIds;
+
+  /// Texto curto: "Semana da escova: 20% de desconto até 30/11".
+  String get headline => '$name: ${formatQuantity(discountPercent)}% de desconto';
+}
+
 class PublicSalon {
   const PublicSalon({
     required this.name,
@@ -113,6 +183,7 @@ class PublicSalon {
     required this.services,
     required this.professionals,
     this.reminderDays = const [],
+    this.promotions = const [],
   });
 
   factory PublicSalon.fromJson(Map<String, dynamic> j) => PublicSalon(
@@ -124,7 +195,11 @@ class PublicSalon {
         services: (j['services'] as List).map((e) => PublicService.fromJson(e as Map<String, dynamic>)).toList(),
         professionals: (j['professionals'] as List).map((e) => Ref.fromJson(e as Map<String, dynamic>)).toList(),
         reminderDays: _ints(j['reminderDays']),
+        promotions: [for (final p in (j['promotions'] as List? ?? const [])) PublicPromotion.fromJson(p as Map<String, dynamic>)],
       );
+
+  /// Promoções em andamento ou que ainda vão começar.
+  final List<PublicPromotion> promotions;
 
   final String name;
   final String slug;
@@ -351,6 +426,9 @@ class ServiceItem {
     required this.active,
     this.category,
     this.professionalIds = const [],
+    this.kitServiceIds = const [],
+    this.kitDiscountPercent,
+    this.kitFullPrice,
   });
 
   factory ServiceItem.fromJson(Map<String, dynamic> j) => ServiceItem(
@@ -363,6 +441,9 @@ class ServiceItem {
         active: j['active'] as bool,
         category: _category(j['category']),
         professionalIds: [for (final id in (j['professionalIds'] as List? ?? const [])) id as int],
+        kitServiceIds: [for (final id in (j['kitServiceIds'] as List? ?? const [])) id as int],
+        kitDiscountPercent: (j['kitDiscountPercent'] as num?)?.toDouble(),
+        kitFullPrice: (j['kitFullPrice'] as num?)?.toDouble(),
       );
 
   final int id;
@@ -371,6 +452,13 @@ class ServiceItem {
   final int durationMinutes;
   final double price;
   final double cost;
+
+  /// Pacote (kit): serviços incluídos, desconto em % e soma sem desconto.
+  final List<int> kitServiceIds;
+  final double? kitDiscountPercent;
+  final double? kitFullPrice;
+
+  bool get isKit => kitServiceIds.isNotEmpty;
   final bool active;
   final String? category;
 
@@ -931,4 +1019,53 @@ class Photo {
   final String? serviceName;
   final int? professionalId;
   final String? professionalName;
+}
+
+// ---------- Promoções ----------
+
+class Promotion {
+  const Promotion({
+    required this.id,
+    required this.name,
+    this.description,
+    required this.discountPercent,
+    required this.startsOn,
+    required this.endsOn,
+    required this.active,
+    this.serviceIds = const [],
+    this.serviceNames = const [],
+  });
+
+  factory Promotion.fromJson(Map<String, dynamic> j) => Promotion(
+        id: j['id'] as int,
+        name: j['name'] as String,
+        description: j['description'] as String?,
+        discountPercent: _num(j['discountPercent']),
+        startsOn: _date(j['startsOn']),
+        endsOn: _date(j['endsOn']),
+        active: j['active'] as bool,
+        serviceIds: [for (final id in (j['serviceIds'] as List? ?? const [])) id as int],
+        serviceNames: [for (final n in (j['serviceNames'] as List? ?? const [])) n as String],
+      );
+
+  final int id;
+  final String name;
+  final String? description;
+  final double discountPercent;
+  final DateTime startsOn;
+  final DateTime endsOn;
+  final bool active;
+
+  /// Vazio = todos os serviços (menos pacotes).
+  final List<int> serviceIds;
+  final List<String> serviceNames;
+
+  /// No ar, Agendada, Encerrada ou Pausada.
+  String status(DateTime today) {
+    final d = DateTime(today.year, today.month, today.day);
+    if (!active) return 'Pausada';
+    if (endsOn.isBefore(d)) return 'Encerrada';
+    if (startsOn.isAfter(d)) return 'Agendada';
+    return 'No ar';
+  }
 }

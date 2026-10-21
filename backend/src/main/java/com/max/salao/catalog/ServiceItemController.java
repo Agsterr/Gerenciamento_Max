@@ -6,9 +6,12 @@ import java.util.List;
 
 import com.max.salao.professional.Professional;
 import com.max.salao.professional.ProfessionalRepository;
+import com.max.salao.shared.BusinessException;
 import com.max.salao.shared.NotFoundException;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -37,17 +40,22 @@ public class ServiceItemController {
             @NotNull @DecimalMin("0") BigDecimal cost,
             boolean active,
             @Size(max = 40) String category,
-            List<Long> professionalIds) {
+            List<Long> professionalIds,
+            List<Long> kitServiceIds,
+            @DecimalMin("0") @DecimalMax("90") BigDecimal kitDiscountPercent) {
     }
 
     public record ServiceResponse(Long id, String name, String description, int durationMinutes,
                                   BigDecimal price, BigDecimal cost, boolean active, String category,
-                                  List<Long> professionalIds) {
+                                  List<Long> professionalIds, List<Long> kitServiceIds, BigDecimal kitDiscountPercent,
+                                  BigDecimal kitFullPrice) {
 
         public static ServiceResponse from(ServiceItem s) {
             return new ServiceResponse(s.getId(), s.getName(), s.getDescription(), s.getDurationMinutes(),
                     s.getPrice(), s.getCost(), s.isActive(), s.getCategory(),
-                    s.getProfessionalIds().stream().sorted().toList());
+                    s.getProfessionalIds().stream().sorted().toList(),
+                    s.getKitItems().stream().map(ServiceItem::getId).sorted().toList(),
+                    s.isKit() ? s.getKitDiscountPercent() : null, s.isKit() ? s.kitFullPrice() : null);
         }
     }
 
@@ -74,9 +82,15 @@ public class ServiceItemController {
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public ServiceResponse update(@PathVariable Long id, @Valid @RequestBody ServiceRequest req) {
         ServiceItem s = repository.findById(id).orElseThrow(() -> new NotFoundException("Serviço não encontrado"));
-        return ServiceResponse.from(repository.save(apply(s, req)));
+        ServiceItem saved = repository.save(apply(s, req));
+        // pacotes que usam este serviço acompanham o novo preço/duração
+        for (ServiceItem kit : repository.findKitsContaining(saved.getId())) {
+            kit.recomputeKit();
+        }
+        return ServiceResponse.from(saved);
     }
 
     private ServiceItem apply(ServiceItem s, ServiceRequest req) {
@@ -91,6 +105,23 @@ public class ServiceItemController {
         s.getProfessionalIds().clear();
         if (req.professionalIds() != null && !req.professionalIds().isEmpty()) {
             professionals.findAllById(req.professionalIds()).stream().map(Professional::getId).forEach(s.getProfessionalIds()::add);
+        }
+        s.getKitItems().clear();
+        if (req.kitServiceIds() != null && !req.kitServiceIds().isEmpty()) {
+            // pacote só de serviços comuns (sem pacote dentro de pacote)
+            repository.findAllById(req.kitServiceIds()).stream()
+                    .filter(i -> !i.isKit() && !i.getId().equals(s.getId()))
+                    .forEach(s.getKitItems()::add);
+            if (s.getKitItems().size() < 2) {
+                throw new BusinessException("Um pacote precisa de pelo menos 2 serviços");
+            }
+            s.setKitDiscountPercent(req.kitDiscountPercent() == null ? BigDecimal.ZERO : req.kitDiscountPercent());
+            if (s.getCategory() == null) {
+                s.setCategory("Pacotes");
+            }
+            s.recomputeKit();
+        } else {
+            s.setKitDiscountPercent(null);
         }
         return s;
     }

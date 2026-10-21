@@ -11,17 +11,17 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    @EntityGraph(attributePaths = {"customer", "professional", "service"})
+    @EntityGraph(attributePaths = {"customer", "professional", "service", "promotion"})
     List<Appointment> findByStartAtGreaterThanEqualAndStartAtLessThanOrderByStartAt(LocalDateTime from,
                                                                                     LocalDateTime to);
 
-    @EntityGraph(attributePaths = {"customer", "professional", "service"})
+    @EntityGraph(attributePaths = {"customer", "professional", "service", "promotion"})
     List<Appointment> findTop50ByCustomerIdOrderByStartAtDesc(Long customerId);
 
-    @EntityGraph(attributePaths = {"customer", "professional", "service"})
+    @EntityGraph(attributePaths = {"customer", "professional", "service", "promotion"})
     Optional<Appointment> findWithDetailsById(Long id);
 
-    @EntityGraph(attributePaths = {"customer", "professional", "service"})
+    @EntityGraph(attributePaths = {"customer", "professional", "service", "promotion"})
     Optional<Appointment> findByPublicToken(String token);
 
     /** Agendamentos que ocupam a agenda e cruzam o intervalo [from, to). */

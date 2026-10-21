@@ -4,6 +4,7 @@ import 'package:salao_core/salao_core.dart';
 import '../booking_store.dart';
 import 'booking_screen.dart';
 import 'find_bookings_sheet.dart';
+import 'search_screen.dart' show PromoBanner;
 
 /// Agendamento: serviço → profissional → dia/horário → nome e WhatsApp.
 class SalonScreen extends StatefulWidget {
@@ -251,6 +252,14 @@ class _SalonScreenState extends State<SalonScreen> {
     final categoryOf = {for (final s in salon.services) s.id: s.category ?? 'Outros'};
     final shown = _photoCategory == null ? _photos : _photos.where((p) => categoryOf[p.serviceId] == _photoCategory).toList();
     return [
+      for (final p in salon.promotions)
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: PromoBanner(
+            promotion: p,
+            serviceNames: [for (final s in salon.services) if (p.serviceIds.contains(s.id)) s.name],
+          ),
+        ),
       if (_photos.isNotEmpty) ...[
         const SectionTitle('Nossos trabalhos'),
         if (groups.length > 1)
@@ -305,11 +314,22 @@ class _SalonScreenState extends State<SalonScreen> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(s.name, style: text.titleMedium),
+                  if (s.kitItems.isNotEmpty)
+                    Text('Inclui ${s.kitItems.join(' + ')}', style: text.bodySmall?.copyWith(color: Brand.muted)),
                   const SizedBox(height: 4),
-                  Pill('${s.durationMinutes} min', icon: Icons.schedule_rounded),
+                  Wrap(spacing: 6, runSpacing: 4, children: [
+                    Pill('${s.durationMinutes} min', icon: Icons.schedule_rounded),
+                    if (s.promoName != null)
+                      Pill(
+                        '-${formatQuantity(s.promoPercent ?? 0)}% ${s.promoPriceOn() != null ? 'hoje' : 'a partir de ${formatDate(s.promoStartsOn!).substring(0, 5)}'}',
+                        icon: Icons.local_offer_rounded,
+                        color: const Color(0xFFFFF1C7),
+                        textColor: const Color(0xFFB45309),
+                      ),
+                  ]),
                 ]),
               ),
-              Text(formatMoney(s.price), style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800)),
+              _Price(price: s.price, promo: s.promoPriceOn(), full: s.kitFullPrice),
             ]),
           ),
         ),
@@ -431,7 +451,7 @@ class _SalonScreenState extends State<SalonScreen> {
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(_service!.name, style: text.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(summary, style: text.bodySmall?.copyWith(color: Brand.muted)),
-                Text(formatMoney(_service!.price), style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800)),
+                _Price(price: _service!.price, promo: _service!.promoPriceOn(_day ?? DateTime.now())),
               ]),
             ),
             const SizedBox(width: 12),
@@ -507,5 +527,25 @@ class _AllPhotos extends StatelessWidget {
       appBar: AppBar(title: Text(name)),
       body: SingleChildScrollView(padding: const EdgeInsets.all(12), child: PhotoGrid(photos: photos)),
     );
+  }
+}
+
+/// Preço do serviço: promoção mostra o preço normal riscado; pacote mostra a soma riscada.
+class _Price extends StatelessWidget {
+  const _Price({required this.price, this.promo, this.full});
+
+  final double price;
+  final double? promo;
+  final double? full;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final old = promo != null ? price : (full != null && full! > price ? full : null);
+    return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      if (old != null)
+        Text(formatMoney(old), style: text.bodySmall?.copyWith(decoration: TextDecoration.lineThrough, color: Brand.muted)),
+      Text(formatMoney(promo ?? price), style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800)),
+    ]);
   }
 }
