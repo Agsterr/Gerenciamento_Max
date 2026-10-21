@@ -50,4 +50,35 @@ void main() {
     expect(s.promoPriceOn(DateTime(2026, 1, 15)), 80);
     expect(s.promoPriceOn(DateTime(2026, 2, 1)), isNull);
   });
+
+  test('cliente desliga avisos do salão: promoção aparece sem avisar e o salão fica sabendo', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = await BookingStore.load();
+    await store.rememberSalon('bella', 'Studio Bella');
+    await store.rememberCustomer('Maria', '11988881111');
+    await store.setPromoAlertsFor('bella', false);
+    Map<String, dynamic>? presence;
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      httpClient: MockClient((req) async {
+        if (req.url.path.endsWith('/presence')) {
+          presence = jsonDecode(req.body) as Map<String, dynamic>;
+          return http.Response('', 204);
+        }
+        return http.Response(
+            jsonEncode({
+              'name': 'Studio Bella', 'slug': 'bella', 'workDays': '1', 'services': [], 'professionals': [],
+              'promotions': [
+                {'id': 3, 'name': 'X', 'discountPercent': 10, 'startsOn': '2026-01-01', 'endsOn': '2026-01-31'},
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'});
+      }),
+    );
+    expect((await checkPromotions(api, store)).length, 1);
+    expect(store.seenPromotions, isEmpty); // não avisou
+    await sendPresence(api, store, 'bella');
+    expect(presence, {'name': 'Maria', 'phone': '11988881111', 'promoNotifications': false});
+  });
 }

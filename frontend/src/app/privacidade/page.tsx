@@ -22,6 +22,11 @@ export default function PrivacyPage() {
           histórico de atendimentos no salão escolhido.
         </li>
         <li>
+          <strong>Uso do app do cliente:</strong> quando você abre a página de um salão no app, ele fica sabendo a data e a
+          hora da sua última visita e se você aceita avisos de promoção dele. Você liga e desliga esses avisos no app, por
+          salão ou para todos.
+        </li>
+        <li>
           <strong>Usuários do salão:</strong> nome, e-mail e senha (armazenada apenas como hash criptográfico).
         </li>
         <li>
@@ -38,6 +43,7 @@ export default function PrivacyPage() {
       <ul>
         <li>Realizar, confirmar, remarcar e cancelar agendamentos (execução de contrato).</li>
         <li>Permitir que o salão gerencie agenda, clientes, estoque e finanças (execução de contrato).</li>
+        <li>Avisar promoções dos salões que você usa, só se você deixar os avisos ligados (consentimento).</li>
         <li>Segurança da conta e prevenção de fraudes (legítimo interesse).</li>
       </ul>
 

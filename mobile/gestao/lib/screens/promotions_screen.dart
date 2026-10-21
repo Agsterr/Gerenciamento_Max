@@ -143,7 +143,8 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     Text('${p.name} · ${formatQuantity(p.discountPercent)}%', style: text.titleSmall),
                                     Text('${formatDate(p.startsOn)} a ${formatDate(p.endsOn)} · '
-                                        '${p.serviceNames.isEmpty ? 'Todos os serviços' : p.serviceNames.join(', ')}',
+                                        '${p.serviceNames.isEmpty ? 'Todos os serviços' : p.serviceNames.join(', ')}'
+                                        '${p.notifyCustomers ? '' : ' · sem aviso no celular'}',
                                         style: text.bodySmall?.copyWith(color: Brand.muted)),
                                   ]),
                                 ),
@@ -319,6 +320,7 @@ class _PromoSheetState extends State<_PromoSheet> {
   );
   late final Set<int> _chosen = {...?widget.promo?.serviceIds};
   late bool _active = widget.promo?.active ?? true;
+  late bool _notify = widget.promo?.notifyCustomers ?? true;
   bool _busy = false;
 
   Future<void> _save() async {
@@ -334,6 +336,7 @@ class _PromoSheetState extends State<_PromoSheet> {
       'endsOn': isoDate(_range.end),
       'active': _active,
       'serviceIds': _chosen.toList(),
+      'notifyCustomers': _notify,
     };
     setState(() => _busy = true);
     try {
@@ -400,6 +403,13 @@ class _PromoSheetState extends State<_PromoSheet> {
             title: const Text('Ativa'),
             value: _active,
             onChanged: (v) => setState(() => _active = v),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Avisar os clientes no celular'),
+            subtitle: const Text('Desligado, a promoção aparece no agendamento, mas sem notificação.'),
+            value: _notify,
+            onChanged: (v) => setState(() => _notify = v),
           ),
           GradientButton(label: 'Salvar', icon: Icons.check_rounded, loading: _busy, onPressed: _save),
           if (widget.promo != null)

@@ -44,6 +44,8 @@ class BookingStore extends ChangeNotifier {
   static const _phoneKey = 'customer.phone';
   static const _askedNotificationsKey = 'notifications.asked';
   static const _seenPromosKey = 'promotions.seen';
+  static const _promoOffKey = 'promotions.off';
+  static const _promoAllOffKey = 'promotions.allOff';
 
   final SharedPreferences _prefs;
 
@@ -100,6 +102,23 @@ class BookingStore extends ChangeNotifier {
   Future<void> remove(String token) async {
     final list = bookings.where((b) => b.token != token);
     await _prefs.setStringList(_bookingsKey, list.map((b) => jsonEncode(b.toJson())).toList());
+    notifyListeners();
+  }
+
+  /// Avisos de promoção: desligados em todos os salões ou só em alguns (slugs).
+  bool get promoAlertsOff => _prefs.getBool(_promoAllOffKey) ?? false;
+
+  bool promoAlertsOn(String slug) => !promoAlertsOff && !(_prefs.getStringList(_promoOffKey) ?? const []).contains(slug);
+
+  Future<void> setPromoAlertsOff(bool off) async {
+    await _prefs.setBool(_promoAllOffKey, off);
+    notifyListeners();
+  }
+
+  Future<void> setPromoAlertsFor(String slug, bool on) async {
+    final off = {...?_prefs.getStringList(_promoOffKey)};
+    on ? off.remove(slug) : off.add(slug);
+    await _prefs.setStringList(_promoOffKey, off.toList());
     notifyListeners();
   }
 

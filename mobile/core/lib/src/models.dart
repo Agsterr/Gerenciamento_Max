@@ -149,6 +149,7 @@ class PublicPromotion {
     required this.startsOn,
     required this.endsOn,
     this.serviceIds = const [],
+    this.notifyCustomers = true,
   });
 
   factory PublicPromotion.fromJson(Map<String, dynamic> j) => PublicPromotion(
@@ -159,6 +160,7 @@ class PublicPromotion {
         startsOn: _date(j['startsOn']),
         endsOn: _date(j['endsOn']),
         serviceIds: [for (final id in (j['serviceIds'] as List? ?? const [])) id as int],
+        notifyCustomers: j['notifyCustomers'] as bool? ?? true,
       );
 
   final int id;
@@ -168,6 +170,9 @@ class PublicPromotion {
   final DateTime startsOn;
   final DateTime endsOn;
   final List<int> serviceIds;
+
+  /// O salão quer que o app avise os clientes desta promoção.
+  final bool notifyCustomers;
 
   /// Serviços da promoção com o preço normal e o promocional ("de ... por ...").
   /// Sem serviços escolhidos vale para todos, menos pacotes.
@@ -478,7 +483,15 @@ class ServiceItem {
 }
 
 class Customer {
-  const Customer({required this.id, required this.name, required this.phone, this.email, this.notes});
+  const Customer({
+    required this.id,
+    required this.name,
+    required this.phone,
+    this.email,
+    this.notes,
+    this.lastSeenAt,
+    this.promoNotifications,
+  });
 
   factory Customer.fromJson(Map<String, dynamic> j) => Customer(
         id: j['id'] as int,
@@ -486,7 +499,26 @@ class Customer {
         phone: j['phone'] as String,
         email: j['email'] as String?,
         notes: j['notes'] as String?,
+        lastSeenAt: j['lastSeenAt'] == null ? null : _date(j['lastSeenAt']),
+        promoNotifications: j['promoNotifications'] as bool?,
       );
+
+  /// Última vez que abriu a página do salão no app do cliente (nulo = nunca pelo app).
+  final DateTime? lastSeenAt;
+
+  /// Avisos de promoção no celular: false = desligou; nulo = não escolheu (ligado).
+  final bool? promoNotifications;
+
+  /// "Viu o salão hoje às 14:30", "há 3 dias"... ou nulo.
+  String? get lastSeenLabel {
+    final seen = lastSeenAt;
+    if (seen == null) return null;
+    final days = DateTime.now().difference(DateTime(seen.year, seen.month, seen.day)).inDays;
+    final hour = '${seen.hour.toString().padLeft(2, '0')}:${seen.minute.toString().padLeft(2, '0')}';
+    if (days <= 0) return 'Viu o salão hoje às $hour';
+    if (days == 1) return 'Viu o salão ontem às $hour';
+    return 'Viu o salão há $days dias';
+  }
 
   final int id;
   final String name;
@@ -1042,6 +1074,7 @@ class Promotion {
     required this.active,
     this.serviceIds = const [],
     this.serviceNames = const [],
+    this.notifyCustomers = true,
   });
 
   factory Promotion.fromJson(Map<String, dynamic> j) => Promotion(
@@ -1054,7 +1087,11 @@ class Promotion {
         active: j['active'] as bool,
         serviceIds: [for (final id in (j['serviceIds'] as List? ?? const [])) id as int],
         serviceNames: [for (final n in (j['serviceNames'] as List? ?? const [])) n as String],
+        notifyCustomers: j['notifyCustomers'] as bool? ?? true,
       );
+
+  /// Avisa os clientes no celular.
+  final bool notifyCustomers;
 
   final int id;
   final String name;

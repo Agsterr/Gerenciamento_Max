@@ -39,7 +39,10 @@ Future<List<SalonPromotion>> checkPromotions(ApiClient api, BookingStore store,
     }
   }
   final seen = store.seenPromotions;
-  final fresh = found.where((p) => !seen.contains(p.key)).toList();
+  // só avisa o que o salão quer avisar e o cliente não desligou
+  final fresh = found
+      .where((p) => !seen.contains(p.key) && p.promotion.notifyCustomers && store.promoAlertsOn(p.salon.slug))
+      .toList();
   if (fresh.isNotEmpty) {
     for (final p in fresh) {
       await notifications.showNow(
@@ -55,4 +58,21 @@ Future<List<SalonPromotion>> checkPromotions(ApiClient api, BookingStore store,
     await store.markPromotionsSeen(fresh.map((p) => p.key));
   }
   return found;
+}
+
+/// Conta ao salão que o cliente abriu a página dele (e se quer avisos de promoção).
+/// Identifica pelo código de um agendamento salvo ou pelo nome + WhatsApp; sem nenhum dos dois, não manda.
+Future<void> sendPresence(ApiClient api, BookingStore store, String slug) async {
+  final token = store.bookings.where((b) => b.slug == slug).firstOrNull?.token;
+  if (token == null && !store.signedIn) return;
+  try {
+    await api.post('/api/public/salons/$slug/presence', {
+      'token': ?token,
+      if (token == null) 'name': store.name,
+      if (token == null) 'phone': store.phone,
+      'promoNotifications': store.promoAlertsOn(slug),
+    });
+  } catch (_) {
+    // informação para o salão; sem rede não atrapalha o cliente
+  }
 }

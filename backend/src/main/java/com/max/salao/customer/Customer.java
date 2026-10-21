@@ -26,6 +26,12 @@ public class Customer extends TenantEntity {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    /** Última vez que abriu a página do salão no app do cliente. */
+    private LocalDateTime lastSeenAt;
+
+    /** Aceita avisos de promoção no celular (nulo = ainda não escolheu, vale como ligado). */
+    private Boolean promoNotifications;
+
     public static String normalizePhone(String phone) {
         return phone == null ? null : phone.replaceAll("\\D", "");
     }

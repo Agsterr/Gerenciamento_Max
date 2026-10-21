@@ -36,12 +36,13 @@ public class PromotionController {
             @NotNull LocalDate startsOn,
             @NotNull LocalDate endsOn,
             boolean active,
-            List<Long> serviceIds) {
+            List<Long> serviceIds,
+            Boolean notifyCustomers) {
     }
 
     public record PromotionResponse(Long id, String name, String description, BigDecimal discountPercent,
                                     LocalDate startsOn, LocalDate endsOn, boolean active, List<Long> serviceIds,
-                                    List<String> serviceNames) {
+                                    List<String> serviceNames, boolean notifyCustomers) {
     }
 
     private final PromotionRepository repository;
@@ -88,6 +89,7 @@ public class PromotionController {
         p.setStartsOn(req.startsOn());
         p.setEndsOn(req.endsOn());
         p.setActive(req.active());
+        p.setNotifyCustomers(req.notifyCustomers() == null || req.notifyCustomers());
         p.getServiceIds().clear();
         if (req.serviceIds() != null && !req.serviceIds().isEmpty()) {
             services.findAllById(req.serviceIds()).stream().map(ServiceItem::getId).forEach(p.getServiceIds()::add);
@@ -99,6 +101,7 @@ public class PromotionController {
         List<String> names = p.getServiceIds().isEmpty() ? List.of()
                 : services.findAllById(p.getServiceIds()).stream().map(ServiceItem::getName).sorted().toList();
         return new PromotionResponse(p.getId(), p.getName(), p.getDescription(), p.getDiscountPercent(),
-                p.getStartsOn(), p.getEndsOn(), p.isActive(), p.getServiceIds().stream().sorted().toList(), names);
+                p.getStartsOn(), p.getEndsOn(), p.isActive(), p.getServiceIds().stream().sorted().toList(), names,
+                p.isNotifyCustomers());
     }
 }

@@ -28,12 +28,13 @@ public class CustomerController {
     public record CustomerRequest(@NotBlank String name, @NotBlank String phone, @Email String email, String notes) {
     }
 
+    /** lastSeenAt: última visita à página do salão pelo app; promoNotifications: nulo = não escolheu (ligado). */
     public record CustomerResponse(Long id, String name, String phone, String email, String notes,
-                                   LocalDateTime createdAt) {
+                                   LocalDateTime createdAt, LocalDateTime lastSeenAt, Boolean promoNotifications) {
 
         public static CustomerResponse from(Customer c) {
             return new CustomerResponse(c.getId(), c.getName(), c.getPhone(), c.getEmail(), c.getNotes(),
-                    c.getCreatedAt());
+                    c.getCreatedAt(), c.getLastSeenAt(), c.getPromoNotifications());
         }
     }
 

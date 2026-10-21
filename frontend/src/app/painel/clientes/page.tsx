@@ -43,6 +43,18 @@ export default function CustomersPage() {
             ),
           },
           { label: "Observações", render: (c) => c.notes ?? "", className: "hidden md:table-cell text-zinc-500" },
+          {
+            label: "No app",
+            className: "hidden sm:table-cell",
+            render: (c) => (
+              <span className="text-xs text-zinc-500">
+                {c.lastSeenAt ? `Viu o salão em ${formatDateTime(c.lastSeenAt)}` : "Não abriu pelo app"}
+                {c.promoNotifications === false && (
+                  <span className="mt-0.5 block font-semibold text-rose-700">Avisos de promoção desligados</span>
+                )}
+              </span>
+            ),
+          },
         ]}
         rowActions={(c) => (
           <Button variant="ghost" size="sm" onClick={() => setHistory(c)}>

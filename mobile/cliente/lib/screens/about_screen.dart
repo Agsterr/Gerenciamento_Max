@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../booking_store.dart';
+import '../promo_alerts.dart';
 
 /// Links legais exigidos pelas lojas e opção de apagar os dados locais.
 class AboutScreen extends StatelessWidget {
-  const AboutScreen({super.key, required this.store});
+  const AboutScreen({super.key, required this.store, required this.api});
 
   final BookingStore store;
+  final ApiClient api;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +56,28 @@ class AboutScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: SoftCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: ListenableBuilder(
+                    listenable: store,
+                    builder: (context, _) => SwitchListTile(
+                      secondary: const Icon(Icons.notifications_active_outlined, color: Brand.rose),
+                      title: Text('Avisos de promoção', style: text.titleSmall),
+                      subtitle: const Text('Notificação quando um salão que você usa lança promoção'),
+                      value: !store.promoAlertsOff,
+                      onChanged: (on) async {
+                        await store.setPromoAlertsOff(!on);
+                        // cada salão fica sabendo da escolha
+                        for (final s in store.salons) {
+                          await sendPresence(api, store, s.slug);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ),
               tile(Icons.privacy_tip_outlined, 'Política de Privacidade', null, () => openUrl(AppConfig.privacyUrl)),
               tile(Icons.description_outlined, 'Termos de Uso', null, () => openUrl(AppConfig.termsUrl)),
               tile(Icons.mail_outline_rounded, 'Fale conosco', 'Inclusive para excluir seus dados no salão',

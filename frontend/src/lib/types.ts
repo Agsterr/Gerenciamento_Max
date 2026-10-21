@@ -125,6 +125,8 @@ export type Promotion = {
   /** Vazio = todos os serviços (menos pacotes). */
   serviceIds: number[];
   serviceNames: string[];
+  /** Avisa os clientes no celular. */
+  notifyCustomers: boolean;
 };
 
 export type Customer = {
@@ -134,6 +136,10 @@ export type Customer = {
   email: string | null;
   notes: string | null;
   createdAt: string;
+  /** Última visita à página do salão pelo app do cliente. */
+  lastSeenAt: string | null;
+  /** false = desligou avisos de promoção; null = não escolheu (ligado). */
+  promoNotifications: boolean | null;
 };
 
 export type Product = {
@@ -315,6 +321,7 @@ export type PublicSalon = {
     startsOn: string;
     endsOn: string;
     serviceIds: number[];
+    notifyCustomers: boolean;
   }[];
   professionals: Ref[];
   reminderDays: number[];

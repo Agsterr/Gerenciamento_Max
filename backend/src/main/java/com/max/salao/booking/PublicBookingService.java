@@ -123,6 +123,24 @@ public class PublicBookingService {
         return a;
     }
 
+    /** Última visita ao salão e escolha de avisos de promoção do cliente identificado. */
+    @Transactional
+    public void presence(String token, String name, String phone, Boolean promoNotifications) {
+        java.util.Optional<Customer> customer = token != null && !token.isBlank()
+                ? appointments.findByPublicToken(token).map(Appointment::getCustomer)
+                : java.util.Optional.empty();
+        if (customer.isEmpty() && name != null && phone != null) {
+            customer = customers.findByPhone(Customer.normalizePhone(phone))
+                    .filter(c -> firstName(c.getName()).equals(firstName(name)));
+        }
+        customer.ifPresent(c -> {
+            c.setLastSeenAt(LocalDateTime.now(clock));
+            if (promoNotifications != null) {
+                c.setPromoNotifications(promoNotifications);
+            }
+        });
+    }
+
     /**
      * "Meus agendamentos": o cliente informa o mesmo nome e WhatsApp usados ao agendar.
      * O primeiro nome precisa conferir com o cadastro, para um telefone sozinho não bastar.

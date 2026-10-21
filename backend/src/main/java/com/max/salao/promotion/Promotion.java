@@ -41,6 +41,9 @@ public class Promotion extends TenantEntity {
 
     private boolean active = true;
 
+    /** Avisar os clientes no celular (app do cliente). */
+    private boolean notifyCustomers = true;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 

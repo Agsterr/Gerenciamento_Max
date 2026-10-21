@@ -115,7 +115,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 tooltip: 'Sobre e privacidade',
                 color: Colors.white,
                 icon: const Icon(Icons.info_outline_rounded),
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AboutScreen(store: widget.store))),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AboutScreen(store: widget.store, api: widget.api))),
               ),
             ]),
             const SizedBox(height: 22),

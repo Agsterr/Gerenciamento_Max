@@ -47,8 +47,18 @@ public class PublicBookingController {
     }
 
     /** Promoção em andamento ou que ainda vai começar; serviceIds vazio = vale para todos. */
+    /** notifyCustomers: o salão quer que o app avise os clientes desta promoção. */
     public record PublicPromotion(Long id, String name, String description, BigDecimal discountPercent,
-                                  java.time.LocalDate startsOn, java.time.LocalDate endsOn, List<Long> serviceIds) {
+                                  java.time.LocalDate startsOn, java.time.LocalDate endsOn, List<Long> serviceIds,
+                                  boolean notifyCustomers) {
+    }
+
+    /**
+     * O app do cliente abriu a página do salão: identifica pelo código de um agendamento ou pelo
+     * nome + WhatsApp (o mesmo critério de "Meus agendamentos"). promoNotifications nulo = não mudou.
+     */
+    public record PresenceRequest(@Size(max = 64) String token, @Size(max = 120) String name,
+                                  @Size(max = 30) String phone, Boolean promoNotifications) {
     }
 
     public record PublicProfessional(Long id, String name) {
@@ -128,7 +138,7 @@ public class PublicBookingController {
                 s.getReminderMode().days(),
                 promos.stream().map(p -> new PublicPromotion(p.getId(), p.getName(), p.getDescription(),
                         p.getDiscountPercent(), p.getStartsOn(), p.getEndsOn(),
-                        p.getServiceIds().stream().sorted().toList())).toList());
+                        p.getServiceIds().stream().sorted().toList(), p.isNotifyCustomers())).toList());
     }
 
     private PublicService publicService(ServiceItem x, List<Professional> active, List<Promotion> promos,
@@ -182,6 +192,13 @@ public class PublicBookingController {
     @PostMapping("/bookings/{token}/reschedule")
     public BookingResponse reschedule(@PathVariable String token, @Valid @RequestBody RescheduleRequest req) {
         return toResponse(service.reschedule(token, req.startAt(), req.professionalId()));
+    }
+
+    /** Registra a visita (e a escolha de avisos de promoção). Sempre 204: não revela se o cliente existe. */
+    @PostMapping("/presence")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void presence(@Valid @RequestBody PresenceRequest req) {
+        service.presence(req.token(), req.name(), req.phone(), req.promoNotifications());
     }
 
     /** "Meus agendamentos": consulta pelo mesmo nome e WhatsApp usados ao agendar. */

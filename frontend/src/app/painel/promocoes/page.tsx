@@ -86,7 +86,7 @@ export default function PromotionsPage() {
             {canEdit && (
               <Button
                 size="sm"
-                onClick={() => setPromo({ name: "", discountPercent: 10, startsOn: today, endsOn: today, active: true, serviceIds: [] })}
+                onClick={() => setPromo({ name: "", discountPercent: 10, startsOn: today, endsOn: today, active: true, serviceIds: [], notifyCustomers: true })}
               >
                 + Promoção
               </Button>
@@ -113,6 +113,7 @@ export default function PromotionsPage() {
                       </p>
                       <p className="text-zinc-500">
                         {formatDate(p.startsOn)} a {formatDate(p.endsOn)} · {p.serviceNames.length ? p.serviceNames.join(", ") : "Todos os serviços"}
+                        {!p.notifyCustomers && " · sem aviso no celular"}
                       </p>
                     </div>
                     {canEdit && (
@@ -337,6 +338,18 @@ function PromoModal({
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={f.active ?? true} onChange={(e) => setForm({ ...f, active: e.target.checked })} />
             Ativa
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={f.notifyCustomers ?? true}
+              onChange={(e) => setForm({ ...f, notifyCustomers: e.target.checked })}
+            />
+            <span>
+              Avisar os clientes no celular
+              <span className="block text-zinc-500">Desligado, a promoção aparece no agendamento, mas sem notificação.</span>
+            </span>
           </label>
           <ErrorMessage message={error} />
           <Button className="w-full">Salvar</Button>

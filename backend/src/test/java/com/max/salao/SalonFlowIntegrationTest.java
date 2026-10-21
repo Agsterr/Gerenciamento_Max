@@ -575,6 +575,47 @@ class SalonFlowIntegrationTest {
     }
 
     @Test
+    void customerVisitAndPromoChoiceShowUpForTheSalon() throws Exception {
+        Tenant salon = register();
+        call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                status().isCreated());
+        long cut = id(call(salon, post("/api/services"), Map.of("name", "Corte", "durationMinutes", 60, "price", 100,
+                "cost", 0, "active", true), status().isCreated()));
+        String base = "/api/public/salons/" + salon.slug;
+        JsonNode booked = call(null, post(base + "/bookings"), Map.of("serviceId", cut, "startAt", day + "T10:00:00",
+                "name", "Maria Souza", "phone", "(11) 98888-1111"), status().isCreated());
+
+        // ainda não abriu o app: sem visita e sem escolha
+        JsonNode before = call(salon, get("/api/customers"), null, status().isOk()).get(0);
+        assertThat(before.get("lastSeenAt").isNull()).isTrue();
+        assertThat(before.get("promoNotifications").isNull()).isTrue();
+
+        // abriu o salão no app e desligou os avisos (identificado pelo código do agendamento)
+        call(null, post(base + "/presence"), Map.of("token", booked.get("token").asText(), "promoNotifications", false),
+                status().isNoContent());
+        JsonNode after = call(salon, get("/api/customers"), null, status().isOk()).get(0);
+        assertThat(after.get("lastSeenAt").isNull()).isFalse();
+        assertThat(after.get("promoNotifications").asBoolean()).isFalse();
+
+        // por nome + WhatsApp também; nome errado não mexe em nada
+        call(null, post(base + "/presence"), Map.of("name", "Outra", "phone", "11988881111", "promoNotifications", true),
+                status().isNoContent());
+        assertThat(call(salon, get("/api/customers"), null, status().isOk()).get(0).get("promoNotifications").asBoolean())
+                .isFalse();
+        call(null, post(base + "/presence"), Map.of("name", "maria", "phone", "11988881111", "promoNotifications", true),
+                status().isNoContent());
+        assertThat(call(salon, get("/api/customers"), null, status().isOk()).get(0).get("promoNotifications").asBoolean())
+                .isTrue();
+
+        // promoção sem aviso no celular
+        call(salon, post("/api/promotions"), Map.of("name", "Silenciosa", "discountPercent", 10,
+                "startsOn", LocalDate.now().toString(), "endsOn", day.toString(), "active", true,
+                "notifyCustomers", false), status().isCreated());
+        assertThat(call(null, get(base), null, status().isOk()).get("promotions").get(0).get("notifyCustomers").asBoolean())
+                .isFalse();
+    }
+
+    @Test
     void salonClockFollowsTheSalonTimezone() throws Exception {
         Tenant salon = register();
         assertThat(call(salon, get("/api/salon"), null, status().isOk()).get("timezone").asText())

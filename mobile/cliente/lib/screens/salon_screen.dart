@@ -4,6 +4,7 @@ import 'package:salao_core/salao_core.dart';
 import '../booking_store.dart';
 import 'booking_screen.dart';
 import 'find_bookings_sheet.dart';
+import '../promo_alerts.dart';
 import 'search_screen.dart' show PromoBanner;
 
 /// Agendamento: serviço → profissional → dia/horário → nome e WhatsApp.
@@ -75,6 +76,7 @@ class _SalonScreenState extends State<SalonScreen> {
       });
       _loadPhotos();
       widget.store.rememberSalon(widget.slug, salon.name);
+      sendPresence(widget.api, widget.store, widget.slug);
       final initial = salon.services.where((s) => s.id == widget.initialServiceId).firstOrNull;
       if (initial != null) _openService(salon, initial);
     } catch (e) {
@@ -194,6 +196,30 @@ class _SalonScreenState extends State<SalonScreen> {
     }
   }
 
+  /// O cliente escolhe se quer avisos de promoção deste salão (o salão vê a escolha).
+  Widget _promoAlertsTile() {
+    final store = widget.store;
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: SoftCard(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: SwitchListTile(
+          secondary: const Icon(Icons.local_offer_outlined, color: Brand.rose),
+          title: const Text('Avisos de promoção deste salão'),
+          subtitle: Text(store.promoAlertsOff ? 'Desligados para todos os salões (em Sobre)' : 'Notificação quando sair promoção'),
+          value: store.promoAlertsOn(widget.slug),
+          onChanged: store.promoAlertsOff
+              ? null
+              : (v) async {
+                  await store.setPromoAlertsFor(widget.slug, v);
+                  if (mounted) setState(() {});
+                  await sendPresence(widget.api, store, widget.slug);
+                },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final salon = _salon;
@@ -207,7 +233,7 @@ class _SalonScreenState extends State<SalonScreen> {
           _header(salon),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 140),
-            sliver: SliverList.list(children: _steps(salon)),
+            sliver: SliverList.list(children: [..._steps(salon), _promoAlertsTile()]),
           ),
         ],
       ),

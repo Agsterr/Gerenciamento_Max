@@ -132,6 +132,18 @@ class _CustomersScreenState extends State<CustomersScreen> {
                                   padding: const EdgeInsets.only(top: 4),
                                   child: Pill(c.notes!, icon: Icons.sticky_note_2_outlined),
                                 ),
+                              if (c.lastSeenLabel != null || c.promoNotifications == false)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Wrap(spacing: 6, runSpacing: 4, children: [
+                                    if (c.lastSeenLabel != null) Pill(c.lastSeenLabel!, icon: Icons.visibility_outlined),
+                                    if (c.promoNotifications == false)
+                                      const Pill('Avisos de promoção desligados',
+                                          icon: Icons.notifications_off_outlined,
+                                          color: Color(0xFFFFE4E6),
+                                          textColor: Color(0xFFBE123C)),
+                                  ]),
+                                ),
                             ]),
                           ),
                           IconButton.filledTonal(
@@ -187,6 +199,17 @@ class _CustomerDetail extends StatelessWidget {
             children: [
               Text(formatPhone(customer.phone), style: Theme.of(context).textTheme.titleMedium),
               if (customer.notes != null) Text(customer.notes!),
+              const SizedBox(height: 4),
+              Text(customer.lastSeenLabel ?? 'Ainda não abriu o salão pelo app do cliente.',
+                  style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                switch (customer.promoNotifications) {
+                  false => 'Avisos de promoção: desligados pelo cliente',
+                  true => 'Avisos de promoção: ligados',
+                  null => 'Avisos de promoção: ligados (padrão)',
+                },
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               const SizedBox(height: 8),
               Text('${done.length} atendimento(s) · total ${formatMoney(done.fold(0.0, (s, a) => s + a.price))}'),
               const Divider(),
