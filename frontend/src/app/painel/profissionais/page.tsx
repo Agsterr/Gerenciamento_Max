@@ -11,9 +11,16 @@ export default function ProfessionalsPage() {
       title="Profissionais"
       path="/api/professionals"
       ownerOnly
-      defaults={{ name: "", phone: "", commissionPercent: 0, active: true }}
+      defaults={{ name: "", phone: "", categories: [], commissionPercent: 0, active: true }}
       fields={[
         { key: "name", label: "Nome", required: true },
+        {
+          key: "categories",
+          label: "Atende (categorias)",
+          type: "categories",
+          suggestions: ["Cabelo", "Unhas", "Estética", "Barba"],
+          hint: "O que você marcar define os serviços desta pessoa. Sem nenhuma marcada, ela faz todos.",
+        },
         { key: "phone", label: "Telefone", type: "tel" },
         { key: "commissionPercent", label: "Comissão (%)", type: "number", step: "0.01", required: true },
         { key: "active", label: "Ativo (recebe agendamentos)", type: "checkbox" },
@@ -21,6 +28,7 @@ export default function ProfessionalsPage() {
       columns={[
         { label: "Nome", render: (p) => <span className="font-medium">{p.name}</span> },
         { label: "Telefone", render: (p) => (p.phone ? formatPhone(p.phone) : "—") },
+        { label: "Atende", render: (p) => (p.categories.length ? p.categories.join(", ") : "Todos os serviços"), className: "hidden sm:table-cell" },
         { label: "Comissão", render: (p) => `${p.commissionPercent}%` },
         {
           label: "Status",

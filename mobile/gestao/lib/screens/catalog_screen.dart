@@ -54,7 +54,7 @@ class CatalogScreen extends StatelessWidget {
                 'professionalIds',
                 'Quem faz este serviço',
                 kind: FieldKind.choices,
-                emptyHint: 'Sem nenhum marcado, qualquer profissional pode fazer.',
+                emptyHint: 'Opcional. Sem nenhum marcado, vale o que cada profissional atende (categorias na aba Equipe).',
                 loadOptions: () async => {
                   for (final p in (await session.api.get('/api/professionals') as List).map((e) => Professional.fromJson(e as Map<String, dynamic>)))
                     if (p.active) p.id: p.name,
@@ -98,14 +98,30 @@ class CatalogScreen extends StatelessWidget {
             canEdit: owner,
             parse: Professional.fromJson,
             title: 'profissional',
-            fields: const [
-              FieldSpec('name', 'Nome', required: true),
-              FieldSpec('phone', 'Telefone', kind: FieldKind.phone),
-              FieldSpec('commissionPercent', 'Comissão (%)', kind: FieldKind.decimal, required: true),
-              FieldSpec('active', 'Ativo (recebe agendamentos)', kind: FieldKind.toggle),
+            fields: [
+              const FieldSpec('name', 'Nome', required: true),
+              FieldSpec(
+                'categories',
+                'Atende (categorias)',
+                kind: FieldKind.tags,
+                suggestions: const ['Cabelo', 'Unhas', 'Estética', 'Barba'],
+                emptyHint: 'O que você marcar define os serviços desta pessoa. Sem nenhuma marcada, ela faz todos.',
+                loadTags: () async => {
+                  'Cabelo',
+                  'Unhas',
+                  'Estética',
+                  'Barba',
+                  for (final s in await session.api.get('/api/services') as List)
+                    if (((s as Map)['category'] as String?)?.isNotEmpty ?? false) s['category'] as String,
+                }.toList(),
+              ),
+              const FieldSpec('phone', 'Telefone', kind: FieldKind.phone),
+              const FieldSpec('commissionPercent', 'Comissão (%)', kind: FieldKind.decimal, required: true),
+              const FieldSpec('active', 'Ativo (recebe agendamentos)', kind: FieldKind.toggle),
             ],
             toForm: (p) => {
               'name': p?.name,
+              'categories': p?.categories ?? const <String>[],
               'phone': p?.phone,
               'commissionPercent': p?.commissionPercent ?? 0,
               'active': p?.active ?? true,
@@ -116,7 +132,10 @@ class CatalogScreen extends StatelessWidget {
               inactive: !p.active,
               leading: InitialsAvatar(p.name, size: 48),
               title: p.name,
-              pills: [Pill(p.phone != null ? formatPhone(p.phone!) : 'Sem telefone', icon: Icons.phone_outlined)],
+              pills: [
+                Pill(p.phone != null ? formatPhone(p.phone!) : 'Sem telefone', icon: Icons.phone_outlined),
+                for (final c in p.categories) Pill(c, icon: Icons.folder_outlined),
+              ],
               trailing: Pill('${formatQuantity(p.commissionPercent)}% comissão',
                   color: const Color(0xFFEDE9FE), textColor: const Color(0xFF6D28D9)),
             ),

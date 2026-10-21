@@ -100,7 +100,7 @@ Map<String, List<T>> groupByCategory<T>(Iterable<T> items, String? Function(T) c
     groups.putIfAbsent(category(item) ?? 'Outros', () => []).add(item);
   }
   final others = groups.remove('Outros');
-  return {...groups, if (others != null) 'Outros': others};
+  return {...groups, 'Outros': ?others};
 }
 
 class PublicSalon {
@@ -309,7 +309,14 @@ class Salon {
 }
 
 class Professional {
-  const Professional({required this.id, required this.name, this.phone, required this.commissionPercent, required this.active});
+  const Professional({
+    required this.id,
+    required this.name,
+    this.phone,
+    required this.commissionPercent,
+    required this.active,
+    this.categories = const [],
+  });
 
   factory Professional.fromJson(Map<String, dynamic> j) => Professional(
         id: j['id'] as int,
@@ -317,6 +324,7 @@ class Professional {
         phone: j['phone'] as String?,
         commissionPercent: _num(j['commissionPercent']),
         active: j['active'] as bool,
+        categories: [for (final c in (j['categories'] as List? ?? const [])) c as String],
       );
 
   final int id;
@@ -324,6 +332,12 @@ class Professional {
   final String? phone;
   final double commissionPercent;
   final bool active;
+
+  /// Categorias que atende (Cabelo, Unhas...); vazio = atende todas.
+  final List<String> categories;
+
+  bool attends(String? category) =>
+      categories.isEmpty || category == null || categories.any((c) => c.toLowerCase() == category.toLowerCase());
 }
 
 class ServiceItem {
@@ -363,7 +377,8 @@ class ServiceItem {
   /// Quem faz o serviço; vazio = qualquer profissional.
   final List<int> professionalIds;
 
-  bool doneBy(int professionalId) => professionalIds.isEmpty || professionalIds.contains(professionalId);
+  /// Lista do serviço manda; sem lista vale a especialidade do profissional.
+  bool doneBy(Professional p) => professionalIds.isNotEmpty ? professionalIds.contains(p.id) : p.attends(category);
 }
 
 class Customer {

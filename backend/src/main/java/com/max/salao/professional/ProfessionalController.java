@@ -10,6 +10,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,13 +29,16 @@ public class ProfessionalController {
             @NotBlank String name,
             String phone,
             @NotNull @DecimalMin("0") @DecimalMax("100") BigDecimal commissionPercent,
-            boolean active) {
+            boolean active,
+            List<@Size(max = 40) String> categories) {
     }
 
-    public record ProfessionalResponse(Long id, String name, String phone, BigDecimal commissionPercent, boolean active) {
+    public record ProfessionalResponse(Long id, String name, String phone, BigDecimal commissionPercent, boolean active,
+                                       List<String> categories) {
 
         static ProfessionalResponse from(Professional p) {
-            return new ProfessionalResponse(p.getId(), p.getName(), p.getPhone(), p.getCommissionPercent(), p.isActive());
+            return new ProfessionalResponse(p.getId(), p.getName(), p.getPhone(), p.getCommissionPercent(), p.isActive(),
+                    p.getCategories().stream().sorted().toList());
         }
     }
 
@@ -69,6 +73,10 @@ public class ProfessionalController {
         p.setPhone(req.phone());
         p.setCommissionPercent(req.commissionPercent());
         p.setActive(req.active());
+        p.getCategories().clear();
+        if (req.categories() != null) {
+            req.categories().stream().map(String::trim).filter(c -> !c.isEmpty()).forEach(p.getCategories()::add);
+        }
         return p;
     }
 }

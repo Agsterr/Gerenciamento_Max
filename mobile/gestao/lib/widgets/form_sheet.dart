@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
-enum FieldKind { text, number, decimal, phone, email, toggle, choices }
+enum FieldKind { text, number, decimal, phone, email, toggle, choices, tags }
 
 class FieldSpec {
   const FieldSpec(this.key, this.label,
-      {this.kind = FieldKind.text, this.required = false, this.hint, this.suggestions = const [], this.loadOptions, this.emptyHint});
+      {this.kind = FieldKind.text, this.required = false, this.hint, this.suggestions = const [], this.loadOptions, this.loadTags, this.emptyHint});
 
   final String key;
   final String label;
@@ -18,6 +18,9 @@ class FieldSpec {
 
   /// [FieldKind.choices]: carrega as opções (id → nome); o valor salvo é a lista de ids marcados.
   final Future<Map<int, String>> Function()? loadOptions;
+
+  /// [FieldKind.tags]: textos sugeridos (o valor salvo é a lista dos marcados, em texto).
+  final Future<List<String>> Function()? loadTags;
 
   /// [FieldKind.choices]: explicação mostrada abaixo das opções.
   final String? emptyHint;
@@ -61,7 +64,7 @@ class _FormSheetState extends State<_FormSheet> {
   final _form = GlobalKey<FormState>();
   late final Map<String, TextEditingController> _text = {
     for (final f in widget.fields)
-      if (f.kind != FieldKind.toggle && f.kind != FieldKind.choices) f.key: TextEditingController(text: _initialText(widget.initial[f.key])),
+      if (f.kind != FieldKind.toggle && f.kind != FieldKind.choices && f.kind != FieldKind.tags) f.key: TextEditingController(text: _initialText(widget.initial[f.key])),
   };
   late final Map<String, bool> _toggles = {
     for (final f in widget.fields)
@@ -72,11 +75,21 @@ class _FormSheetState extends State<_FormSheet> {
       if (f.kind == FieldKind.choices) f.key: {for (final id in (widget.initial[f.key] as List?) ?? const []) id as int},
   };
   final Map<String, Map<int, String>> _options = {};
+  late final Map<String, Set<String>> _tags = {
+    for (final f in widget.fields)
+      if (f.kind == FieldKind.tags) f.key: {for (final t in (widget.initial[f.key] as List?) ?? const []) t as String},
+  };
+  final Map<String, List<String>> _tagOptions = {};
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
+    for (final f in widget.fields.where((f) => f.kind == FieldKind.tags)) {
+      f.loadTags?.call().then((o) {
+        if (mounted) setState(() => _tagOptions[f.key] = o);
+      }).catchError((Object _) {});
+    }
     for (final f in widget.fields.where((f) => f.kind == FieldKind.choices)) {
       f.loadOptions?.call().then((o) {
         if (mounted) setState(() => _options[f.key] = o);
@@ -96,8 +109,8 @@ class _FormSheetState extends State<_FormSheet> {
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
-    final values = <String, Object?>{..._toggles, for (final e in _chosen.entries) e.key: e.value.toList()..sort()};
-    for (final f in widget.fields.where((f) => f.kind != FieldKind.toggle && f.kind != FieldKind.choices)) {
+    final values = <String, Object?>{..._toggles, for (final e in _chosen.entries) e.key: e.value.toList()..sort(), for (final e in _tags.entries) e.key: e.value.toList()..sort()};
+    for (final f in widget.fields.where((f) => f.kind != FieldKind.toggle && f.kind != FieldKind.choices && f.kind != FieldKind.tags)) {
       final raw = _text[f.key]!.text.trim();
       values[f.key] = switch (f.kind) {
         FieldKind.number || FieldKind.decimal => num.tryParse(raw.replaceAll(',', '.')) ?? 0,
@@ -113,6 +126,25 @@ class _FormSheetState extends State<_FormSheet> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Widget _tagChips(FieldSpec f) {
+    final text = Theme.of(context).textTheme;
+    final chosen = _tags[f.key]!;
+    final options = {...(_tagOptions[f.key] ?? f.suggestions), ...chosen}.toList();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(f.label, style: text.titleSmall),
+      const SizedBox(height: 6),
+      Wrap(spacing: 8, runSpacing: 4, children: [
+        for (final o in options)
+          FilterChip(
+            label: Text(o),
+            selected: chosen.contains(o),
+            onSelected: (v) => setState(() => v ? chosen.add(o) : chosen.remove(o)),
+          ),
+      ]),
+      if (f.emptyHint != null) Text(f.emptyHint!, style: text.bodySmall?.copyWith(color: Brand.muted)),
+    ]);
   }
 
   Widget _choices(FieldSpec f) {
@@ -158,6 +190,8 @@ class _FormSheetState extends State<_FormSheet> {
                   )
                 else if (f.kind == FieldKind.choices)
                   _choices(f)
+                else if (f.kind == FieldKind.tags)
+                  _tagChips(f)
                 else
                   TextFormField(
                     controller: _text[f.key],

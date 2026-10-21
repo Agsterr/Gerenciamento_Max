@@ -401,6 +401,56 @@ class SalonFlowIntegrationTest {
     }
 
     @Test
+    void professionalSpecialtyDecidesWhichServicesTheyDo() throws Exception {
+        Tenant salon = register();
+        long hair = id(call(salon, post("/api/professionals"),
+                Map.of("name", "Bia", "commissionPercent", 30, "active", true, "categories", List.of("Cabelo")),
+                status().isCreated()));
+        long nails = id(call(salon, post("/api/professionals"),
+                Map.of("name", "Nina", "commissionPercent", 30, "active", true, "categories", List.of("Unhas")),
+                status().isCreated()));
+        long polish = id(call(salon, post("/api/services"),
+                Map.of("name", "Esmaltação", "durationMinutes", 60, "price", 40, "cost", 2, "active", true,
+                        "category", "Unhas"), status().isCreated()));
+        long cut = id(call(salon, post("/api/services"),
+                Map.of("name", "Corte", "durationMinutes", 60, "price", 80, "cost", 0, "active", true,
+                        "category", "cabelo"), status().isCreated()));
+        long other = id(call(salon, post("/api/services"),
+                Map.of("name", "Avaliação", "durationMinutes", 30, "price", 0, "cost", 0, "active", true),
+                status().isCreated()));
+
+        String base = "/api/public/salons/" + salon.slug;
+        JsonNode info = call(null, get(base), null, status().isOk());
+        for (JsonNode s : info.get("services")) {
+            String name = s.get("name").asText();
+            if (name.equals("Esmaltação")) {
+                assertThat(s.get("professionalIds")).extracting(JsonNode::asLong).containsExactly(nails);
+            } else if (name.equals("Corte")) {
+                assertThat(s.get("professionalIds")).extracting(JsonNode::asLong).containsExactly(hair);
+            } else {
+                assertThat(s.get("professionalIds")).isEmpty(); // sem categoria: qualquer um
+            }
+        }
+
+        var wrong = Map.of("serviceId", polish, "professionalId", hair, "startAt", day + "T10:00:00",
+                "name", "Maria", "phone", "(11) 99999-0000");
+        call(null, post(base + "/bookings"), wrong, status().isUnprocessableEntity());
+        var any = Map.of("serviceId", cut, "startAt", day + "T10:00:00", "name", "Maria", "phone", "(11) 99999-0000");
+        assertThat(call(null, post(base + "/bookings"), any, status().isCreated()).get("professionalName").asText())
+                .isEqualTo("Bia");
+
+        // lista explícita no serviço manda sobre a especialidade
+        call(salon, put("/api/services/" + other), Map.of("name", "Avaliação", "durationMinutes", 30, "price", 0,
+                "cost", 0, "active", true, "category", "Unhas", "professionalIds", List.of(hair)), status().isOk());
+        JsonNode again = call(null, get(base), null, status().isOk());
+        for (JsonNode s : again.get("services")) {
+            if (s.get("name").asText().equals("Avaliação")) {
+                assertThat(s.get("professionalIds")).extracting(JsonNode::asLong).containsExactly(hair);
+            }
+        }
+    }
+
+    @Test
     void salonClockFollowsTheSalonTimezone() throws Exception {
         Tenant salon = register();
         assertThat(call(salon, get("/api/salon"), null, status().isOk()).get("timezone").asText())

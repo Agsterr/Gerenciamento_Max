@@ -226,15 +226,15 @@ public class AppointmentService {
     /** Primeiro profissional ativo sem conflito no intervalo (aceita qualquer minuto, não só a grade). */
     private Long pickFreeProfessional(Salon salon, ServiceItem service, LocalDateTime start, LocalDateTime end) {
         return professionals.findByActiveTrueOrderByName().stream()
-                .map(Professional::getId)
                 .filter(service::canBeDoneBy)
+                .map(Professional::getId)
                 .filter(id -> availability.isBookable(salon, id, start, end))
                 .findFirst()
                 .orElseThrow(() -> new BusinessException("Nenhum profissional livre nesse horário"));
     }
 
     private static void assertDoes(Professional professional, ServiceItem service) {
-        if (!service.canBeDoneBy(professional.getId())) {
+        if (!service.canBeDoneBy(professional)) {
             throw new BusinessException(professional.getName() + " não faz o serviço " + service.getName());
         }
     }

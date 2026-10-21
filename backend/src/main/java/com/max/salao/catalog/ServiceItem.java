@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.max.salao.professional.Professional;
 import com.max.salao.shared.TenantEntity;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -48,7 +49,14 @@ public class ServiceItem extends TenantEntity {
     @Column(name = "professional_id")
     private Set<Long> professionalIds = new HashSet<>();
 
-    public boolean canBeDoneBy(Long professionalId) {
-        return professionalIds.isEmpty() || professionalIds.contains(professionalId);
+    /**
+     * Lista explícita do serviço manda; sem lista, vale a especialidade do profissional
+     * (serviço sem categoria qualquer um faz).
+     */
+    public boolean canBeDoneBy(Professional professional) {
+        if (!professionalIds.isEmpty()) {
+            return professionalIds.contains(professional.getId());
+        }
+        return professional.attends(category);
     }
 }

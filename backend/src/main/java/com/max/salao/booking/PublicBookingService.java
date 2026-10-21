@@ -86,7 +86,7 @@ public class PublicBookingService {
                 .orElseThrow(() -> new NotFoundException("Serviço não encontrado"));
         List<Professional> candidates = activeProfessionals().stream()
                 .filter(p -> professionalId == null || p.getId().equals(professionalId))
-                .filter(p -> service.canBeDoneBy(p.getId()))
+                .filter(p -> service.canBeDoneBy(p))
                 .toList();
         return availabilityService.slots(salon(), service, candidates, date);
     }

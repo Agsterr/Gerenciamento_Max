@@ -8,7 +8,9 @@ import java.util.List;
 import com.max.salao.appointment.Appointment;
 import com.max.salao.appointment.AppointmentStatus;
 import com.max.salao.appointment.AvailabilityService.Slot;
+import com.max.salao.catalog.ServiceItem;
 import com.max.salao.customer.Customer;
+import com.max.salao.professional.Professional;
 import com.max.salao.salon.Salon;
 import com.max.salao.salon.SalonDtos;
 import jakarta.servlet.http.HttpServletRequest;
@@ -90,17 +92,25 @@ public class PublicBookingController {
         return BookingResponse.of(a, service, service.salon().getReminderMode().days());
     }
 
+    /** Profissionais ativos que fazem o serviço (lista explícita ou especialidade); vazio = todos fazem. */
+    private static List<Long> whoDoes(ServiceItem item, List<Professional> active) {
+        var eligible = active.stream().filter(item::canBeDoneBy).map(Professional::getId).sorted().toList();
+        return eligible.size() == active.size() ? List.of() : eligible;
+    }
+
     @GetMapping
     public SalonInfo info() {
         Salon s = service.salon();
+        var active = service.activeProfessionals();
         return new SalonInfo(s.getName(), s.getSlug(), s.getPhone(), s.getAddress(), s.workDays(),
                 SalonDtos.hours(s),
                 service.activeServices().stream()
+                        // serviço que nenhum profissional ativo faz não aparece para o cliente
+                        .filter(x -> active.isEmpty() || active.stream().anyMatch(x::canBeDoneBy))
                         .map(x -> new PublicService(x.getId(), x.getName(), x.getDescription(),
-                                x.getDurationMinutes(), x.getPrice(), x.getCategory(),
-                                x.getProfessionalIds().stream().sorted().toList()))
+                                x.getDurationMinutes(), x.getPrice(), x.getCategory(), whoDoes(x, active)))
                         .toList(),
-                service.activeProfessionals().stream().map(p -> new PublicProfessional(p.getId(), p.getName()))
+                active.stream().map(p -> new PublicProfessional(p.getId(), p.getName()))
                         .toList(),
                 s.getReminderMode().days());
     }

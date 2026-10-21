@@ -196,7 +196,7 @@ class _NewAppointmentSheetState extends State<_NewAppointmentSheet> {
                 setState(() {
                   _service = s;
                   // quem não faz o serviço escolhido sai da seleção
-                  if (_professionalId != null && s != null && !s.doneBy(_professionalId!)) _professionalId = null;
+                  if (_professionalId != null && s != null && !_professionals.any((p) => p.id == _professionalId && s.doneBy(p))) _professionalId = null;
                 });
                 _loadSlots();
               },
@@ -210,7 +210,7 @@ class _NewAppointmentSheetState extends State<_NewAppointmentSheet> {
                   isExpanded: true,
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Qualquer um')),
-                    for (final p in _professionals.where((p) => _service?.doneBy(p.id) ?? true)) DropdownMenuItem(value: p.id, child: Text(p.name)),
+                    for (final p in _professionals.where((p) => _service?.doneBy(p) ?? true)) DropdownMenuItem(value: p.id, child: Text(p.name)),
                   ],
                   onChanged: (v) {
                     setState(() => _professionalId = v);

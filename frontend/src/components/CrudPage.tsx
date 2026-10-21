@@ -11,7 +11,7 @@ import type { Professional } from "@/lib/types";
 export type FieldDef = {
   key: string;
   label: string;
-  type?: "text" | "number" | "checkbox" | "tel" | "email" | "professionals";
+  type?: "text" | "number" | "checkbox" | "tel" | "email" | "professionals" | "categories";
   /** Atalhos de preenchimento para campos de texto. */
   suggestions?: string[];
   hint?: string;
@@ -54,6 +54,8 @@ export function CrudPage<T extends { id: number }>({
   const canEdit = !ownerOnly || user?.role === "OWNER";
   const { data, error, reload } = useApi<T[]>(listPath ?? path);
   const needsProfessionals = fields.some((f) => f.type === "professionals");
+  const needsCategories = fields.some((f) => f.type === "categories");
+  const { data: serviceCategories } = useApi<{ category: string | null }[]>(needsCategories ? "/api/services" : null);
   const { data: professionals } = useApi<Professional[]>(needsProfessionals ? "/api/professionals" : null);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [formError, setFormError] = useState<string>();
@@ -165,6 +167,39 @@ export function CrudPage<T extends { id: number }>({
                   />
                   {f.label}
                 </label>
+              ) : f.type === "categories" ? (
+                <fieldset key={f.key}>
+                  <legend className="mb-1 text-sm font-semibold text-brand-ink">{f.label}</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      ...new Set([
+                        ...(f.suggestions ?? []),
+                        ...(serviceCategories?.map((s) => s.category).filter((c): c is string => !!c) ?? []),
+                        ...((editing[f.key] as string[] | undefined) ?? []),
+                      ]),
+                    ].map((c) => {
+                      const chosen = ((editing[f.key] as string[] | undefined) ?? []).includes(c);
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => {
+                            const set = new Set((editing[f.key] as string[] | undefined) ?? []);
+                            if (chosen) set.delete(c);
+                            else set.add(c);
+                            setEditing({ ...editing, [f.key]: [...set] });
+                          }}
+                          className={`rounded-full px-3 py-1.5 text-sm font-bold ${
+                            chosen ? "bg-brand text-white" : "border border-[#F1E3EB] bg-white text-brand-muted"
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {f.hint && <p className="mt-1 text-xs text-zinc-500">{f.hint}</p>}
+                </fieldset>
               ) : f.type === "professionals" ? (
                 <fieldset key={f.key}>
                   <legend className="mb-1 text-sm font-semibold text-brand-ink">{f.label}</legend>

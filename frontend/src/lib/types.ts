@@ -92,6 +92,8 @@ export type Professional = {
   phone: string | null;
   commissionPercent: number;
   active: boolean;
+  /** Categorias que atende (Cabelo, Unhas...); vazio = todas. */
+  categories: string[];
 };
 
 export type Service = {

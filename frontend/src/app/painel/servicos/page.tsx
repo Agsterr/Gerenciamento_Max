@@ -20,7 +20,7 @@ export default function ServicesPage() {
           key: "professionalIds",
           label: "Quem faz este serviço",
           type: "professionals",
-          hint: "Sem nenhum marcado, qualquer profissional pode fazer.",
+          hint: "Opcional. Sem nenhum marcado, vale o que cada profissional atende (categorias em Profissionais).",
         },
         { key: "description", label: "Descrição" },
         { key: "durationMinutes", label: "Duração (minutos)", type: "number", required: true },
