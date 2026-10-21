@@ -180,7 +180,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onFieldSubmitted: (_) => _submit(),
                               ),
                             ],
-                            const SizedBox(height: 20),
+                            if (!_register)
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: () => openUrl(AppConfig.forgotPasswordUrl),
+                                  child: const Text('Esqueci minha senha'),
+                                ),
+                              ),
+                            const SizedBox(height: 8),
                             GradientButton(
                               label: _register ? 'Criar salão' : 'Entrar',
                               icon: _register ? Icons.rocket_launch_outlined : Icons.login_rounded,

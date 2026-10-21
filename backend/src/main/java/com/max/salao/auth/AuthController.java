@@ -7,6 +7,9 @@ import com.max.salao.auth.AuthDtos.LoginRequest;
 import com.max.salao.auth.AuthDtos.RegisterRequest;
 import com.max.salao.auth.AuthDtos.TokenResponse;
 import com.max.salao.auth.AuthDtos.UserResponse;
+import com.max.salao.booking.LookupRateLimiter;
+import com.max.salao.booking.PublicBookingController;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
@@ -29,10 +32,15 @@ public class AuthController {
 
     private final AuthService service;
     private final AccountDeletionService deletionService;
+    private final PasswordResetService passwordReset;
+    private final LookupRateLimiter rateLimiter;
 
-    public AuthController(AuthService service, AccountDeletionService deletionService) {
+    public AuthController(AuthService service, AccountDeletionService deletionService,
+                          PasswordResetService passwordReset, LookupRateLimiter rateLimiter) {
         this.service = service;
         this.deletionService = deletionService;
+        this.passwordReset = passwordReset;
+        this.rateLimiter = rateLimiter;
     }
 
     @PostMapping("/api/auth/register")
@@ -44,6 +52,22 @@ public class AuthController {
     @PostMapping("/api/auth/login")
     public TokenResponse login(@Valid @RequestBody LoginRequest req) {
         return service.login(req);
+    }
+
+    /** Sempre 204, exista ou não a conta; com limite de tentativas por IP e por e-mail. */
+    @PostMapping("/api/auth/forgot-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void forgotPassword(@Valid @RequestBody AuthDtos.ForgotPasswordRequest req, HttpServletRequest http) {
+        rateLimiter.check("reset-ip:" + PublicBookingController.clientIp(http));
+        rateLimiter.check("reset-mail:" + req.email().trim().toLowerCase());
+        passwordReset.request(req.email());
+    }
+
+    @PostMapping("/api/auth/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody AuthDtos.ResetPasswordRequest req, HttpServletRequest http) {
+        rateLimiter.check("reset-ip:" + PublicBookingController.clientIp(http));
+        passwordReset.reset(req.token(), req.password());
     }
 
     @GetMapping("/api/me")

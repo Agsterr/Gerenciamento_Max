@@ -29,6 +29,12 @@ public final class AuthDtos {
             @NotNull Role role) {
     }
 
+    public record ForgotPasswordRequest(@NotBlank @Email String email) {
+    }
+
+    public record ResetPasswordRequest(@NotBlank String token, @NotBlank @Size(min = 6, max = 100) String password) {
+    }
+
     public record TokenResponse(String token, UserResponse user) {
     }
 

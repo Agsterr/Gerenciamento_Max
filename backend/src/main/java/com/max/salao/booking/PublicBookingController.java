@@ -147,7 +147,7 @@ public class PublicBookingController {
     }
 
     /** IP real do visitante atrás do Cloudflare/nginx. */
-    static String clientIp(HttpServletRequest http) {
+    public static String clientIp(HttpServletRequest http) {
         String cf = http.getHeader("CF-Connecting-IP");
         if (cf != null && !cf.isBlank()) {
             return cf.trim();

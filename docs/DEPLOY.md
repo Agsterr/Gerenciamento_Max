@@ -38,6 +38,20 @@ O token do servidor não tem *Zone Read*; nesse caso crie o DNS no painel uma ve
 
 ou rode com `CLOUDFLARE_ZONE_ID=<id da URL da zona> bash /opt/salao-max/cloudflare-hostname.sh`.
 
+## E-mail (recuperar senha)
+
+"Esqueci minha senha" manda um link (vale 1 hora, uso único) pelo [Resend](https://resend.com). Sem a chave a API
+funciona normal, mas **nenhum e-mail sai** (o log avisa `E-mail NÃO enviado`).
+
+1. Crie a conta no Resend → **Domains → Add Domain** com `salaomax.focodev.com.br` (ou outro domínio seu).
+2. Copie os registros DNS que ele mostra (SPF/DKIM) para o DNS no Cloudflare e clique em **Verify**.
+3. **API Keys → Create API Key** com permissão **Sending access** (só enviar).
+4. No `.env` do servidor (nunca no repositório): `RESEND_API_KEY=re_...` e, se o domínio for outro,
+   `MAIL_FROM="Salão Max <nao-responda@SEU-DOMINIO>"`. O remetente precisa ser do domínio verificado.
+5. `docker compose up -d` e teste em `/esqueci-senha`. Se o e-mail não chegar: `docker logs salao-max-api | grep -i e-mail`.
+
+O plano gratuito do Resend atende bem no começo (confira os limites atuais no site deles).
+
 ## Backup do banco
 
 O serviço `backup` (em `deploy/docker-compose.prod.yml`) faz um `pg_dump` ao subir e depois a cada 24 h,

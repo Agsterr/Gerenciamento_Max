@@ -105,6 +105,9 @@ services:
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL:-}
+      # E-mails (recuperar senha): Resend. Sem a chave o e-mail não sai (a API só registra no log).
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: "${MAIL_FROM:-Salão Max <nao-responda@salaomax.focodev.com.br>}"
       JAVA_TOOL_OPTIONS: -Xms96m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -Xss512k
     volumes:
       - apk_releases:/app/releases

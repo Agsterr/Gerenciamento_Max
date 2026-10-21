@@ -35,5 +35,6 @@ class AppConfig {
 
   static Uri get privacyUrl => Uri.parse('$siteUrl/privacidade');
   static Uri get termsUrl => Uri.parse('$siteUrl/termos');
+  static Uri get forgotPasswordUrl => Uri.parse('$siteUrl/esqueci-senha');
   static Uri get deleteAccountUrl => Uri.parse('$siteUrl/excluir-conta');
 }

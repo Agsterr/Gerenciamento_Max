@@ -43,6 +43,9 @@ export default function LoginPage() {
         <form onSubmit={onSubmit} className="space-y-3">
           <Field label="E-mail" name="email" type="email" required autoComplete="email" />
           <PasswordField label="Senha" name="password" required autoComplete="current-password" />
+          <Link href="/esqueci-senha" className="block text-right text-sm font-semibold text-brand-rose hover:underline">
+            Esqueci minha senha
+          </Link>
           <ErrorMessage message={error} />
           <Button className="w-full" disabled={busy}>
             {busy ? "Entrando..." : "Entrar"}

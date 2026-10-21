@@ -51,6 +51,11 @@ app:
     max-retained: ${APP_RELEASES_MAX_COUNT:2}
     deploy-token: ${APP_RELEASE_DEPLOY_TOKEN:}
     public-base-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
+  # E-mails (recuperar senha, avisos): Resend (https://resend.com). Sem a chave, o e-mail não é enviado.
+  mail:
+    resend-api-key: ${RESEND_API_KEY:}
+    from: ${MAIL_FROM:Salão Max <nao-responda@salaomax.focodev.com.br>}
+    site-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
   # Fotos do portfólio: Cloudflare R2 (igual aos vídeos do foco-academia) ou, sem R2, disco local
   media:
     storage-path: ${APP_MEDIA_PATH:/app/media}
