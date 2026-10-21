@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Card, Empty, ErrorMessage, Field, Modal, PageHeader } from "@/components/ui";
 import { api } from "@/lib/api";
+import { ServicePhotos, uploadServicePhotos } from "@/components/ServicePhotos";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/useApi";
 
@@ -28,6 +29,8 @@ type Props<T extends { id: number }> = {
   rowActions?: (row: T, reload: () => void) => React.ReactNode;
   listPath?: string;
   toolbar?: React.ReactNode;
+  /** Mostra "Fotos deste serviço" no formulário (só para serviços). */
+  servicePhotos?: boolean;
 };
 
 /** Tela padrão de cadastro: tabela + modal de criar/editar. */
@@ -41,6 +44,7 @@ export function CrudPage<T extends { id: number }>({
   rowActions,
   listPath,
   toolbar,
+  servicePhotos,
 }: Props<T>) {
   const { user } = useAuth();
   const canEdit = !ownerOnly || user?.role === "OWNER";
@@ -48,6 +52,8 @@ export function CrudPage<T extends { id: number }>({
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [formError, setFormError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [notice, setNotice] = useState<string>();
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -58,8 +64,17 @@ export function CrudPage<T extends { id: number }>({
     for (const f of fields) if (f.type === "number") body[f.key] = Number(body[f.key]);
     try {
       if (editing.id) await api.put(`${path}/${editing.id}`, body);
-      else await api.post(path, body);
+      else {
+        const created = await api.post<{ id: number }>(path, body);
+        if (servicePhotos && files.length) {
+          // o serviço já existe: se alguma foto falhar, avisa na página em vez de repetir o cadastro
+          await uploadServicePhotos(created.id, files).catch((e) =>
+            setNotice(`Serviço salvo, mas as fotos não foram enviadas: ${(e as Error).message}`),
+          );
+        }
+      }
       setEditing(null);
+      setFiles([]);
       reload();
     } catch (err) {
       setFormError((err as Error).message);
@@ -72,9 +87,19 @@ export function CrudPage<T extends { id: number }>({
     <>
       <PageHeader title={title}>
         {toolbar}
-        {canEdit && <Button onClick={() => setEditing({ ...defaults })}>+ Novo</Button>}
+        {canEdit && (
+          <Button
+            onClick={() => {
+              setFiles([]);
+              setNotice(undefined);
+              setEditing({ ...defaults });
+            }}
+          >
+            + Novo
+          </Button>
+        )}
       </PageHeader>
-      <ErrorMessage message={error} />
+      <ErrorMessage message={error ?? notice} />
       <Card className="overflow-x-auto p-0">
         {data && data.length === 0 ? (
           <Empty>Nenhum registro ainda.</Empty>
@@ -101,7 +126,15 @@ export function CrudPage<T extends { id: number }>({
                   <td className="whitespace-nowrap px-4 py-2 text-right">
                     {rowActions?.(row, reload)}
                     {canEdit && (
-                      <Button variant="ghost" size="sm" onClick={() => setEditing({ ...row })}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setFiles([]);
+                          setNotice(undefined);
+                          setEditing({ ...row });
+                        }}
+                      >
                         Editar
                       </Button>
                     )}
@@ -140,6 +173,7 @@ export function CrudPage<T extends { id: number }>({
                 />
               ),
             )}
+            {servicePhotos && <ServicePhotos serviceId={editing.id as number | undefined} files={files} onFiles={setFiles} />}
             <ErrorMessage message={formError} />
             <Button className="w-full" disabled={busy}>
               {busy ? "Salvando..." : "Salvar"}

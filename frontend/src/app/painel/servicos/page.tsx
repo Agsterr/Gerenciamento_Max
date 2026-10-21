@@ -11,6 +11,7 @@ export default function ServicesPage() {
       title="Serviços"
       path="/api/services"
       ownerOnly
+      servicePhotos
       defaults={{ name: "", description: "", durationMinutes: 30, price: 0, cost: 0, active: true }}
       fields={[
         { key: "name", label: "Nome", required: true, placeholder: "Corte feminino" },

@@ -3,6 +3,7 @@ import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
 import '../widgets/form_sheet.dart';
+import '../widgets/service_photos.dart';
 
 /// Serviços, profissionais e produtos/estoque.
 class CatalogScreen extends StatelessWidget {
@@ -45,6 +46,7 @@ class CatalogScreen extends StatelessWidget {
             canEdit: owner,
             parse: ServiceItem.fromJson,
             title: 'serviço',
+            withPhotos: true,
             fields: const [
               FieldSpec('name', 'Nome', required: true),
               FieldSpec('description', 'Descrição'),
@@ -228,7 +230,11 @@ class _CrudList<T> extends StatefulWidget {
     required this.toForm,
     required this.id,
     required this.tile,
+    this.withPhotos = false,
   });
+
+  /// Mostra "Fotos deste serviço" no formulário (só para serviços).
+  final bool withPhotos;
 
   final ApiClient api;
   final String path;
@@ -268,13 +274,22 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
   }
 
   Future<void> _edit([T? item]) async {
+    final photos = widget.withPhotos ? ServicePhotosController(api: widget.api, serviceId: item == null ? null : widget.id(item)) : null;
+    String? photoError;
     final saved = await showFormSheet(
       context,
       title: item == null ? 'Novo ${widget.title}' : 'Editar ${widget.title}',
       fields: widget.fields,
       initial: widget.toForm(item),
-      onSave: (v) => item == null ? widget.api.post(widget.path, v) : widget.api.put('${widget.path}/${widget.id(item)}', v),
+      extra: photos == null ? null : ServicePhotosSection(controller: photos),
+      onSave: (v) async {
+        if (item != null) return widget.api.put('${widget.path}/${widget.id(item)}', v);
+        final created = await widget.api.post(widget.path, v) as Map<String, dynamic>;
+        // o serviço já existe: se alguma foto falhar, avisa depois em vez de repetir o cadastro
+        if (photos != null) photoError = await photos.uploadPending(created['id'] as int);
+      },
     );
+    if (photoError != null && mounted) showError(context, 'Serviço salvo, mas as fotos não foram enviadas: $photoError');
     if (saved) _load();
   }
 

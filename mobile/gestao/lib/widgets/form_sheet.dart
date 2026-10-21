@@ -21,18 +21,22 @@ Future<bool> showFormSheet(
   required List<FieldSpec> fields,
   required Map<String, Object?> initial,
   required Future<void> Function(Map<String, Object?> values) onSave,
+  /// Conteúdo extra (ex.: fotos) logo acima do botão Salvar.
+  Widget? extra,
 }) async {
   final saved = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (_) => _FormSheet(title: title, fields: fields, initial: initial, onSave: onSave),
+    builder: (_) => _FormSheet(title: title, fields: fields, initial: initial, onSave: onSave, extra: extra),
   );
   return saved ?? false;
 }
 
 class _FormSheet extends StatefulWidget {
-  const _FormSheet({required this.title, required this.fields, required this.initial, required this.onSave});
+  const _FormSheet({required this.title, required this.fields, required this.initial, required this.onSave, this.extra});
+
+  final Widget? extra;
 
   final String title;
   final List<FieldSpec> fields;
@@ -121,6 +125,7 @@ class _FormSheetState extends State<_FormSheet> {
                   ),
                 const SizedBox(height: 12),
               ],
+              if (widget.extra != null) ...[widget.extra!, const SizedBox(height: 16)],
               GradientButton(label: 'Salvar', icon: Icons.check_rounded, loading: _busy, onPressed: _save),
             ],
           ),
