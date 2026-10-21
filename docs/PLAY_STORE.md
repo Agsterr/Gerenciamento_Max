@@ -49,3 +49,25 @@ link nem texto para assinar por fora** (regra de pagamentos da Play e da App Sto
 O `versionCode` da Play é `1000 + número da execução` (sempre crescente). O APK do site tem a
 numeração própria; como as assinaturas são diferentes (Google re-assina o da Play), trocar de canal
 exige desinstalar o app.
+
+## Assinatura mensal dentro do app (Google Play Billing)
+
+Plano único, **R$ 49,90/mês**, só no app **Salão Max Gestão** (o app do cliente continua grátis).
+O app compra pela Play e manda o token ao servidor (`POST /api/billing/play/verify`); o servidor
+confirma com o Google, reconhece (acknowledge) a compra e libera o plano. Uma rotina diária (05:00)
+renova ou vence os salões assinantes (cancelada com prazo restante continua valendo até o fim).
+
+**Seguro para testadores:** a cobrança nasce **desligada**. Em `/plataforma` → *Teste grátis* a chave
+*Cobrança na loja* só deve ser ligada no lançamento público. Para testar antes, marque
+*Mostrar "Assinar" nos apps deste salão* em *Salões → Plano* — só esse salão vê o botão.
+
+Uma vez só:
+1. Play Console → *Monetizar com a Play* → *Produtos* → *Assinaturas*: criar o produto
+   `salao_max_mensal` com plano-base mensal, renovação automática, R$ 49,90 (e, se quiser, oferta de
+   lançamento). Precisa de perfil de pagamentos. O app precisa estar publicado em alguma faixa.
+2. Google Cloud: criar uma *conta de serviço*, ativar a *Google Play Android Developer API* e gerar
+   uma chave JSON. No Play Console → *Usuários e permissões*, convidar o e-mail da conta de serviço
+   com permissão de ver dados financeiros e gerenciar pedidos/assinaturas.
+3. No servidor, `PLAY_SERVICE_ACCOUNT_JSON_BASE64` (`base64 -w0 chave.json`) no `.env`. Nunca no repositório.
+4. Testar: *Configurações → Testes de licença* com a conta de teste; marcar o salão de teste como acima.
+5. Cancelar a assinatura: pela Play (o app tem o atalho em Ajustes). Excluir a conta do app não cancela a assinatura.

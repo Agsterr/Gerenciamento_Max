@@ -197,7 +197,7 @@ class ReminderPortfolioIntegrationTest {
         try {
             platformSettings.save(new PlatformSettings.Values(original.trialDays(), original.maxProfessionals(),
                     original.maxServices(), original.maxCustomers(), original.contactWhatsapp(),
-                    original.contactEmail(), 1, original.maxPhotosPaid()));
+                    original.contactEmail(), 1, original.maxPhotosPaid(), original.billingEnabled(), original.playProductId()));
             Tenant salon = register();
             upload(salon, png(100, 100), Map.of(), status().isCreated());
             JsonNode error = upload(salon, png(100, 100), Map.of(), status().isUnprocessableEntity());

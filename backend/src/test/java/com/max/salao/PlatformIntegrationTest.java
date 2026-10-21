@@ -52,6 +52,74 @@ class PlatformIntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    com.max.salao.billing.PlayBilling play;
+
+    // ---------------- assinatura pela Google Play ----------------
+
+    @Test
+    void playSubscriptionActivatesThePlanOnlyWhereBillingIsOn() throws Exception {
+        String admin = login(ADMIN_EMAIL, ADMIN_PASSWORD);
+        Salon a = register();
+        Salon b = register();
+        var verify = Map.of("productId", "salao_max_mensal", "purchaseToken", "tok-" + a.slug);
+        var active = new com.max.salao.billing.PlaySubscription("SUBSCRIPTION_STATE_ACTIVE", "salao_max_mensal",
+                java.time.Instant.now().plus(java.time.Duration.ofDays(30)), false, "GPA.1");
+        org.mockito.Mockito.when(play.lookup("tok-" + a.slug)).thenReturn(active);
+
+        // cobrança desligada para todos (testadores): sem botão "Assinar" e a compra é recusada
+        assertThat(call(a.token, get("/api/salon/plan"), null, status().isOk()).get("billingAvailable").asBoolean()).isFalse();
+        call(a.token, post("/api/billing/play/verify"), verify, status().isUnprocessableEntity());
+
+        // libera só para o salão A (teste da compra): B continua sem ver
+        call(admin, post("/api/platform/salons/" + a.id + "/plan"), Map.of("plan", "TRIAL",
+                "trialEndsAt", java.time.LocalDate.now().plusDays(5) + "T23:59:00", "billingPreview", true), status().isOk());
+        assertThat(call(a.token, get("/api/salon/plan"), null, status().isOk()).get("billingAvailable").asBoolean()).isTrue();
+        assertThat(call(b.token, get("/api/salon/plan"), null, status().isOk()).get("billingAvailable").asBoolean()).isFalse();
+
+        // produto errado é recusado; o certo ativa o plano e confirma a compra na Google
+        call(a.token, post("/api/billing/play/verify"), Map.of("productId", "outro", "purchaseToken", "tok-" + a.slug),
+                status().isUnprocessableEntity());
+        JsonNode plan = call(a.token, post("/api/billing/play/verify"), verify, status().isOk());
+        assertThat(plan.get("status").asText()).isEqualTo("ACTIVE");
+        assertThat(plan.get("managedByPlay").asBoolean()).isTrue();
+        org.mockito.Mockito.verify(play).acknowledge("salao_max_mensal", "tok-" + a.slug);
+
+        // a mesma compra não vale para outro salão (mesmo com a cobrança ligada para todos)
+        JsonNode settings = call(admin, get("/api/platform/settings"), null, status().isOk());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> on = json.convertValue(settings, Map.class);
+        try {
+            on.put("billingEnabled", true);
+            call(admin, put("/api/platform/settings"), on, status().isOk());
+            assertThat(call(b.token, get("/api/salon/plan"), null, status().isOk()).get("billingAvailable").asBoolean()).isTrue();
+            JsonNode stolen = call(b.token, post("/api/billing/play/verify"),
+                    Map.of("productId", "salao_max_mensal", "purchaseToken", "tok-" + a.slug), status().isUnprocessableEntity());
+            assertThat(stolen.get("detail").asText()).contains("outro salão");
+        } finally {
+            on.put("billingEnabled", false);
+            call(admin, put("/api/platform/settings"), on, status().isOk());
+        }
+
+        // a Google diz que expirou (cobrança falhou/cancelou): a reconferência devolve o salão a só consulta
+        org.mockito.Mockito.when(play.lookup("tok-" + a.slug)).thenReturn(new com.max.salao.billing.PlaySubscription(
+                "SUBSCRIPTION_STATE_EXPIRED", "salao_max_mensal", java.time.Instant.now().minus(java.time.Duration.ofDays(5)),
+                true, "GPA.1"));
+        assertThat(call(a.token, post("/api/billing/play/sync"), null, status().isOk()).get("status").asText())
+                .isEqualTo("EXPIRED");
+    }
+
+    @Test
+    void onlyTheOwnerCanSubscribe() throws Exception {
+        Salon salon = register();
+        String staffEmail = "staff-" + UUID.randomUUID() + "@teste.com";
+        call(salon.token, post("/api/users"), Map.of("name", "Recepção", "email", staffEmail, "password", "123456",
+                "role", "STAFF"), status().isCreated());
+        String staff = login(staffEmail, "123456");
+        call(staff, post("/api/billing/play/verify"), Map.of("productId", "salao_max_mensal", "purchaseToken", "x"),
+                status().isForbidden());
+    }
+
     // ---------------- teste grátis / plano ----------------
 
     @Test

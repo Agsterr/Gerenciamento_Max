@@ -50,6 +50,7 @@ public class SecurityConfig {
                         // Gestão financeira e cadastros estruturais: só o dono
                         .requestMatchers("/api/reports/**", "/api/expenses/**", "/api/users/**", "/api/pricing/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/salon").hasRole("OWNER")
+                        .requestMatchers("/api/billing/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.POST, "/api/professionals/**", "/api/services/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/professionals/**", "/api/services/**").hasRole("OWNER")
                         // Demais rotas são do salão: o admin da plataforma não tem tenant

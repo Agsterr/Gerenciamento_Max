@@ -99,6 +99,13 @@ public class Salon {
     /** Plano pago válido até esta data (inclusive); nulo = sem vencimento. */
     private LocalDate paidUntil;
 
+    /** Assinatura da Google Play deste salão (token da compra) e quando foi conferida pela última vez. */
+    private String playPurchaseToken;
+    private LocalDateTime playCheckedAt;
+
+    /** Mostra a tela "Assinar" no app mesmo com a cobrança desligada para todos (teste da compra). */
+    private boolean billingPreview;
+
     @Column(insertable = false, updatable = false)
     private LocalDateTime createdAt;
 

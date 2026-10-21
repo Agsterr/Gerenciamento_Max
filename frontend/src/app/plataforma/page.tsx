@@ -458,6 +458,7 @@ function PlanModal({ salon, onClose, onDone }: { salon: PlatformSalon | null; on
   const [mode, setMode] = useState<"PAID" | "TRIAL">("PAID");
   const [paidUntil, setPaidUntil] = useState("");
   const [trialEnds, setTrialEnds] = useState("");
+  const [preview, setPreview] = useState(false);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
@@ -465,6 +466,7 @@ function PlanModal({ salon, onClose, onDone }: { salon: PlatformSalon | null; on
     if (!salon) return;
     setMode(salon.plan);
     setPaidUntil(salon.paidUntil ?? "");
+    setPreview(salon.billingPreview);
     const base = new Date(Math.max(Date.now(), new Date(salon.trialEndsAt).getTime()));
     base.setDate(base.getDate() + 7);
     setTrialEnds(isoDate(base));
@@ -480,6 +482,7 @@ function PlanModal({ salon, onClose, onDone }: { salon: PlatformSalon | null; on
         plan: mode,
         paidUntil: mode === "PAID" && paidUntil ? paidUntil : null,
         trialEndsAt: mode === "TRIAL" ? `${trialEnds}T23:59:00` : null,
+        billingPreview: preview,
       });
       onDone();
     } catch (e) {
@@ -520,6 +523,14 @@ function PlanModal({ salon, onClose, onDone }: { salon: PlatformSalon | null; on
             <p className="text-sm text-zinc-500">Com os limites do teste grátis (aba “Teste grátis”).</p>
           </>
         )}
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-1" checked={preview} onChange={(e) => setPreview(e.target.checked)} />
+          <span>
+            <strong>Mostrar “Assinar” nos apps deste salão (teste)</strong>
+            <span className="block text-zinc-500">Para testar a compra com a sua conta de testes, sem ligar a cobrança para todo mundo.</span>
+          </span>
+        </label>
+        {salon?.viaPlay && <p className="text-sm text-zinc-500">Este salão assina pela Google Play; a renovação é automática.</p>}
         <ErrorMessage message={error} />
         <Button className="w-full" onClick={save} disabled={busy || (mode === "TRIAL" && !trialEnds)}>
           {busy ? "Salvando..." : "Salvar"}
@@ -574,6 +585,30 @@ function TrialTab() {
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Fotos do portfólio (teste)" type="number" min={0} required value={form.maxPhotos} onChange={num("maxPhotos")} />
             <Field label="Fotos do portfólio (plano pago)" type="number" min={0} required value={form.maxPhotosPaid ?? 300} onChange={num("maxPhotosPaid")} />
+          </div>
+          <div className="rounded-xl border border-zinc-200 p-3">
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={!!form.billingEnabled}
+                onChange={(e) => setForm({ ...form, billingEnabled: e.target.checked })}
+              />
+              <span>
+                <strong>Cobrança na loja (assinatura pela Google Play)</strong>
+                <span className="block text-zinc-500">
+                  Desligada, ninguém vê o botão “Assinar” (nem seus testadores). Ligue só no lançamento público. Para testar antes, use
+                  “Mostrar Assinar” no plano de um salão.
+                </span>
+              </span>
+            </label>
+            <div className="mt-3">
+              <Field
+                label="Código do produto na Play Console"
+                value={form.playProductId ?? ""}
+                onChange={(e) => setForm({ ...form, playProductId: e.target.value })}
+              />
+            </div>
           </div>
           <Field
             label="Seu WhatsApp para quem quer assinar"

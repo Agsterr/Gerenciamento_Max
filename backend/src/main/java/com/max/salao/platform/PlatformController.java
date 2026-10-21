@@ -74,7 +74,9 @@ public class PlatformController {
         return settings.save(new PlatformSettings.Values(req.trialDays(), req.maxProfessionals(), req.maxServices(),
                 req.maxCustomers(), req.contactWhatsapp(), req.contactEmail(),
                 req.maxPhotos() != null ? req.maxPhotos() : current.maxPhotos(),
-                req.maxPhotosPaid() != null ? req.maxPhotosPaid() : current.maxPhotosPaid()));
+                req.maxPhotosPaid() != null ? req.maxPhotosPaid() : current.maxPhotosPaid(),
+                req.billingEnabled() != null ? req.billingEnabled() : current.billingEnabled(),
+                req.playProductId() != null ? req.playProductId() : current.playProductId()));
     }
 
     @GetMapping("/salons/{id}/users")

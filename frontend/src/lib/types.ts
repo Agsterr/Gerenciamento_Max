@@ -29,6 +29,9 @@ export type PlatformSalon = {
   planStatus: PlanStatus;
   trialEndsAt: string;
   paidUntil: string | null;
+  /** Vê a assinatura da loja mesmo com a chave geral desligada (testes). */
+  billingPreview: boolean;
+  viaPlay: boolean;
 };
 
 export type PlatformUser = {
@@ -359,6 +362,9 @@ export type PlanInfo = {
   contactWhatsapp: string;
   contactEmail: string;
   photos: Usage;
+  billingAvailable: boolean;
+  playProductId: string;
+  managedByPlay: boolean;
 };
 
 /** Condições do teste grátis (página de cadastro) e configuração da plataforma. */
@@ -373,6 +379,9 @@ export type TrialTerms = {
   maxPhotos: number;
   /** Só na configuração da plataforma: fotos no plano pago. */
   maxPhotosPaid?: number;
+  /** Só na configuração da plataforma: chave "Cobrança na loja" e produto da Play. */
+  billingEnabled?: boolean;
+  playProductId?: string;
 };
 
 /** Fusos do Brasil (sem horário de verão). */

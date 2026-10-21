@@ -31,11 +31,14 @@ public final class PlatformDtos {
             Plan plan,
             PlanStatus planStatus,
             LocalDateTime trialEndsAt,
-            LocalDate paidUntil) {
+            LocalDate paidUntil,
+            boolean billingPreview,
+            boolean viaPlay) {
     }
 
     /** PAID com {@code paidUntil} nulo = sem vencimento; TRIAL usa {@code trialEndsAt}. */
-    public record PlanRequest(@NotNull Plan plan, LocalDate paidUntil, LocalDateTime trialEndsAt) {
+    public record PlanRequest(@NotNull Plan plan, LocalDate paidUntil, LocalDateTime trialEndsAt,
+                              /* nulo = mantém */ Boolean billingPreview) {
     }
 
     public record SettingsRequest(
@@ -46,7 +49,9 @@ public final class PlatformDtos {
             @Size(max = 30) String contactWhatsapp,
             @Size(max = 120) String contactEmail,
             /* nulos = mantém (painel antigo não manda) */ @Min(0) @Max(10000) Integer maxPhotos,
-            @Min(0) @Max(10000) Integer maxPhotosPaid) {
+            @Min(0) @Max(10000) Integer maxPhotosPaid,
+            /* nulos = mantém */ Boolean billingEnabled,
+            @Size(max = 100) String playProductId) {
     }
 
     public record PlatformUser(

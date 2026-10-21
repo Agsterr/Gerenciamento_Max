@@ -7,6 +7,7 @@ import '../widgets/weekly_hours_editor.dart';
 import 'my_reminders_screen.dart';
 import 'portfolio_screen.dart';
 import 'reminders_screen.dart';
+import 'subscribe_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.session});
@@ -20,6 +21,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   Salon? _salon;
   String? _error;
+  PlanInfo? _plan;
 
   Session get _session => widget.session;
   String get _publicLink => '${AppConfig.siteUrl}/s/${_session.user.salonSlug}';
@@ -33,7 +35,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _load() async {
     try {
       final s = Salon.fromJson(await _session.api.get('/api/salon') as Map<String, dynamic>);
-      if (mounted) setState(() => _salon = s);
+      PlanInfo? plan;
+      if (_session.user.isOwner && AppConfig.storeBuild) {
+        plan = PlanInfo.fromJson(await _session.api.get('/api/salon/plan') as Map<String, dynamic>);
+      }
+      if (mounted) {
+        setState(() {
+          _salon = s;
+          _plan = plan;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     }
@@ -232,6 +243,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   tile(Icons.photo_library_outlined, 'Portfólio de fotos', () => _open(PortfolioScreen(api: _session.api))),
                 ]),
               ),
+              if (_plan != null && (_plan!.billingAvailable || _plan!.managedByPlay)) ...[
+                const SectionTitle('Assinatura'),
+                SoftCard(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: _plan!.managedByPlay
+                      ? tile(Icons.manage_accounts_outlined, 'Gerenciar assinatura na Google Play',
+                          () => openUrl(Uri.parse('https://play.google.com/store/account/subscriptions')))
+                      : tile(Icons.workspace_premium_outlined, 'Assinar o plano completo', () async {
+                          final ok = await Navigator.push<bool>(context,
+                              MaterialPageRoute(builder: (_) => SubscribeScreen(session: _session, plan: _plan!)));
+                          if (ok == true) _load();
+                        }),
+                ),
+              ],
               const SectionTitle('Conta'),
               SoftCard(
                 padding: const EdgeInsets.symmetric(vertical: 6),

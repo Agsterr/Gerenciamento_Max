@@ -113,13 +113,17 @@ public class PlatformService {
     private SalonSummary toSummary(Salon s, long userCount) {
         return new SalonSummary(s.getId(), s.getName(), s.getSlug(), s.getPhone(), s.getAddress(), s.getCreatedAt(),
                 userCount, s.isBlocked(), s.getBlockedReason(), s.getBlockedAt(),
-                s.getPlan(), plans.status(s), s.getTrialEndsAt(), s.getPaidUntil());
+                s.getPlan(), plans.status(s), s.getTrialEndsAt(), s.getPaidUntil(), s.isBillingPreview(),
+                s.getPlayPurchaseToken() != null);
     }
 
     /** Ativa o plano pago (com ou sem vencimento) ou volta/estende o teste grátis. */
     @Transactional
     public SalonSummary setPlan(Long id, PlatformDtos.PlanRequest req) {
         Salon salon = salon(id);
+        if (req.billingPreview() != null) {
+            salon.setBillingPreview(req.billingPreview());
+        }
         salon.setPlan(req.plan());
         if (req.plan() == Plan.PAID) {
             salon.setPaidUntil(req.paidUntil());

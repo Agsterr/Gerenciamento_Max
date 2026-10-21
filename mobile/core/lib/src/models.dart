@@ -619,6 +619,9 @@ class PlanInfo {
     required this.contactWhatsapp,
     required this.contactEmail,
     this.photos = (0, 0),
+    this.billingAvailable = false,
+    this.playProductId = '',
+    this.managedByPlay = false,
   });
 
   factory PlanInfo.fromJson(Map<String, dynamic> j) {
@@ -632,6 +635,9 @@ class PlanInfo {
       contactWhatsapp: j['contactWhatsapp'] as String? ?? '',
       contactEmail: j['contactEmail'] as String? ?? '',
       photos: j['photos'] == null ? (0, 0) : usage(j['photos']),
+      billingAvailable: j['billingAvailable'] as bool? ?? false,
+      playProductId: j['playProductId'] as String? ?? '',
+      managedByPlay: j['managedByPlay'] as bool? ?? false,
     );
   }
 
@@ -648,6 +654,13 @@ class PlanInfo {
 
   /// Fotos do portfólio (usadas, máximo).
   final (int, int) photos;
+
+  /// Assinatura pela loja liberada para este salão (chave "Cobrança na loja" ou teste).
+  final bool billingAvailable;
+  final String playProductId;
+
+  /// A assinatura é cobrada e cancelada pela Google Play.
+  final bool managedByPlay;
 
   bool get expired => status == 'EXPIRED';
   bool get trial => status == 'TRIAL';

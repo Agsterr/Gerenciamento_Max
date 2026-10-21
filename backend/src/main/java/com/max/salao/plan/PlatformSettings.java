@@ -16,10 +16,12 @@ public class PlatformSettings {
 
     /** maxPhotos: fotos do portfólio no teste grátis; maxPhotosPaid: no plano pago. */
     public record Values(int trialDays, int maxProfessionals, int maxServices, int maxCustomers,
-                         String contactWhatsapp, String contactEmail, int maxPhotos, int maxPhotosPaid) {
+                         String contactWhatsapp, String contactEmail, int maxPhotos, int maxPhotosPaid,
+                         boolean billingEnabled, String playProductId) {
     }
 
-    static final Values DEFAULTS = new Values(14, 2, 10, 50, "", "", 20, 300);
+    /** billingEnabled = "Cobrança na loja": enquanto desligada, o app não mostra o botão Assinar a ninguém. */
+    static final Values DEFAULTS = new Values(14, 2, 10, 50, "", "", 20, 300, false, "salao_max_mensal");
 
     private final JdbcTemplate jdbc;
 
@@ -41,7 +43,9 @@ public class PlatformSettings {
                 m.getOrDefault("contact_whatsapp", DEFAULTS.contactWhatsapp()),
                 m.getOrDefault("contact_email", DEFAULTS.contactEmail()),
                 integer(m, "max_photos", DEFAULTS.maxPhotos()),
-                integer(m, "max_photos_paid", DEFAULTS.maxPhotosPaid()));
+                integer(m, "max_photos_paid", DEFAULTS.maxPhotosPaid()),
+                Boolean.parseBoolean(m.getOrDefault("billing_enabled", String.valueOf(DEFAULTS.billingEnabled()))),
+                m.getOrDefault("play_product_id", DEFAULTS.playProductId()));
     }
 
     @Transactional
@@ -54,6 +58,9 @@ public class PlatformSettings {
         put("contact_email", v.contactEmail() == null ? "" : v.contactEmail().trim());
         put("max_photos", v.maxPhotos());
         put("max_photos_paid", v.maxPhotosPaid());
+        put("billing_enabled", v.billingEnabled());
+        put("play_product_id", v.playProductId() == null || v.playProductId().isBlank()
+                ? DEFAULTS.playProductId() : v.playProductId().trim());
         return get();
     }
 

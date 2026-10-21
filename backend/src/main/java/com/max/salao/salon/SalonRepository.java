@@ -12,6 +12,12 @@ public interface SalonRepository extends JpaRepository<Salon, Long> {
 
     Optional<Salon> findBySlug(String slug);
 
+    Optional<Salon> findByPlayPurchaseToken(String token);
+
+    /** Salões com assinatura da Play que vencem até a data (ou sem vencimento): a rotina diária reconfere. */
+    @Query("select s from Salon s where s.playPurchaseToken is not null and (s.paidUntil is null or s.paidUntil <= :limit)")
+    List<Salon> playSubscribersDueUntil(@Param("limit") java.time.LocalDate limit);
+
     boolean existsBySlug(String slug);
 
     /** Busca pública: ignora salões bloqueados. */

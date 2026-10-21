@@ -51,6 +51,13 @@ app:
     max-retained: ${APP_RELEASES_MAX_COUNT:2}
     deploy-token: ${APP_RELEASE_DEPLOY_TOKEN:}
     public-base-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
+  # Assinatura pela Google Play (app de gestão): a API confere a compra com a Google.
+  # PLAY_SERVICE_ACCOUNT_JSON_BASE64 = JSON da conta de serviço (a mesma do envio do app) em base64, com permissão
+  # de ver dados financeiros e gerenciar pedidos/assinaturas no Play Console. Vazio = compra desligada.
+  billing:
+    play-package: ${PLAY_PACKAGE:io.github.agsterr.salaomax.gestao}
+    service-account-json: ${PLAY_SERVICE_ACCOUNT_JSON_BASE64:}
+    cron: ${BILLING_SYNC_CRON:0 0 5 * * *}
   # E-mails (recuperar senha, avisos): Resend (https://resend.com). Sem a chave, o e-mail não é enviado.
   mail:
     resend-api-key: ${RESEND_API_KEY:}

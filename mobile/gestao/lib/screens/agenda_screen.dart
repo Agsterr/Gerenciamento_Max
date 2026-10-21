@@ -9,6 +9,7 @@ import 'appointment_sheets.dart';
 import 'finish_sheet.dart';
 import 'new_appointment_sheet.dart';
 import 'notifications_screen.dart';
+import 'subscribe_screen.dart';
 
 class AgendaScreen extends StatefulWidget {
   const AgendaScreen({super.key, required this.session});
@@ -246,7 +247,16 @@ class _AgendaScreenState extends State<AgendaScreen> {
                 ]),
               ]),
             ),
-            if (_plan != null && _plan!.status != 'ACTIVE') _PlanBanner(_plan!),
+            if (_plan != null && _plan!.status != 'ACTIVE') _PlanBanner(
+              _plan!,
+              onSubscribe: widget.session.user.isOwner && AppConfig.storeBuild && _plan!.billingAvailable
+                  ? () async {
+                      final ok = await Navigator.push<bool>(context,
+                          MaterialPageRoute(builder: (_) => SubscribeScreen(session: widget.session, plan: _plan!)));
+                      if (ok == true) _load();
+                    }
+                  : null,
+            ),
             if (professionals.length > 1)
               SizedBox(
                 height: 56,
@@ -474,9 +484,10 @@ class _TimelineItem extends StatelessWidget {
 
 /// Teste grátis (dias e limites) ou teste vencido, com atalho para assinar.
 class _PlanBanner extends StatelessWidget {
-  const _PlanBanner(this.plan);
+  const _PlanBanner(this.plan, {this.onSubscribe});
 
   final PlanInfo plan;
+  final VoidCallback? onSubscribe;
 
   @override
   Widget build(BuildContext context) {
@@ -507,7 +518,15 @@ class _PlanBanner extends StatelessWidget {
                     '${plan.services.$1}/${plan.services.$2} serviços · ${plan.customers.$1}/${plan.customers.$2} clientes',
             style: text.bodySmall,
           ),
-          if (hasContact) ...[
+          if (onSubscribe != null) ...[
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: Brand.rose),
+              onPressed: onSubscribe,
+              icon: const Icon(Icons.workspace_premium_outlined),
+              label: Text(expired ? 'Assinar para continuar' : 'Assinar o plano completo'),
+            ),
+          ] else if (hasContact) ...[
             const SizedBox(height: 8),
             FilledButton.icon(
               style: FilledButton.styleFrom(backgroundColor: Brand.rose),

@@ -18,6 +18,8 @@ dependencies:
   http: ^1.6.0
   # Fotos do portfólio (galeria/câmera)
   image_picker: ^1.2.0
+  # Assinatura mensal pela Google Play (só nas versões das lojas)
+  in_app_purchase: ^3.2.3
 
 dev_dependencies:
   flutter_test:
