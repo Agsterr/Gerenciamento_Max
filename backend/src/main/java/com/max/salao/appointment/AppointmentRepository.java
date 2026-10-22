@@ -24,6 +24,13 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     @EntityGraph(attributePaths = {"customer", "professional", "service", "promotion"})
     Optional<Appointment> findByPublicToken(String token);
 
+    /** Clientes (entre os dados) que já tiveram atendimento concluído antes de {@code before}. */
+    @Query("""
+            select distinct a.customer.id from Appointment a
+            where a.status = com.max.salao.appointment.AppointmentStatus.DONE and a.startAt < :before
+              and a.customer.id in :ids""")
+    List<Long> customersWithDoneBefore(LocalDateTime before, Collection<Long> ids);
+
     /** Agendamentos que ocupam a agenda e cruzam o intervalo [from, to). */
     @Query("""
             select a from Appointment a

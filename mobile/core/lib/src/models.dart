@@ -1120,3 +1120,96 @@ class Promotion {
     return 'No ar';
   }
 }
+
+// ---------- Painel de atendimentos ----------
+
+/// Quantidades de um período (atendimentos por situação e clientes).
+class AttendanceCounts {
+  AttendanceCounts.fromJson(Map<String, dynamic> j)
+      : total = j['total'] as int,
+        scheduled = j['scheduled'] as int,
+        done = j['done'] as int,
+        canceled = j['canceled'] as int,
+        noShow = j['noShow'] as int,
+        rework = j['rework'] as int,
+        online = j['online'] as int,
+        newCustomers = j['newCustomers'] as int,
+        returningCustomers = j['returningCustomers'] as int,
+        uniqueCustomers = j['uniqueCustomers'] as int;
+
+  final int total;
+
+  /// Ainda por fazer (marcados, confirmados ou em andamento).
+  final int scheduled;
+  final int done;
+  final int canceled;
+  final int noShow;
+
+  /// Refações sem cobrança (já contadas em [done]).
+  final int rework;
+  final int online;
+  final int newCustomers;
+
+  /// Clientes atendidos no período que já tinham atendimento antes.
+  final int returningCustomers;
+
+  /// Clientes diferentes com horário no período (sem os cancelados).
+  final int uniqueCustomers;
+
+  /// % de cancelados sobre o total de agendamentos (0 sem agendamentos).
+  double get cancelRate => total == 0 ? 0 : canceled * 100 / total;
+}
+
+class ProfessionalAttendance {
+  ProfessionalAttendance.fromJson(Map<String, dynamic> j)
+      : name = j['name'] as String,
+        total = j['total'] as int,
+        done = j['done'] as int,
+        canceled = j['canceled'] as int,
+        noShow = j['noShow'] as int,
+        rework = j['rework'] as int,
+        scheduled = j['scheduled'] as int;
+
+  final String name;
+  final int total;
+  final int done;
+  final int canceled;
+  final int noShow;
+  final int rework;
+  final int scheduled;
+}
+
+/// Um ponto do gráfico: um dia, uma semana (segunda a domingo) ou um mês.
+class AttendanceBucket {
+  AttendanceBucket.fromJson(Map<String, dynamic> j)
+      : start = _date(j['start']),
+        end = _date(j['end']),
+        done = j['done'] as int,
+        canceled = j['canceled'] as int,
+        noShow = j['noShow'] as int,
+        scheduled = j['scheduled'] as int;
+
+  final DateTime start;
+  final DateTime end;
+  final int done;
+  final int canceled;
+  final int noShow;
+  final int scheduled;
+
+  int get total => done + canceled + noShow + scheduled;
+}
+
+class AttendanceDashboard {
+  AttendanceDashboard.fromJson(Map<String, dynamic> j)
+      : totals = AttendanceCounts.fromJson(j['totals'] as Map<String, dynamic>),
+        previous = AttendanceCounts.fromJson(j['previous'] as Map<String, dynamic>),
+        byProfessional = [for (final p in j['byProfessional'] as List) ProfessionalAttendance.fromJson(p as Map<String, dynamic>)],
+        series = [for (final b in j['series'] as List) AttendanceBucket.fromJson(b as Map<String, dynamic>)];
+
+  final AttendanceCounts totals;
+
+  /// Mesmo tamanho de período logo antes (para comparar).
+  final AttendanceCounts previous;
+  final List<ProfessionalAttendance> byProfessional;
+  final List<AttendanceBucket> series;
+}

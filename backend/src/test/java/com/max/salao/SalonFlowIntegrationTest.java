@@ -689,6 +689,74 @@ class SalonFlowIntegrationTest {
     }
 
     @Test
+    void dashboardCountsAppointmentsByStatusProfessionalAndPeriod() throws Exception {
+        Tenant salon = register();
+        long ana = id(call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                status().isCreated()));
+        long service = id(call(salon, post("/api/services"), Map.of("name", "Corte", "durationMinutes", 30, "price", 50,
+                "cost", 0, "active", true), status().isCreated()));
+        long maria = id(call(salon, post("/api/customers"), Map.of("name", "Maria", "phone", "11911112222"), status().isCreated()));
+        long rita = id(call(salon, post("/api/customers"), Map.of("name", "Rita", "phone", "11933334444"), status().isCreated()));
+
+        LocalDate today = LocalDate.now();
+        // semana que vem, segunda e terça: 2 concluídos (1 refação), 1 cancelado, 1 falta, 1 ainda marcado
+        LocalDate monday = today.plusDays(14).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+        java.util.function.BiFunction<LocalDate, String, Long> book = (d, time) -> {
+            try {
+                return id(call(salon, post("/api/appointments"), Map.of("customerId", maria, "professionalId", ana,
+                        "serviceId", service, "startAt", d + "T" + time + ":00", "force", true), status().isCreated()));
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        };
+        long a1 = book.apply(monday, "09:00");
+        long a2 = book.apply(monday, "10:00");
+        long a3 = book.apply(monday, "11:00");
+        long a4 = book.apply(monday.plusDays(1), "09:00");
+        book.apply(monday.plusDays(1), "10:00");
+        call(salon, post("/api/appointments/" + a1 + "/finish"), Map.of(), status().isOk());
+        call(salon, post("/api/appointments/" + a2 + "/finish"), Map.of("rework", true), status().isOk());
+        call(salon, post("/api/appointments/" + a3 + "/cancel"), Map.of(), status().isOk());
+        call(salon, post("/api/appointments/" + a4 + "/no-show"), Map.of(), status().isOk());
+
+        String q = "/api/reports/dashboard?from=" + monday + "&to=" + monday.plusDays(6);
+        JsonNode week = call(salon, get(q + "&group=DAY"), null, status().isOk());
+        JsonNode t = week.get("totals");
+        assertThat(t.get("total").asInt()).isEqualTo(5);
+        assertThat(t.get("done").asInt()).isEqualTo(2);
+        assertThat(t.get("canceled").asInt()).isEqualTo(1);
+        assertThat(t.get("noShow").asInt()).isEqualTo(1);
+        assertThat(t.get("scheduled").asInt()).isEqualTo(1);
+        assertThat(t.get("rework").asInt()).isEqualTo(1);
+        assertThat(t.get("uniqueCustomers").asInt()).isEqualTo(1); // cancelado não conta; só a Maria
+        assertThat(week.get("series")).hasSize(7);
+        assertThat(week.get("series").get(0).get("done").asInt()).isEqualTo(2);
+        assertThat(week.get("series").get(1).get("noShow").asInt()).isEqualTo(1);
+        assertThat(week.get("byProfessional").get(0).get("name").asText()).isEqualTo("Ana");
+        assertThat(week.get("byProfessional").get(0).get("done").asInt()).isEqualTo(2);
+        assertThat(week.get("previousFrom").asText()).isEqualTo(monday.minusDays(7).toString());
+
+        // por semana e por mês: uma linha por semana/mês do período
+        assertThat(call(salon, get("/api/reports/dashboard?from=" + monday.withDayOfMonth(1) + "&to="
+                + monday.plusMonths(2).withDayOfMonth(1) + "&group=MONTH"), null, status().isOk()).get("series")).hasSize(3);
+        assertThat(call(salon, get(q + "&group=WEEK"), null, status().isOk()).get("series")).hasSize(1);
+
+        // cliente que voltou: a Rita foi atendida na semana seguinte e a Maria já tinha atendimento antes
+        long b = id(call(salon, post("/api/appointments"), Map.of("customerId", maria, "professionalId", ana,
+                "serviceId", service, "startAt", monday.plusDays(7) + "T09:00:00", "force", true), status().isCreated()));
+        long c = id(call(salon, post("/api/appointments"), Map.of("customerId", rita, "professionalId", ana,
+                "serviceId", service, "startAt", monday.plusDays(7) + "T10:00:00", "force", true), status().isCreated()));
+        call(salon, post("/api/appointments/" + b + "/finish"), Map.of(), status().isOk());
+        call(salon, post("/api/appointments/" + c + "/finish"), Map.of(), status().isOk());
+        JsonNode next = call(salon, get("/api/reports/dashboard?from=" + monday.plusDays(7) + "&to=" + monday.plusDays(13)
+                + "&group=DAY"), null, status().isOk()).get("totals");
+        assertThat(next.get("returningCustomers").asInt()).isEqualTo(1);
+        assertThat(next.get("uniqueCustomers").asInt()).isEqualTo(2);
+        assertThat(next.get("done").asInt()).isEqualTo(2);
+
+    }
+
+    @Test
     void salonClockFollowsTheSalonTimezone() throws Exception {
         Tenant salon = register();
         assertThat(call(salon, get("/api/salon"), null, status().isOk()).get("timezone").asText())

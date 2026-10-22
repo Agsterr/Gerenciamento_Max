@@ -18,4 +18,6 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     List<Customer> search(String q, Limit limit);
 
     List<Customer> findAllByOrderByName(Limit limit);
+
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(java.time.LocalDateTime from, java.time.LocalDateTime to);
 }
