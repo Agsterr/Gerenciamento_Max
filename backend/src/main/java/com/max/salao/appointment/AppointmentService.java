@@ -122,6 +122,9 @@ public class AppointmentService {
         a.setEndAt(end);
         applyPrice(a, service, start);
         a.setNotes(cmd.notes());
+        if (cmd.source() == Appointment.Source.ADMIN) {
+            a.accept(LocalDateTime.now(clock)); // marcado pelo próprio salão: já está aceito
+        }
         a.setSource(cmd.source());
         return appointments.save(a);
     }
@@ -210,7 +213,14 @@ public class AppointmentService {
         a.setProfessional(professional);
         a.setStartAt(start);
         a.setEndAt(end);
+        a.requireAcceptanceAgain();
         return a;
+    }
+
+    /** O salão aceita o agendamento feito pelo cliente. */
+    @Transactional
+    public Appointment accept(Long id) {
+        return changeStatus(id, a -> a.accept(LocalDateTime.now(clock)));
     }
 
     private static String blankToNull(String s) {

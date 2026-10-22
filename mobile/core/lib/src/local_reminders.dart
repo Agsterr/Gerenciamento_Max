@@ -112,21 +112,30 @@ class LocalReminders {
   }
 
   /// Aviso imediato (ex.: promoção nova num salão que o cliente usa).
-  Future<void> showNow({required String key, required String title, required String body, String payload = ''}) async {
+  Future<void> showNow({
+    required String key,
+    required String title,
+    required String body,
+    String payload = '',
+    String channelId = 'promocoes',
+    String channelName = 'Promoções',
+    String channelDescription = 'Promoções dos salões que você usa',
+  }) async {
     if (!_ready) return;
     try {
       await _plugin.show(
         id: idFor(key),
         title: title,
         body: body,
-        notificationDetails: const NotificationDetails(
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
-            'promocoes',
-            'Promoções',
-            channelDescription: 'Promoções dos salões que você usa',
-            importance: Importance.defaultImportance,
+            channelId,
+            channelName,
+            channelDescription: channelDescription,
+            importance: Importance.high,
+            priority: Priority.high,
           ),
-          iOS: DarwinNotificationDetails(),
+          iOS: const DarwinNotificationDetails(),
         ),
         payload: payload,
       );

@@ -8,7 +8,9 @@ import '../staff_reminders.dart';
 import 'appointment_sheets.dart';
 import 'finish_sheet.dart';
 import 'new_appointment_sheet.dart';
+import '../background.dart' show markNotified;
 import 'notifications_screen.dart';
+import 'pending_screen.dart';
 import 'subscribe_screen.dart';
 
 class AgendaScreen extends StatefulWidget {
@@ -28,6 +30,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
   int _unread = 0;
   Timer? _poll;
   PlanInfo? _plan;
+
+  /// Agendamentos dos clientes que ainda esperam o aceite do salão (próximos 90 dias).
+  List<Appointment> _pending = const [];
 
   ApiClient get _api => widget.session.api;
 
@@ -52,6 +57,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
       if (inbox.unread > _unread && inbox.items.isNotEmpty && !inbox.items.first.read) {
         final n = inbox.items.first;
         showMessage(context, '${n.title}: ${n.message}');
+        markNotified(n.id); // o app aberto já avisou: o segundo plano não repete
         if (_unread > 0 || _items != null) _load(withUnread: false);
       }
       setState(() => _unread = inbox.unread);
@@ -64,6 +70,26 @@ class _AgendaScreenState extends State<AgendaScreen> {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationsScreen(api: _api)));
     if (mounted) setState(() => _unread = 0);
     _load();
+  }
+
+  Future<void> _loadPending() async {
+    try {
+      final today = dateOnly(DateTime.now());
+      final json = await _api.get('/api/appointments?from=${isoDate(today)}&to=${isoDate(today.add(const Duration(days: 90)))}') as List;
+      final now = DateTime.now();
+      final pending = json
+          .map((e) => Appointment.fromJson(e as Map<String, dynamic>))
+          .where((a) => a.pendingAcceptance && a.endAt.isAfter(now))
+          .toList();
+      if (mounted) setState(() => _pending = pending);
+    } catch (_) {
+      // aviso opcional
+    }
+  }
+
+  Future<void> _openPending() async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => PendingAcceptanceScreen(api: _api, items: _pending)));
+    if (mounted) _load();
   }
 
   Future<void> _loadPlan() async {
@@ -79,6 +105,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     if (withUnread) {
       _loadUnread();
       _loadPlan();
+      _loadPending();
       syncStaffReminders(_api);
     }
     setState(() => _error = null);
@@ -165,7 +192,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   : null,
             ),
           ),
-          if (a.status == AppointmentStatus.scheduled) item(Icons.check, 'Confirmar', 'confirm'),
+          if (a.pendingAcceptance) item(Icons.verified_outlined, 'Aceitar horário', 'accept'),
+          if (a.status == AppointmentStatus.scheduled) item(Icons.check, 'Cliente confirmou presença', 'confirm'),
           if (open) item(Icons.play_arrow, 'Iniciar atendimento', 'start'),
           if (open || a.status == AppointmentStatus.inProgress) item(Icons.done_all, 'Finalizar', 'finish'),
           if (open) item(Icons.event_repeat_rounded, 'Remarcar', 'reschedule'),
@@ -247,6 +275,37 @@ class _AgendaScreenState extends State<AgendaScreen> {
                 ]),
               ]),
             ),
+            if (_pending.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Material(
+                  color: const Color(0xFFFFF4DB),
+                  borderRadius: BorderRadius.circular(18),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: _openPending,
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(children: [
+                        const Icon(Icons.hourglass_top_rounded, color: Color(0xFFB45309)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(
+                              _pending.length == 1
+                                  ? '1 agendamento aguardando sua confirmação'
+                                  : '${_pending.length} agendamentos aguardando sua confirmação',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(color: const Color(0xFF92400E)),
+                            ),
+                            const Text('Toque para aceitar ou recusar.', style: TextStyle(color: Color(0xFFB45309), fontSize: 12)),
+                          ]),
+                        ),
+                        const Icon(Icons.chevron_right_rounded, color: Color(0xFFB45309)),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
             if (_plan != null && _plan!.status != 'ACTIVE') _PlanBanner(
               _plan!,
               onSubscribe: widget.session.user.isOwner && AppConfig.storeBuild && _plan!.billingAvailable
@@ -444,6 +503,11 @@ class _TimelineItem extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(a.professional.name, style: text.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
                     const Spacer(),
+                    if (a.pendingAcceptance)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 6),
+                        child: Pill('pendente', icon: Icons.hourglass_top_rounded, color: Color(0xFFFFF4DB), textColor: Color(0xFFB45309)),
+                      ),
                     if (a.customerConfirmed)
                       const Padding(
                         padding: EdgeInsets.only(right: 6),

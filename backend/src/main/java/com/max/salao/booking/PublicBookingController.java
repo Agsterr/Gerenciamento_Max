@@ -94,13 +94,16 @@ public class PublicBookingController {
     public record BookingResponse(String token, LocalDateTime startAt, LocalDateTime endAt, AppointmentStatus status,
                                   Long serviceId, String serviceName, Long professionalId, String professionalName,
                                   BigDecimal price, String customerName, boolean cancelable,
-                                  boolean confirmable, List<Integer> reminderDays) {
+                                  boolean confirmable, List<Integer> reminderDays,
+                                  // false = o salão ainda não aceitou ("aguardando confirmação do salão")
+                                  boolean salonConfirmed) {
 
         static BookingResponse of(Appointment a, PublicBookingService service, List<Integer> reminderDays) {
             return new BookingResponse(a.getPublicToken(), a.getStartAt(), a.getEndAt(), a.getStatus(),
                     a.getService().getId(), a.getService().getName(),
                     a.getProfessional().getId(), a.getProfessional().getName(), a.getPrice(),
-                    a.getCustomer().getName(), service.canChange(a), service.canConfirm(a), reminderDays);
+                    a.getCustomer().getName(), service.canChange(a), service.canConfirm(a), reminderDays,
+                    a.getSalonConfirmedAt() != null);
         }
     }
 

@@ -236,13 +236,10 @@ class _Ticket extends StatelessWidget {
                 Text(b.professionalName, style: text.titleSmall),
               ]),
             ),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(formatMoney(b.price), style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              StatusChip(b.status),
-            ]),
+            Text(formatMoney(b.price), style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800)),
           ]),
         ),
+        Padding(padding: const EdgeInsets.only(bottom: 14), child: Center(child: BookingStatusChip(b))),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 10),

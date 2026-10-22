@@ -4,7 +4,7 @@ import { Badge, Button } from "@/components/ui";
 import { STATUS_COLOR, STATUS_LABEL, formatMoney, formatPhone, formatTime, shortDateTime, whatsappLink } from "@/lib/format";
 import type { Appointment } from "@/lib/types";
 
-export type AppointmentAction = "confirm" | "start" | "finish" | "cancel" | "no-show" | "reschedule" | "notes";
+export type AppointmentAction = "accept" | "confirm" | "start" | "finish" | "cancel" | "no-show" | "reschedule" | "notes";
 
 export function AppointmentCard({
   appointment: a,
@@ -38,6 +38,7 @@ export function AppointmentCard({
         </div>
         <div className="text-right">
           <Badge className={STATUS_COLOR[a.status]}>{STATUS_LABEL[a.status]}</Badge>
+          {a.pendingAcceptance && <p className="mt-1 text-xs font-bold text-amber-700">⏳ aguardando seu aceite</p>}
           <p className="mt-1 text-sm font-medium">{formatMoney(a.price)}</p>
           {a.customerConfirmedAt && <p className="text-xs font-bold text-emerald-700">✓ cliente confirmou</p>}
           {!a.customerConfirmedAt && a.reminderSentAt && <p className="text-xs text-sky-700">lembrete enviado</p>}
@@ -59,9 +60,14 @@ export function AppointmentCard({
 
       {(open || a.status === "IN_PROGRESS") && (
         <div className="mt-3 flex flex-wrap gap-1.5">
+          {a.pendingAcceptance && (
+            <Button size="sm" onClick={() => onAction("accept")}>
+              Aceitar horário
+            </Button>
+          )}
           {a.status === "SCHEDULED" && (
             <Button size="sm" variant="secondary" onClick={() => onAction("confirm")}>
-              Confirmar
+              Cliente confirmou
             </Button>
           )}
           {open && (

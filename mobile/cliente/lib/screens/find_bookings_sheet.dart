@@ -161,7 +161,7 @@ class _FindBookingsSheetState extends State<_FindBookingsSheet> {
                               style: text.bodySmall?.copyWith(color: Brand.muted)),
                         ]),
                       ),
-                      StatusChip(b.status),
+                      BookingStatusChip(b),
                     ]),
                   ),
                 ),

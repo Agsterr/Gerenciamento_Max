@@ -7,7 +7,7 @@ import { AppPromo } from "@/components/InstallApp";
 import { Icon } from "@/components/Icon";
 import { Badge, ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";
-import { STATUS_COLOR, STATUS_LABEL, formatMoney, isoDate, shortDateTime } from "@/lib/format";
+import { STATUS_COLOR, customerStatusLabel, formatMoney, isoDate, shortDateTime } from "@/lib/format";
 import type { Booking } from "@/lib/types";
 
 const REMEMBER_KEY = "salao.meus-horarios";
@@ -118,7 +118,7 @@ function List({ title, items, slug }: { title: string; items: Booking[]; slug: s
               <span className="block text-xs text-brand-muted">com {b.professionalName} · {formatMoney(b.price)}</span>
             </span>
             <span className="flex flex-col items-end gap-1">
-              <Badge className={STATUS_COLOR[b.status]}>{STATUS_LABEL[b.status]}</Badge>
+              <Badge className={STATUS_COLOR[b.status]}>{customerStatusLabel(b.status, b.salonConfirmed)}</Badge>
               {b.cancelable && <span className="text-xs font-bold text-brand-rose">Remarcar ›</span>}
             </span>
           </Link>

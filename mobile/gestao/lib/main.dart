@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:salao_core/salao_core.dart';
 
+import 'background.dart';
 import 'session.dart';
 import 'screens/blocked_screen.dart';
 import 'screens/login_screen.dart';
@@ -14,6 +15,7 @@ Future<void> main() async {
   await LocalReminders.instance.init();
   final session = Session();
   session.restore();
+  scheduleBackgroundChecks();
   runApp(GestaoApp(session: session, updates: AppUpdateService(app: 'gestao')));
 }
 

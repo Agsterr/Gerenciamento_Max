@@ -4,12 +4,14 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:salao_core/salao_core.dart';
 import 'package:workmanager/workmanager.dart';
 
+import 'booking_alerts.dart';
 import 'booking_store.dart';
 import 'promo_alerts.dart';
 
 const _promoTask = 'verificar-promocoes';
 
-/// Roda em segundo plano (app fechado): confere as promoções dos salões que a pessoa usa e avisa as novas.
+/// Roda em segundo plano (app fechado): confere as promoções dos salões que a pessoa usa e se o salão
+/// confirmou, cancelou ou mudou algum horário dela, e avisa.
 @pragma('vm:entry-point')
 void backgroundDispatcher() {
   Workmanager().executeTask((task, _) async {
@@ -19,7 +21,9 @@ void backgroundDispatcher() {
       await initializeDateFormatting('pt_BR');
       await LocalReminders.instance.init();
       final store = await BookingStore.load();
-      if (store.salons.isNotEmpty) await checkPromotions(ApiClient(), store, askPermission: false);
+      final api = ApiClient();
+      if (store.salons.isNotEmpty) await checkPromotions(api, store, askPermission: false);
+      if (store.bookings.isNotEmpty) await checkBookingChanges(api, store);
     } catch (e) {
       debugPrint('Verificação de promoções falhou: $e');
     }
@@ -35,9 +39,9 @@ Future<void> scheduleBackgroundChecks() async {
     await Workmanager().registerPeriodicTask(
       _promoTask,
       _promoTask,
-      frequency: const Duration(hours: 2),
+      frequency: const Duration(minutes: 30),
       constraints: Constraints(networkType: NetworkType.connected),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+      existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
     );
   } catch (e) {
     debugPrint('Não foi possível agendar a verificação de promoções: $e');

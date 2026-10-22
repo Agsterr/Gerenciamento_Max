@@ -757,6 +757,49 @@ class SalonFlowIntegrationTest {
     }
 
     @Test
+    void onlineBookingWaitsForTheSalonToAcceptWhileSalonBookingsAreAcceptedAtOnce() throws Exception {
+        Tenant salon = register();
+        long ana = id(call(salon, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                status().isCreated()));
+        long cut = id(call(salon, post("/api/services"), Map.of("name", "Corte", "durationMinutes", 30, "price", 50,
+                "cost", 0, "active", true), status().isCreated()));
+        long maria = id(call(salon, post("/api/customers"), Map.of("name", "Maria", "phone", "11911112222"), status().isCreated()));
+        String base = "/api/public/salons/" + salon.slug;
+
+        JsonNode online = call(null, post(base + "/bookings"), Map.of("serviceId", cut, "startAt", day + "T10:00:00",
+                "name", "Joana", "phone", "(11) 98888-7777"), status().isCreated());
+        String token = online.get("token").asText();
+        assertThat(online.get("salonConfirmed").asBoolean()).isFalse(); // aguardando confirmação do salão
+
+        // marcado pelo próprio salão: já nasce aceito
+        long byStaff = id(call(salon, post("/api/appointments"), Map.of("customerId", maria, "professionalId", ana,
+                "serviceId", cut, "startAt", day + "T11:00:00"), status().isCreated()));
+
+        JsonNode list = call(salon, get("/api/appointments?from=" + day), null, status().isOk());
+        long pendingId = 0;
+        for (JsonNode a : list) {
+            if (a.get("id").asLong() == byStaff) {
+                assertThat(a.get("pendingAcceptance").asBoolean()).isFalse();
+            } else {
+                assertThat(a.get("pendingAcceptance").asBoolean()).isTrue();
+                pendingId = a.get("id").asLong();
+            }
+        }
+
+        // o salão aceita: o cliente passa a ver "confirmado pelo salão", sem perder o botão de confirmar presença
+        JsonNode accepted = call(salon, post("/api/appointments/" + pendingId + "/accept"), Map.of(), status().isOk());
+        assertThat(accepted.get("pendingAcceptance").asBoolean()).isFalse();
+        JsonNode seen = call(null, get(base + "/bookings/" + token), null, status().isOk());
+        assertThat(seen.get("salonConfirmed").asBoolean()).isTrue();
+        assertThat(seen.get("confirmable").asBoolean()).isTrue();
+
+        // cliente remarcou: precisa ser aceito de novo
+        JsonNode moved = call(null, post(base + "/bookings/" + token + "/reschedule"),
+                Map.of("startAt", day + "T15:00:00"), status().isOk());
+        assertThat(moved.get("salonConfirmed").asBoolean()).isFalse();
+    }
+
+    @Test
     void salonClockFollowsTheSalonTimezone() throws Exception {
         Tenant salon = register();
         assertThat(call(salon, get("/api/salon"), null, status().isOk()).get("timezone").asText())

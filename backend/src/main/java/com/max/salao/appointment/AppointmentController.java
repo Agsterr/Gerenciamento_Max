@@ -85,6 +85,12 @@ public class AppointmentController {
         return AppointmentResponse.from(service.updateServiceNotes(id, req.serviceNotes()));
     }
 
+    /** O salão aceita o agendamento feito pelo cliente (ele deixa de estar "aguardando confirmação"). */
+    @PostMapping("/appointments/{id}/accept")
+    public AppointmentResponse accept(@PathVariable Long id) {
+        return AppointmentResponse.from(service.accept(id));
+    }
+
     @PostMapping("/appointments/{id}/confirm")
     public AppointmentResponse confirm(@PathVariable Long id) {
         return AppointmentResponse.from(service.changeStatus(id, Appointment::confirm));

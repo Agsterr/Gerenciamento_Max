@@ -258,8 +258,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     style: text.bodySmall?.copyWith(color: Brand.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 4, children: [
-                  StatusChip(b.status),
-                  if (_changed(s)) const Pill('Alterado pelo salão', icon: Icons.notifications_active_rounded, color: Color(0xFFFFE4EC), textColor: Brand.rose),
+                  BookingStatusChip(b),
+                  if (_changed(s))
+                    Pill(
+                      b.status == AppointmentStatus.canceled
+                          ? 'Salão cancelou'
+                          : b.salonConfirmed && !(s.seen ?? '').endsWith('|true')
+                              ? 'Salão confirmou'
+                              : 'Alterado pelo salão',
+                      icon: Icons.notifications_active_rounded,
+                      color: const Color(0xFFFFE4EC),
+                      textColor: Brand.rose,
+                    ),
                 ]),
               ]),
             ),

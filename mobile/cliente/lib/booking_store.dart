@@ -45,6 +45,7 @@ class BookingStore extends ChangeNotifier {
   static const _askedNotificationsKey = 'notifications.asked';
   static const _seenPromosKey = 'promotions.seen';
   static const _promoOffKey = 'promotions.off';
+  static const _notifiedKey = 'bookings.notified';
   static const _pushTokenKey = 'push.token';
   static const _pushRegisteredKey = 'push.registeredAt';
   static const _promoAllOffKey = 'promotions.allOff';
@@ -136,6 +137,14 @@ class BookingStore extends ChangeNotifier {
   }
 
   Future<void> markPushRegistered() => _prefs.setInt(_pushRegisteredKey, DateTime.now().millisecondsSinceEpoch);
+
+  /// Última situação de cada agendamento sobre a qual o cliente já foi avisado (token -> assinatura).
+  Map<String, String> get notifiedSignatures {
+    final raw = _prefs.getString(_notifiedKey);
+    return raw == null ? {} : (jsonDecode(raw) as Map<String, dynamic>).cast<String, String>();
+  }
+
+  Future<void> setNotifiedSignatures(Map<String, String> value) => _prefs.setString(_notifiedKey, jsonEncode(value));
 
   /// Promoções já avisadas ("slug:id"), para não repetir o alerta.
   Set<String> get seenPromotions => (_prefs.getStringList(_seenPromosKey) ?? const <String>[]).toSet();

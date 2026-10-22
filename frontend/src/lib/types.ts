@@ -206,6 +206,8 @@ export type Appointment = {
   rework: boolean;
   discountAmount: number;
   promotionName: string | null;
+  /** Agendamento do cliente que o salão ainda não aceitou. */
+  pendingAcceptance: boolean;
 };
 
 export type Slot = { time: string; professionalIds: number[] };
@@ -357,6 +359,8 @@ export type Booking = {
   cancelable: boolean;
   /** Falta o cliente confirmar presença (botão "Confirmar presença"). */
   confirmable: boolean;
+  /** false = o salão ainda não aceitou ("aguardando confirmação do salão"). */
+  salonConfirmed: boolean;
   reminderDays: number[];
 };
 

@@ -65,7 +65,9 @@ public final class AppointmentDtos {
             LocalDateTime customerConfirmedAt,
             boolean rework,
             BigDecimal discountAmount,
-            String promotionName) {
+            String promotionName,
+            boolean pendingAcceptance,
+            LocalDateTime salonConfirmedAt) {
 
         public static AppointmentResponse from(Appointment a) {
             return new AppointmentResponse(a.getId(), a.getStartAt(), a.getEndAt(), a.getStatus(),
@@ -75,7 +77,8 @@ public final class AppointmentDtos {
                     a.plannedMinutes(), a.realMinutes(), a.getPrice(), a.getCommissionAmount(),
                     a.getStartedAt(), a.getFinishedAt(), a.getNotes(), a.getServiceNotes(), a.getSource(),
                     a.getReminderSentAt(), a.getCustomerConfirmedAt(), a.isRework(), a.getDiscountAmount(),
-                    a.getPromotion() == null ? null : a.getPromotion().getName());
+                    a.getPromotion() == null ? null : a.getPromotion().getName(),
+                    a.isPendingAcceptance(), a.getSalonConfirmedAt());
         }
     }
 }

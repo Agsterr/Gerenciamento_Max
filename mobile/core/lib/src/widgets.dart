@@ -457,6 +457,23 @@ class StatusChip extends StatelessWidget {
   }
 }
 
+/// Situação do agendamento para o cliente: "Aguardando confirmação do salão" (amarelo),
+/// "Confirmado pelo salão" (verde) ou o estado final (cancelado, finalizado...).
+class BookingStatusChip extends StatelessWidget {
+  const BookingStatusChip(this.booking, {super.key});
+
+  final Booking booking;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = booking;
+    if (!b.status.isOpen) return StatusChip(b.status);
+    return b.salonConfirmed
+        ? Pill(b.customerStatusLabel, icon: Icons.verified_outlined, color: const Color(0xFFDCFCE7), textColor: const Color(0xFF15803D))
+        : Pill(b.customerStatusLabel, icon: Icons.hourglass_top_rounded, color: const Color(0xFFFFF4DB), textColor: const Color(0xFFB45309));
+  }
+}
+
 /// Estado padrão de erro com botão de tentar novamente.
 class ErrorRetry extends StatelessWidget {
   const ErrorRetry({super.key, required this.message, required this.onRetry});

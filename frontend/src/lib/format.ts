@@ -53,6 +53,12 @@ export const formatPhone = (phone: string) => {
   return phone;
 };
 
+/** Situação como o cliente entende: aguardando o salão, confirmado pelo salão, cancelado... */
+export function customerStatusLabel(status: string, salonConfirmed: boolean): string {
+  if (status === "SCHEDULED" || status === "CONFIRMED") return salonConfirmed ? "Confirmado pelo salão" : "Aguardando confirmação do salão";
+  return STATUS_LABEL[status] ?? status;
+}
+
 export const STATUS_LABEL: Record<string, string> = {
   SCHEDULED: "Agendado",
   CONFIRMED: "Confirmado",

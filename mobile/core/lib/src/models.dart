@@ -243,6 +243,7 @@ class Booking {
     required this.cancelable,
     this.confirmable = false,
     this.reminderDays = const [],
+    this.salonConfirmed = true,
   });
 
   factory Booking.fromJson(Map<String, dynamic> j) => Booking(
@@ -259,7 +260,21 @@ class Booking {
         cancelable: j['cancelable'] as bool,
         confirmable: j['confirmable'] as bool? ?? false,
         reminderDays: _ints(j['reminderDays']),
+        salonConfirmed: j['salonConfirmed'] as bool? ?? true,
       );
+
+  /// false = o salão ainda não aceitou o horário ("aguardando confirmação do salão").
+  final bool salonConfirmed;
+
+  /// Horário marcado que ainda espera o aceite do salão.
+  bool get waitingForSalon => status.isOpen && !salonConfirmed;
+
+  /// Situação como o cliente entende: aguardando o salão, confirmado pelo salão, cancelado...
+  String get customerStatusLabel => !status.isOpen
+      ? status.label
+      : salonConfirmed
+          ? 'Confirmado pelo salão'
+          : 'Aguardando confirmação do salão';
 
   final String token;
   final DateTime startAt;
@@ -282,7 +297,7 @@ class Booking {
   final List<int> reminderDays;
 
   /// Assinatura do que importa para o cliente: muda se o salão remarcar, trocar o profissional ou cancelar.
-  String get signature => '${startAt.toIso8601String()}|$professionalId|${status.name}';
+  String get signature => '${startAt.toIso8601String()}|$professionalId|${status.name}|$salonConfirmed';
 }
 
 // ---------- Painel (app do salão) ----------
@@ -604,6 +619,7 @@ class Appointment {
     this.serviceNotes,
     required this.online,
     this.customerConfirmed = false,
+    this.pendingAcceptance = false,
     this.reminderSent = false,
   });
 
@@ -623,6 +639,7 @@ class Appointment {
         serviceNotes: j['serviceNotes'] as String?,
         online: j['source'] == 'ONLINE',
         customerConfirmed: j['customerConfirmedAt'] != null,
+        pendingAcceptance: j['pendingAcceptance'] as bool? ?? false,
         reminderSent: j['reminderSentAt'] != null,
       );
 
@@ -644,6 +661,9 @@ class Appointment {
   final bool online;
 
   /// O próprio cliente confirmou pelo lembrete (link ou app).
+  /// Agendamento do cliente que o salão ainda não aceitou.
+  final bool pendingAcceptance;
+
   final bool customerConfirmed;
 
   /// O salão mandou o lembrete pelo WhatsApp.

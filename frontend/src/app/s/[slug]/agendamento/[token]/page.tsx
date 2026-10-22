@@ -7,7 +7,7 @@ import { AppPromo } from "@/components/InstallApp";
 import { RescheduleBooking } from "@/components/booking/RescheduleBooking";
 import { Badge, Button, Card, ErrorMessage } from "@/components/ui";
 import { api } from "@/lib/api";
-import { STATUS_COLOR, STATUS_LABEL, formatMoney, formatTime, weekdayLabel } from "@/lib/format";
+import { STATUS_COLOR, customerStatusLabel, formatMoney, formatTime, weekdayLabel } from "@/lib/format";
 import type { Booking } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
@@ -59,7 +59,7 @@ export default function BookingPage() {
           <p className="text-2xl font-semibold">{formatTime(b.startAt)}</p>
           <p className="text-sm">com {b.professionalName}</p>
           <p className="text-sm">{formatMoney(b.price)}</p>
-          <Badge className={STATUS_COLOR[b.status]}>{STATUS_LABEL[b.status]}</Badge>
+          <Badge className={STATUS_COLOR[b.status]}>{customerStatusLabel(b.status, b.salonConfirmed)}</Badge>
         </div>
         {rescheduling ? (
           <RescheduleBooking

@@ -105,6 +105,28 @@ public class Appointment extends TenantEntity {
     @Setter(AccessLevel.NONE)
     private LocalDateTime customerConfirmedAt;
 
+    /** Quando o salão aceitou o agendamento (nulo = ainda aguardando a confirmação do salão). */
+    @Setter(AccessLevel.NONE)
+    private LocalDateTime salonConfirmedAt;
+
+    /** Agendamento do cliente que o salão ainda não aceitou. */
+    public boolean isPendingAcceptance() {
+        return status.isOpen() && salonConfirmedAt == null;
+    }
+
+    /** O salão aceita o horário (agendamentos do próprio salão já nascem aceitos). */
+    public void accept(LocalDateTime now) {
+        requireOpen();
+        if (salonConfirmedAt == null) {
+            salonConfirmedAt = now;
+        }
+    }
+
+    /** Horário mudou por iniciativa do cliente: o salão precisa aceitar de novo. */
+    public void requireAcceptanceAgain() {
+        salonConfirmedAt = null;
+    }
+
     public void confirm() {
         requireOpen();
         status = AppointmentStatus.CONFIRMED;
