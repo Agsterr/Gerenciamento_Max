@@ -9,5 +9,12 @@ public interface PushDeviceRepository extends JpaRepository<PushDevice, Long> {
 
     Optional<PushDevice> findByToken(String token);
 
-    List<PushDevice> findByPromoNotificationsTrue();
+    /** Celulares do app do cliente que aceitam promoções. */
+    List<PushDevice> findByAppAndPromoNotificationsTrue(String app);
+
+    List<PushDevice> findByApp(String app);
+
+    List<PushDevice> findByAppAndCustomerId(String app, Long customerId);
+
+    void deleteByUserId(Long userId);
 }

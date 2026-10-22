@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:salao_core/salao_core.dart';
 
 import 'booking_store.dart';
+import 'confirm_reminders.dart';
 import 'promo_alerts.dart';
 
 /// Push pelo Firebase (chega na hora, com o app fechado). A configuração vem do build
@@ -58,6 +59,7 @@ class Push {
   }
 
   static Future<void> _showForeground(RemoteMessage m, BookingStore store) async {
+    ackPush(m.data['messageId'], store.pushToken);
     final key = _key(m);
     if (key != null) {
       if (store.seenPromotions.contains(key)) return;
@@ -75,13 +77,18 @@ class Push {
 
   /// Toque na notificação: abre o salão com o serviço da promoção (mesmo caminho do aviso local).
   static void _open(RemoteMessage m) {
+    // tocou na notificação: confirma o recebimento (o Android já a mostrou sozinho com o app fechado)
+    BookingStore.load().then((store) => ackPush(m.data['messageId'], store.pushToken));
     final payload = _payload(m);
     if (payload != null) LocalReminders.instance.tapped.value = payload;
   }
 
   static String? _payload(RemoteMessage m) {
     final slug = m.data['slug'];
-    if (m.data['type'] != 'promo' || slug == null) return null;
+    if (slug == null) return null;
+    // horário que o salão aceitou, cancelou ou mudou: abre o agendamento
+    if (m.data['type'] == 'booking' && m.data['token'] != null) return '$confirmGroup|$slug/${m.data['token']}';
+    if (m.data['type'] != 'promo') return null;
     return '$promoGroup|$slug/${m.data['serviceId'] ?? ''}';
   }
 
@@ -95,8 +102,8 @@ class Push {
 /// para a verificação em segundo plano não repetir.
 @pragma('vm:entry-point')
 Future<void> _onBackground(RemoteMessage m) async {
-  final key = Push._key(m);
-  if (key == null) return;
   final store = await BookingStore.load();
-  await store.markPromotionsSeen([key]);
+  await ackPush(m.data['messageId'], store.pushToken);
+  final key = Push._key(m);
+  if (key != null) await store.markPromotionsSeen([key]);
 }

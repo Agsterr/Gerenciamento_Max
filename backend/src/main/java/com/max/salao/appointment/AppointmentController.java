@@ -108,7 +108,7 @@ public class AppointmentController {
 
     @PostMapping("/appointments/{id}/cancel")
     public AppointmentResponse cancel(@PathVariable Long id) {
-        return AppointmentResponse.from(service.changeStatus(id, Appointment::cancel));
+        return AppointmentResponse.from(service.cancelByStaff(id));
     }
 
     @PostMapping("/appointments/{id}/no-show")

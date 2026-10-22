@@ -23,20 +23,19 @@ public class PromotionPushService {
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM");
 
     private final PromotionRepository promotions;
-    private final PushDeviceRepository devices;
+    private final PushNotifier notifier;
+    private final PushProperties props;
     private final ServiceItemRepository services;
     private final SalonService salons;
-    private final PushSender sender;
     private final java.time.Clock clock;
 
-    public PromotionPushService(PromotionRepository promotions, PushDeviceRepository devices,
-                                ServiceItemRepository services, SalonService salons, PushSender sender,
-                                java.time.Clock clock) {
+    public PromotionPushService(PromotionRepository promotions, PushNotifier notifier, PushProperties props,
+                                ServiceItemRepository services, SalonService salons, java.time.Clock clock) {
         this.promotions = promotions;
-        this.devices = devices;
+        this.notifier = notifier;
+        this.props = props;
         this.services = services;
         this.salons = salons;
-        this.sender = sender;
         this.clock = clock;
     }
 
@@ -50,10 +49,12 @@ public class PromotionPushService {
         if (due.isEmpty()) {
             return 0;
         }
+        if (!props.configured()) {
+            return 0;
+        }
         Salon salon = salons.current();
-        List<PushDevice> targets = devices.findByPromoNotificationsTrue();
         List<ServiceItem> all = services.findByActiveTrueOrderByName();
-        int sent = 0;
+        int queued = 0;
         for (Promotion p : due) {
             List<ServiceItem> covered = all.stream().filter(p::covers).toList();
             String title = "Promoção no " + salon.getName();
@@ -63,20 +64,11 @@ public class PromotionPushService {
                     "slug", salon.getSlug(),
                     "promotionId", String.valueOf(p.getId()),
                     "serviceId", p.getServiceIds().isEmpty() ? "" : String.valueOf(p.getServiceIds().iterator().next()));
-            for (PushDevice d : targets) {
-                PushSender.Result r = sender.send(d.getToken(), title, body, data);
-                if (r == PushSender.Result.DISABLED) {
-                    return sent; // sem Firebase configurado: tenta de novo quando configurar
-                }
-                if (r == PushSender.Result.INVALID_TOKEN) {
-                    devices.delete(d);
-                } else if (r == PushSender.Result.SENT) {
-                    sent++;
-                }
-            }
+            // vai para a fila: o enviador entrega, tenta de novo se falhar e registra a confirmação
+            queued += notifier.promotion("promo:" + p.getId(), title, body, data);
             p.setNotifiedAt(LocalDateTime.now(clock));
         }
-        return sent;
+        return queued;
     }
 
     /** "Corte de R$ 100,00 por R$ 80,00 e mais 2 · até 30/11". */

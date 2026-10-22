@@ -149,3 +149,14 @@ class ApiClient {
     };
   }
 }
+
+/// Confirma ao servidor que o aviso (push) chegou ao celular. Não precisa de login: vale com o código
+/// do aviso e o do celular que o próprio servidor mandou. Falha em silêncio (o servidor só registra).
+Future<void> ackPush(String? messageId, String? deviceToken, {ApiClient? api}) async {
+  if (messageId == null || messageId.isEmpty || deviceToken == null || deviceToken.isEmpty) return;
+  try {
+    await (api ?? ApiClient()).post('/api/push/ack', {'id': messageId, 'token': deviceToken});
+  } catch (_) {
+    // sem rede agora: o aviso já foi entregue; a confirmação é só um registro
+  }
+}

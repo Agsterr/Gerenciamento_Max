@@ -4,6 +4,7 @@ import 'package:salao_core/salao_core.dart';
 
 import '../dashboard_period.dart';
 import '../report_pdf.dart';
+import '../push.dart';
 import '../session.dart';
 import '../staff_reminders.dart';
 import 'agenda_screen.dart';
@@ -30,6 +31,8 @@ class _ShellState extends State<Shell> {
     super.initState();
     // lembretes de atendimento do usuário agendados no celular (atualiza a cada abertura)
     syncStaffReminders(widget.session.api);
+    // avisos na hora pelo servidor (Firebase), quando o build tem a configuração
+    Push.start(widget.session);
   }
 
   @override

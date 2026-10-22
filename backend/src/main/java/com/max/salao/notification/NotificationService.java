@@ -31,8 +31,10 @@ public class NotificationService {
 
     private final NotificationRepository repository;
     private final Clock clock;
+    private final com.max.salao.push.PushNotifier push;
 
-    public NotificationService(NotificationRepository repository, Clock clock) {
+    public NotificationService(NotificationRepository repository, Clock clock, com.max.salao.push.PushNotifier push) {
+        this.push = push;
         this.repository = repository;
         this.clock = clock;
     }
@@ -54,6 +56,8 @@ public class NotificationService {
         n.setMessage(describe(a));
         n.setCreatedAt(LocalDateTime.now(clock));
         repository.save(n);
+        // além do sino: notificação no celular da equipe (fila com tentativas e confirmação)
+        push.toStaff(a, type.name().toLowerCase() + ":" + a.getStartAt(), title, describe(a));
     }
 
     /**

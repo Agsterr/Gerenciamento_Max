@@ -30,7 +30,10 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * Fluxo ponta a ponta contra um PostgreSQL real (padrão: localhost:5432/salao_test,
  * configurável via TEST_DB_URL / DB_USER / DB_PASSWORD).
  */
-@SpringBootTest(properties = "spring.datasource.url=${TEST_DB_URL:jdbc:postgresql://localhost:5432/salao_test}")
+@SpringBootTest(properties = {
+        "spring.datasource.url=${TEST_DB_URL:jdbc:postgresql://localhost:5432/salao_test}",
+        // Firebase "ligado" com envio simulado; o enviador agendado não roda sozinho nos testes
+        "app.push.service-account-json={\"project_id\":\"teste\"}", "app.push.worker-ms=3600000"})
 @AutoConfigureMockMvc
 class SalonFlowIntegrationTest {
 
@@ -48,6 +51,9 @@ class SalonFlowIntegrationTest {
 
     @Autowired
     com.max.salao.push.PromotionPushService pushService;
+
+    @Autowired
+    com.max.salao.push.PushOutboxWorker pushWorker;
 
     /** Uma terça-feira futura (dia de funcionamento padrão). */
     private final LocalDate day = LocalDate.now().plusDays(7).with(TemporalAdjusters.next(DayOfWeek.TUESDAY));
@@ -678,7 +684,8 @@ class SalonFlowIntegrationTest {
         Long tenant = jdbc.queryForObject("select id from salon where slug = ?", Long.class, salon.slug);
         try {
             com.max.salao.shared.TenantContext.set(tenant);
-            assertThat(pushService.sendDue()).isEqualTo(1);
+            assertThat(pushService.sendDue()).isEqualTo(1); // entrou na fila para 1 celular
+            pushWorker.drain();
             assertThat(pushService.sendDue()).isEqualTo(0); // não repete
         } finally {
             com.max.salao.shared.TenantContext.clear();
@@ -797,6 +804,95 @@ class SalonFlowIntegrationTest {
         JsonNode moved = call(null, post(base + "/bookings/" + token + "/reschedule"),
                 Map.of("startAt", day + "T15:00:00"), status().isOk());
         assertThat(moved.get("salonConfirmed").asBoolean()).isFalse();
+    }
+
+    @Test
+    void eventsGoToTheQueueAndAreDeliveredWithRetryAndAcknowledgement() throws Exception {
+        Tenant owner = register();
+        long ana = id(call(owner, post("/api/professionals"), Map.of("name", "Ana", "commissionPercent", 0, "active", true),
+                status().isCreated()));
+        long bia = id(call(owner, post("/api/professionals"), Map.of("name", "Bia", "commissionPercent", 0, "active", true),
+                status().isCreated()));
+        long cut = id(call(owner, post("/api/services"), Map.of("name", "Corte", "durationMinutes", 30, "price", 50,
+                "cost", 0, "active", true), status().isCreated()));
+        // funcionária que acompanha só a Bia
+        String email = "bia-" + UUID.randomUUID() + "@teste.com";
+        call(owner, post("/api/users"), Map.of("name", "Bia", "email", email, "password", "123456", "role", "STAFF"),
+                status().isCreated());
+        Tenant biaUser = new Tenant(owner.slug, call(null, post("/api/auth/login"),
+                Map.of("email", email, "password", "123456"), status().isOk()).get("token").asText());
+        call(biaUser, put("/api/me/reminders"), Map.of("professionalId", bia, "rules", List.of()), status().isOk());
+        call(owner, post("/api/me/push-token"), Map.of("token", "cel-dono"), status().isNoContent());
+        String biaDevice = "cel-bia-" + UUID.randomUUID();
+        call(biaUser, post("/api/me/push-token"), Map.of("token", biaDevice), status().isNoContent());
+
+        var delivered = new java.util.ArrayList<String>();
+        var messageIds = new java.util.HashMap<String, String>();
+        var failNext = new java.util.concurrent.atomic.AtomicBoolean(false);
+        org.mockito.Mockito.when(push.send(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyMap())).thenAnswer(inv -> {
+            if (failNext.getAndSet(false)) {
+                return com.max.salao.push.PushSender.Result.FAILED;
+            }
+            delivered.add(inv.getArgument(0) + " | " + inv.getArgument(1));
+            messageIds.put(inv.getArgument(0), (String) ((Map<?, ?>) inv.getArgument(3)).get("messageId"));
+            return com.max.salao.push.PushSender.Result.SENT;
+        });
+
+        // o cliente agenda com a Ana: só o dono é avisado (a Bia acompanha outra agenda)
+        String base = "/api/public/salons/" + owner.slug;
+        JsonNode booked = call(null, post(base + "/bookings"), Map.of("serviceId", cut, "professionalId", ana,
+                "startAt", day + "T10:00:00", "name", "Joana", "phone", "(11) 98888-7777"), status().isCreated());
+        pushWorker.drain();
+        assertThat(delivered).singleElement().asString().startsWith("cel-dono | Novo agendamento online");
+
+        // o celular confirma o recebimento (com o código do aviso e o do celular)
+        String id = messageIds.get("cel-dono");
+        call(null, post("/api/push/ack"), Map.of("id", "outro-codigo", "token", "cel-dono"), status().isNoContent());
+        call(null, post("/api/push/ack"), Map.of("id", id, "token", "cel-errado"), status().isNoContent());
+        assertThat(jdbc.queryForObject("select status from push_outbox where public_id = ?", String.class, id)).isEqualTo("SENT");
+        call(null, post("/api/push/ack"), Map.of("id", id, "token", "cel-dono"), status().isNoContent());
+        assertThat(jdbc.queryForObject("select status from push_outbox where public_id = ?", String.class, id)).isEqualTo("RECEIVED");
+
+        // cliente cancela com folga: dono avisado de novo; a falha de envio vai para nova tentativa
+        delivered.clear();
+        failNext.set(true);
+        call(null, post(base + "/bookings/" + booked.get("token").asText() + "/cancel"), Map.of(), status().isOk());
+        pushWorker.drain();
+        assertThat(delivered).isEmpty();
+        assertThat(jdbc.queryForObject("select attempts from push_outbox where status = 'PENDING' and device_token = 'cel-dono'",
+                Integer.class)).isEqualTo(1);
+        jdbc.update("update push_outbox set next_attempt_at = now() - interval '1 second' where status = 'PENDING'");
+        pushWorker.drain();
+        assertThat(delivered).singleElement().asString().contains("Agendamento cancelado pelo cliente");
+
+        // celular desligado/removido pelo Firebase: o aviso é descartado e o celular sai da lista
+        org.mockito.Mockito.when(push.send(org.mockito.ArgumentMatchers.eq("cel-dono"), org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyMap()))
+                .thenReturn(com.max.salao.push.PushSender.Result.INVALID_TOKEN);
+        call(null, post(base + "/bookings"), Map.of("serviceId", cut, "professionalId", ana,
+                "startAt", day + "T11:00:00", "name", "Joana", "phone", "(11) 98888-7777"), status().isCreated());
+        pushWorker.drain();
+        assertThat(jdbc.queryForObject("select count(*) from push_device where token = 'cel-dono'", Integer.class)).isZero();
+
+        // o salão aceita o horário de um cliente com o app instalado: o cliente recebe o aviso
+        JsonNode second = call(null, post(base + "/bookings"), Map.of("serviceId", cut, "professionalId", bia,
+                "startAt", day + "T12:00:00", "name", "Rita", "phone", "(11) 97777-6666"), status().isCreated());
+        call(null, post(base + "/presence"), Map.of("token", second.get("token").asText(), "pushToken", "cel-rita"),
+                status().isNoContent());
+        delivered.clear();
+        long pending = 0;
+        for (JsonNode a : call(owner, get("/api/appointments?from=" + day), null, status().isOk())) {
+            if (a.get("customer").get("name").asText().equals("Rita")) {
+                pending = a.get("id").asLong();
+            }
+        }
+        call(owner, post("/api/appointments/" + pending + "/accept"), Map.of(), status().isOk());
+        pushWorker.drain();
+        assertThat(delivered).anyMatch(d -> d.startsWith("cel-rita | O salão confirmou o seu horário"));
+        // a Bia (acompanha essa agenda) foi avisada do agendamento da Rita
+        assertThat(jdbc.queryForObject("select count(*) from push_outbox where device_token = ?", Integer.class, biaDevice))
+                .isEqualTo(1);
     }
 
     @Test

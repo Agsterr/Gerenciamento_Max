@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:salao_core/salao_core.dart';
 import 'package:workmanager/workmanager.dart';
 
+import 'push.dart';
 import 'session.dart';
 
 const _task = 'avisos-do-salao';
@@ -74,7 +75,8 @@ Future<void> scheduleBackgroundChecks() async {
     await Workmanager().registerPeriodicTask(
       _task,
       _task,
-      frequency: const Duration(minutes: 15),
+      // com push ligado o servidor avisa na hora; a consulta fica só como reserva
+      frequency: Push.configured ? const Duration(hours: 1) : const Duration(minutes: 15),
       constraints: Constraints(networkType: NetworkType.connected),
       existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
     );

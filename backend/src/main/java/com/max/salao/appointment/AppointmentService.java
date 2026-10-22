@@ -13,6 +13,7 @@ import com.max.salao.catalog.ServiceItemRepository;
 import com.max.salao.customer.Customer;
 import com.max.salao.customer.CustomerRepository;
 import com.max.salao.product.ProductService;
+import com.max.salao.push.PushNotifier;
 import com.max.salao.promotion.PromotionService;
 import com.max.salao.product.StockMovement;
 import com.max.salao.professional.Professional;
@@ -48,12 +49,14 @@ public class AppointmentService {
     private final SalonService salonService;
     private final Clock clock;
     private final PromotionService promotions;
+    private final PushNotifier push;
 
     public AppointmentService(AppointmentRepository appointments, ProfessionalRepository professionals,
                               ServiceItemRepository services, CustomerRepository customers,
                               AvailabilityService availability, ProductService productService,
-                              SalonService salonService, Clock clock, PromotionService promotions) {
+                              SalonService salonService, Clock clock, PromotionService promotions, PushNotifier push) {
         this.promotions = promotions;
+        this.push = push;
         this.appointments = appointments;
         this.professionals = professionals;
         this.services = services;
@@ -154,6 +157,8 @@ public class AppointmentService {
         a.setEndAt(end);
         applyPrice(a, service, start);
         a.setNotes(req.notes());
+        push.toCustomer(a, "moved:" + a.getStartAt() + ":" + a.getProfessional().getId(), "O salão alterou o seu horário",
+                customerLine(a));
         return a;
     }
 
@@ -220,7 +225,24 @@ public class AppointmentService {
     /** O salão aceita o agendamento feito pelo cliente. */
     @Transactional
     public Appointment accept(Long id) {
-        return changeStatus(id, a -> a.accept(LocalDateTime.now(clock)));
+        Appointment a = changeStatus(id, x -> x.accept(LocalDateTime.now(clock)));
+        push.toCustomer(a, "accepted:" + a.getStartAt(), "O salão confirmou o seu horário", customerLine(a));
+        return a;
+    }
+
+    /** O salão cancela o horário: o cliente é avisado no celular. */
+    @Transactional
+    public Appointment cancelByStaff(Long id) {
+        Appointment a = changeStatus(id, Appointment::cancel);
+        push.toCustomer(a, "canceled", "O salão cancelou o seu horário", customerLine(a));
+        return a;
+    }
+
+    /** "Corte · seg 02/01 às 10:00 com Ana". */
+    private static String customerLine(Appointment a) {
+        return "%s · %s com %s".formatted(a.getService().getName(),
+                java.time.format.DateTimeFormatter.ofPattern("EEE dd/MM 'às' HH:mm", java.util.Locale.forLanguageTag("pt-BR"))
+                        .format(a.getStartAt()), a.getProfessional().getName());
     }
 
     private static String blankToNull(String s) {

@@ -20,6 +20,13 @@ public class PushDevice extends TenantEntity {
     /** Cliente identificado (código de agendamento ou nome + WhatsApp); nulo = só abriu o salão. */
     private Long customerId;
 
+    /** Usuário do salão dono do celular (app de gestão); nulo = celular do app do cliente. */
+    private Long userId;
+
+    /** CLIENT (app do cliente) ou STAFF (app de gestão). */
+    @Column(nullable = false, length = 10)
+    private String app = "CLIENT";
+
     private boolean promoNotifications = true;
 
     @Column(nullable = false)

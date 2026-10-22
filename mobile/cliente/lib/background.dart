@@ -7,6 +7,7 @@ import 'package:workmanager/workmanager.dart';
 import 'booking_alerts.dart';
 import 'booking_store.dart';
 import 'promo_alerts.dart';
+import 'push.dart';
 
 const _promoTask = 'verificar-promocoes';
 
@@ -39,7 +40,8 @@ Future<void> scheduleBackgroundChecks() async {
     await Workmanager().registerPeriodicTask(
       _promoTask,
       _promoTask,
-      frequency: const Duration(minutes: 30),
+      // com push ligado o servidor avisa na hora; a consulta fica só como reserva
+      frequency: Push.configured ? const Duration(hours: 3) : const Duration(minutes: 30),
       constraints: Constraints(networkType: NetworkType.connected),
       existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
     );

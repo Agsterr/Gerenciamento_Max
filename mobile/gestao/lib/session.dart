@@ -13,6 +13,7 @@ class Session extends ChangeNotifier {
   static const _emailKey = 'last_email';
   // "Manter conectado": com ele marcado a senha fica no Keystore/Keychain e o app entra de novo quando o token de 24h vence.
   static const _passwordKey = 'saved_password';
+  static const _pushKey = 'push_token';
   final _storage = const FlutterSecureStorage();
   final http.Client? _httpClient;
 
@@ -102,6 +103,24 @@ class Session extends ChangeNotifier {
     state = SessionState.signedIn;
     notifyListeners();
   }
+
+  /// "Sair" pedido pelo usuário: antes de limpar a sessão, tira este celular dos avisos dele.
+  Future<void> logout() async {
+    final push = await _storage.read(key: _pushKey);
+    if (push != null && state == SessionState.signedIn) {
+      try {
+        await api.post('/api/me/push-token/remove', {'token': push});
+      } catch (_) {
+        // sem rede: o servidor descarta o celular quando o Firebase recusar o aviso
+      }
+    }
+    await signOut();
+  }
+
+  /// Guarda o código do celular no Firebase (para o app saber qual retirar ao sair).
+  Future<void> rememberPushToken(String token) => _storage.write(key: _pushKey, value: token);
+
+  Future<String?> get pushToken => _storage.read(key: _pushKey);
 
   Future<void> signOut() async {
     _token = null;
