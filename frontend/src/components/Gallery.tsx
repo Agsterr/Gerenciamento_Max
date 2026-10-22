@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Photo } from "@/lib/types";
 
 /** Grade de miniaturas; tocar abre a foto em tela cheia (setas, deslizar e Esc). */
-export function Gallery({ photos, className = "" }: { photos: Photo[]; className?: string }) {
+/** showService: escreve o nome do serviço em cada foto (para saber de que serviço ela é). */
+export function Gallery({ photos, className = "", showService = false }: { photos: Photo[]; className?: string; showService?: boolean }) {
   const [open, setOpen] = useState<number | null>(null);
   if (photos.length === 0) return null;
   return (
@@ -19,6 +20,11 @@ export function Gallery({ photos, className = "" }: { photos: Photo[]; className
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={p.thumbUrl} alt={p.caption ?? ""} loading="lazy" className="h-full w-full object-cover transition hover:scale-105" />
+            {showService && p.serviceName && (
+              <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-1.5 pb-1 pt-4 text-left text-[11px] font-bold text-white">
+                {p.serviceName}
+              </span>
+            )}
           </button>
         ))}
       </div>

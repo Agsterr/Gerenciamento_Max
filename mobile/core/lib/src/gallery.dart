@@ -5,10 +5,13 @@ import 'theme.dart';
 
 /// Grade de fotos do portfólio; tocar abre em tela cheia ([PhotoViewer]).
 class PhotoGrid extends StatelessWidget {
-  const PhotoGrid({super.key, required this.photos, this.crossAxisCount = 3, this.maxItems});
+  const PhotoGrid({super.key, required this.photos, this.crossAxisCount = 3, this.maxItems, this.showServiceName = false});
 
   final List<Photo> photos;
   final int crossAxisCount;
+
+  /// Escreve o nome do serviço em cada foto (para saber a que serviço ela se refere).
+  final bool showServiceName;
 
   /// Mostra só as primeiras N (a tela cheia continua com todas).
   final int? maxItems;
@@ -24,6 +27,7 @@ class PhotoGrid extends StatelessWidget {
       itemCount: shown.length,
       itemBuilder: (context, i) => PhotoThumb(
         photo: shown[i],
+        label: showServiceName ? shown[i].serviceName : null,
         onTap: () => PhotoViewer.open(context, photos, i),
       ),
     );
@@ -31,10 +35,13 @@ class PhotoGrid extends StatelessWidget {
 }
 
 class PhotoThumb extends StatelessWidget {
-  const PhotoThumb({super.key, required this.photo, this.onTap});
+  const PhotoThumb({super.key, required this.photo, this.onTap, this.label});
 
   final Photo photo;
   final VoidCallback? onTap;
+
+  /// Faixa com texto na base da foto (ex.: nome do serviço).
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +57,28 @@ class PhotoThumb extends StatelessWidget {
             child: Ink.image(
               image: NetworkImage(photo.thumbUrl),
               fit: BoxFit.cover,
-              child: const SizedBox.expand(),
+              child: label == null
+                  ? const SizedBox.expand()
+                  : Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(6, 14, 6, 5),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0x00000000), Color(0xCC000000)],
+                          ),
+                        ),
+                        child: Text(
+                          label!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
             ),
           ),
         ),
