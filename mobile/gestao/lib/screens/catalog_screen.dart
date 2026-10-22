@@ -159,6 +159,7 @@ class CatalogScreen extends StatelessWidget {
               FieldSpec('salePrice', r'Preço de venda (R$, 0 = uso interno)', kind: FieldKind.decimal, required: true),
               FieldSpec('minStock', 'Estoque mínimo (alerta)', kind: FieldKind.decimal, required: true),
               FieldSpec('active', 'Ativo', kind: FieldKind.toggle),
+              FieldSpec('showcase', 'Mostrar na vitrine para os clientes (precisa de preço de venda)', kind: FieldKind.toggle),
             ],
             toForm: (p) => {
               'name': p?.name,
@@ -168,6 +169,7 @@ class CatalogScreen extends StatelessWidget {
               'salePrice': p?.salePrice ?? 0,
               'minStock': p?.minStock ?? 0,
               'active': p?.active ?? true,
+              'showcase': p?.showcase ?? true,
             },
             id: (p) => p.id,
             tile: (p, reload, onTap) => _ItemCard(

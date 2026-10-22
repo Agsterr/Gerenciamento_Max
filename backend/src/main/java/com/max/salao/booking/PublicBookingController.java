@@ -196,6 +196,17 @@ public class PublicBookingController {
         return toResponse(service.reschedule(token, req.startAt(), req.professionalId()));
     }
 
+    /** Produto da vitrine (só para ver; a compra é no salão). */
+    public record PublicProduct(Long id, String name, BigDecimal price, boolean available, String thumbUrl,
+                                String imageUrl) {
+    }
+
+    /** Vitrine: produtos ativos, com preço de venda e liberados pelo salão (sem mostrar o estoque). */
+    @GetMapping("/products")
+    public List<PublicProduct> products() {
+        return service.showcase();
+    }
+
     /** Registra a visita (e a escolha de avisos de promoção). Sempre 204: não revela se o cliente existe. */
     @PostMapping("/presence")
     @ResponseStatus(HttpStatus.NO_CONTENT)

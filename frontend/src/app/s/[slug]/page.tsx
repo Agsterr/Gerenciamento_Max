@@ -9,8 +9,8 @@ import { AppPromo } from "@/components/InstallApp";
 import { Icon, serviceIcon } from "@/components/Icon";
 import { ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";
-import { bookableDays, formatDate, formatMoney, groupByCategory, promoPriceOn } from "@/lib/format";
-import type { Booking, Photo, PublicSalon, Slot } from "@/lib/types";
+import { bookableDays, formatDate, formatMoney, groupByCategory, promoPriceOn, whatsappLink } from "@/lib/format";
+import type { Booking, Photo, PublicProduct, PublicSalon, Slot } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 /** Versão do cliente: escolhe serviço → profissional → dia/horário → nome e telefone. */
@@ -20,6 +20,7 @@ export default function PublicBookingPage() {
   const base = `/api/public/salons/${slug}`;
   const { data: salon, error: salonError } = useApi<PublicSalon>(base);
   const { data: photos } = useApi<Photo[]>(`${base}/portfolio`);
+  const { data: products } = useApi<PublicProduct[]>(`${base}/products`);
   const [photoFilter, setPhotoFilter] = useState<number | null>(null);
   const [allPhotos, setAllPhotos] = useState(false);
 
@@ -410,6 +411,48 @@ export default function PublicBookingPage() {
               <ErrorMessage message={error} />
             </form>
           </Step>
+        )}
+
+        {products && products.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-lg font-extrabold">Produtos à venda no salão</h2>
+            <p className="mb-3 text-sm text-brand-muted">Veja os preços e peça no salão{salon.phone ? " ou pelo WhatsApp" : ""}.</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {products.map((p) => (
+                <div key={p.id} className="shadow-soft overflow-hidden rounded-2xl bg-white">
+                  <div className="relative aspect-square bg-[#F6EEF3]">
+                    {p.thumbUrl ? (
+                      <a href={p.imageUrl ?? p.thumbUrl} target="_blank" rel="noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p.thumbUrl} alt={p.name} loading="lazy" className="h-full w-full object-cover" />
+                      </a>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-3xl text-brand-muted">📦</div>
+                    )}
+                    {!p.available && (
+                      <span className="absolute left-2 top-2 rounded-full bg-zinc-800/80 px-2 py-0.5 text-xs font-bold text-white">
+                        Esgotado
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="truncate text-sm font-bold">{p.name}</p>
+                    <p className="font-extrabold text-brand-rose">{formatMoney(p.price)}</p>
+                    {salon.phone && p.available && (
+                      <a
+                        href={whatsappLink(salon.phone, `Olá! Quero o produto ${p.name} (${formatMoney(p.price)}).`)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1 inline-block text-xs font-bold text-emerald-700 hover:underline"
+                      >
+                        Pedir pelo WhatsApp
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         <AppPromo className="mt-10" />

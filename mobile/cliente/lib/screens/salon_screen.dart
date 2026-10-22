@@ -29,6 +29,9 @@ class _SalonScreenState extends State<SalonScreen> {
   /// Portfólio do salão (galeria); vazio enquanto carrega ou se o salão não tem fotos.
   List<Photo> _photos = const [];
 
+  /// Vitrine de produtos do salão (vazia se não tiver).
+  List<PublicProduct> _products = const [];
+
   PublicService? _service;
 
   /// Filtro das fotos por categoria (nulo = todas).
@@ -75,6 +78,7 @@ class _SalonScreenState extends State<SalonScreen> {
         _day = _days(salon).firstOrNull;
       });
       _loadPhotos();
+      _loadProducts();
       widget.store.rememberSalon(widget.slug, salon.name);
       sendPresence(widget.api, widget.store, widget.slug);
       final initial = salon.services.where((s) => s.id == widget.initialServiceId).firstOrNull;
@@ -82,6 +86,16 @@ class _SalonScreenState extends State<SalonScreen> {
     } catch (e) {
       setState(() => _error = e.toString());
     }
+  }
+
+  /// Vitrine é opcional: sem rede ou sem produtos, a tela segue só com o agendamento.
+  Future<void> _loadProducts() async {
+    try {
+      final json = await widget.api.get('$_base/products');
+      if (json is List && mounted) {
+        setState(() => _products = json.map((e) => PublicProduct.fromJson(e as Map<String, dynamic>)).toList());
+      }
+    } catch (_) {}
   }
 
   /// Galeria é opcional: sem rede ou sem fotos, a tela segue só com o agendamento.
@@ -196,6 +210,32 @@ class _SalonScreenState extends State<SalonScreen> {
     }
   }
 
+  /// Produtos à venda no salão: foto, nome e preço (a compra é no salão ou pelo WhatsApp).
+  Widget _productsShowcase(PublicSalon salon) {
+    final text = Theme.of(context).textTheme;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const SectionTitle('Produtos à venda no salão'),
+      Text('Veja os preços e peça no salão${salon.phone != null ? ' ou pelo WhatsApp' : ''}.',
+          style: text.bodySmall?.copyWith(color: Brand.muted)),
+      const SizedBox(height: 10),
+      SizedBox(
+        height: 200,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: _products.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 10),
+          itemBuilder: (context, i) => _ProductCard(
+            product: _products[i],
+            onWhatsApp: salon.phone == null || !_products[i].available
+                ? null
+                : () => openWhatsApp(salon.phone!,
+                    text: 'Olá! Quero o produto ${_products[i].name} (${formatMoney(_products[i].price)}).'),
+          ),
+        ),
+      ),
+    ]);
+  }
+
   /// O cliente escolhe se quer avisos de promoção deste salão (o salão vê a escolha).
   Widget _promoAlertsTile() {
     final store = widget.store;
@@ -233,7 +273,7 @@ class _SalonScreenState extends State<SalonScreen> {
           _header(salon),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 140),
-            sliver: SliverList.list(children: [..._steps(salon), _promoAlertsTile()]),
+            sliver: SliverList.list(children: [..._steps(salon), if (_products.isNotEmpty) _productsShowcase(salon), _promoAlertsTile()]),
           ),
         ],
       ),
@@ -620,5 +660,61 @@ class _Price extends StatelessWidget {
         style: text.titleMedium?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800),
       ),
     ]);
+  }
+}
+
+class _ProductCard extends StatelessWidget {
+  const _ProductCard({required this.product, this.onWhatsApp});
+
+  final PublicProduct product;
+  final VoidCallback? onWhatsApp;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final image = product.thumbUrl;
+    return SizedBox(
+      width: 140,
+      child: SoftCard(
+        padding: EdgeInsets.zero,
+        onTap: product.imageUrl == null
+            ? null
+            : () => showDialog<void>(
+                  context: context,
+                  builder: (context) => Dialog(
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.network(product.imageUrl!, fit: BoxFit.contain),
+                  ),
+                ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          SizedBox(
+            height: 100,
+            child: Stack(fit: StackFit.expand, children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                child: image == null
+                    ? Container(color: const Color(0xFFF6EEF3), child: const Icon(Icons.inventory_2_outlined, color: Brand.muted, size: 32))
+                    : Image.network(image, fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: const Color(0xFFF6EEF3))),
+              ),
+              if (!product.available)
+                const Positioned(left: 6, top: 6, child: Pill('Esgotado', color: Color(0xCC1F2937), textColor: Colors.white)),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(product.name, style: text.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(formatMoney(product.price), style: text.titleSmall?.copyWith(color: Brand.rose, fontWeight: FontWeight.w800)),
+            ]),
+          ),
+          if (onWhatsApp != null)
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Brand.whatsapp, padding: EdgeInsets.zero, minimumSize: const Size(0, 28)),
+              onPressed: onWhatsApp,
+              child: const Text('Pedir pelo WhatsApp', style: TextStyle(fontSize: 12)),
+            ),
+        ]),
+      ),
+    );
   }
 }

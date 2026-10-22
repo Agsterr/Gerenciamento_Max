@@ -29,12 +29,13 @@ public class ProductController {
             @NotNull @DecimalMin("0") BigDecimal minStock,
             @NotBlank String unit,
             boolean active,
-            @DecimalMin("0") BigDecimal markupPercent) {
+            @DecimalMin("0") BigDecimal markupPercent,
+            Boolean showcase) {
     }
 
     public record ProductResponse(Long id, String name, BigDecimal costPrice, BigDecimal salePrice, BigDecimal stock,
                                   BigDecimal minStock, String unit, boolean active, boolean lowStock,
-                                  BigDecimal markupPercent, String photoUrl) {
+                                  BigDecimal markupPercent, String photoUrl, boolean showcase) {
 
         public static ProductResponse from(Product p) {
             return from(p, null);
@@ -42,7 +43,7 @@ public class ProductController {
 
         public static ProductResponse from(Product p, String photoUrl) {
             return new ProductResponse(p.getId(), p.getName(), p.getCostPrice(), p.getSalePrice(), p.getStock(),
-                    p.getMinStock(), p.getUnit(), p.isActive(), p.isLowStock(), p.getMarkupPercent(), photoUrl);
+                    p.getMinStock(), p.getUnit(), p.isActive(), p.isLowStock(), p.getMarkupPercent(), photoUrl, p.isShowcase());
         }
     }
 
@@ -112,6 +113,7 @@ public class ProductController {
         p.setUnit(req.unit());
         p.setActive(req.active());
         p.setMarkupPercent(req.markupPercent());
+        p.setShowcase(req.showcase() == null || req.showcase());
         return p;
     }
 }

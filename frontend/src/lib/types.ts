@@ -157,6 +157,8 @@ export type Product = {
   markupPercent: number | null;
   /** Miniatura da primeira foto do produto. */
   photoUrl: string | null;
+  /** Aparece na vitrine do cliente (se ativo e com preço de venda). */
+  showcase: boolean;
 };
 
 export type MovementType = "IN" | "SALE" | "USE" | "LOSS";
@@ -328,6 +330,16 @@ export type PublicSalon = {
   }[];
   professionals: Ref[];
   reminderDays: number[];
+};
+
+/** Produto da vitrine do salão (só para ver; a compra é no salão). */
+export type PublicProduct = {
+  id: number;
+  name: string;
+  price: number;
+  available: boolean;
+  thumbUrl: string | null;
+  imageUrl: string | null;
 };
 
 export type Booking = {

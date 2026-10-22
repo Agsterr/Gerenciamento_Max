@@ -121,6 +121,38 @@ void main() {
     expect(find.textContaining('por '), findsWidgets);
   });
 
+  testWidgets('vitrine: produtos à venda aparecem com preço e "Esgotado"', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    final store = await BookingStore.load();
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      httpClient: MockClient((req) async {
+        Object body = const [];
+        if (req.url.path == '/api/public/salons/bella') {
+          body = {
+            'name': 'Studio Bella', 'slug': 'bella', 'phone': '11999990000', 'workDays': '1,2,3,4,5,6,7',
+            'services': [], 'professionals': [],
+          };
+        } else if (req.url.path.endsWith('/products')) {
+          body = [
+            {'id': 1, 'name': 'Esmalte Rosa', 'price': 15, 'available': true, 'thumbUrl': null, 'imageUrl': null},
+            {'id': 2, 'name': 'Shampoo', 'price': 42.5, 'available': false, 'thumbUrl': null, 'imageUrl': null},
+          ];
+        }
+        return http.Response(jsonEncode(body), 200, headers: {'content-type': 'application/json; charset=utf-8'});
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: SalonScreen(slug: 'bella', store: store, api: api)));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Esmalte Rosa'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Produtos à venda no salão'), findsOneWidget);
+    expect(find.textContaining('15,00'), findsOneWidget);
+    expect(find.text('Esgotado'), findsOneWidget);
+    expect(find.text('Pedir pelo WhatsApp'), findsOneWidget); // só no que tem estoque
+  });
 }
 
 const _booking = {

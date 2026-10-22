@@ -48,6 +48,8 @@ public class PublicBookingService {
     private final AppointmentService appointmentService;
     private final AvailabilityService availabilityService;
     private final Clock clock;
+    private final com.max.salao.product.ProductRepository productRepository;
+    private final com.max.salao.portfolio.PortfolioPhotoRepository photoRepository;
     private final com.max.salao.push.PushDeviceRepository pushDevices;
     private final com.max.salao.promotion.PromotionService promotionService;
     private final NotificationService notifications;
@@ -58,7 +60,11 @@ public class PublicBookingService {
                                 AppointmentRepository appointments, AppointmentService appointmentService,
                                 AvailabilityService availabilityService, Clock clock, NotificationService notifications, PlanService plans,
                                 com.max.salao.promotion.PromotionService promotionService,
-                                com.max.salao.push.PushDeviceRepository pushDevices) {
+                                com.max.salao.push.PushDeviceRepository pushDevices,
+                                com.max.salao.product.ProductRepository productRepository,
+                                com.max.salao.portfolio.PortfolioPhotoRepository photoRepository) {
+        this.productRepository = productRepository;
+        this.photoRepository = photoRepository;
         this.pushDevices = pushDevices;
         this.promotionService = promotionService;
         this.plans = plans;
@@ -79,6 +85,21 @@ public class PublicBookingService {
 
     public List<ServiceItem> activeServices() {
         return services.findByActiveTrueOrderByName();
+    }
+
+    public List<PublicBookingController.PublicProduct> showcase() {
+        java.util.Map<Long, String[]> photos = new java.util.HashMap<>();
+        for (Object[] row : photoRepository.productPhotoUrls()) {
+            photos.putIfAbsent((Long) row[0], new String[] {(String) row[1], (String) row[2]});
+        }
+        return productRepository.findAllByOrderByName().stream()
+                .filter(p -> p.isActive() && p.isShowcase() && p.getSalePrice().signum() > 0)
+                .map(p -> {
+                    String[] urls = photos.get(p.getId());
+                    return new PublicBookingController.PublicProduct(p.getId(), p.getName(), p.getSalePrice(),
+                            p.getStock().signum() > 0, urls == null ? null : urls[0], urls == null ? null : urls[1]);
+                })
+                .toList();
     }
 
     public java.time.LocalDate today() {

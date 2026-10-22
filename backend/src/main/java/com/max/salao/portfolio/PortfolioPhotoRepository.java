@@ -21,6 +21,10 @@ public interface PortfolioPhotoRepository extends JpaRepository<PortfolioPhoto, 
     @Query("select p.product.id, p.thumbUrl from PortfolioPhoto p where p.product is not null order by p.position, p.id desc")
     List<Object[]> productThumbs();
 
+    /** (id do produto, miniatura, imagem) das fotos de produtos, a primeira de cada produto vem antes. */
+    @Query("select p.product.id, p.thumbUrl, p.imageUrl from PortfolioPhoto p where p.product is not null order by p.position, p.id desc")
+    List<Object[]> productPhotoUrls();
+
     @Query("select coalesce(min(p.position), 0) from PortfolioPhoto p")
     int minPosition();
 }

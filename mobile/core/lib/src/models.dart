@@ -546,6 +546,7 @@ class Product {
     required this.lowStock,
     this.markupPercent,
     this.photoUrl,
+    this.showcase = true,
   });
 
   factory Product.fromJson(Map<String, dynamic> j) => Product(
@@ -560,10 +561,14 @@ class Product {
         lowStock: j['lowStock'] as bool,
         markupPercent: (j['markupPercent'] as num?)?.toDouble(),
         photoUrl: j['photoUrl'] as String?,
+        showcase: j['showcase'] as bool? ?? true,
       );
 
   /// Miniatura da primeira foto do produto.
   final String? photoUrl;
+
+  /// Aparece na vitrine do cliente (se ativo e com preço de venda).
+  final bool showcase;
 
   final int id;
   final String name;
@@ -1070,6 +1075,31 @@ class Photo {
   final String? serviceName;
   final int? professionalId;
   final String? professionalName;
+}
+
+// ---------- Vitrine de produtos ----------
+
+/// Produto da vitrine do salão (só para ver; a compra é no salão).
+class PublicProduct {
+  const PublicProduct({required this.id, required this.name, required this.price, required this.available, this.thumbUrl, this.imageUrl});
+
+  factory PublicProduct.fromJson(Map<String, dynamic> j) => PublicProduct(
+        id: j['id'] as int,
+        name: j['name'] as String,
+        price: _num(j['price']),
+        available: j['available'] as bool? ?? true,
+        thumbUrl: j['thumbUrl'] as String?,
+        imageUrl: j['imageUrl'] as String?,
+      );
+
+  final int id;
+  final String name;
+  final double price;
+
+  /// Tem em estoque (o salão não divulga a quantidade).
+  final bool available;
+  final String? thumbUrl;
+  final String? imageUrl;
 }
 
 // ---------- Promoções ----------

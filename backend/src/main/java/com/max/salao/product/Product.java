@@ -35,6 +35,9 @@ public class Product extends TenantEntity {
 
     private boolean active = true;
 
+    /** Aparece na vitrine do cliente (se estiver ativo e tiver preço de venda). */
+    private boolean showcase = true;
+
     /** Quanto o salão quer ganhar em cima do custo, em % (só referência para o preço de venda). */
     private BigDecimal markupPercent;
 

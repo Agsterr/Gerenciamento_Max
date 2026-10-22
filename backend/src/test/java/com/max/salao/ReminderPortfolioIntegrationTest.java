@@ -175,6 +175,41 @@ class ReminderPortfolioIntegrationTest {
     }
 
     @Test
+    void showcaseListsOnlyActiveProductsForSaleThatTheSalonReleased() throws Exception {
+        Tenant salon = register();
+        long esmalte = call(salon, post("/api/products"), Map.of("name", "Esmalte", "costPrice", 10, "salePrice", 15,
+                "minStock", 1, "unit", "un", "active", true), status().isCreated()).get("id").asLong();
+        call(salon, post("/api/products"), Map.of("name", "Insumo interno", "costPrice", 5, "salePrice", 0,
+                "minStock", 1, "unit", "un", "active", true), status().isCreated());
+        call(salon, post("/api/products"), Map.of("name", "Escondido", "costPrice", 5, "salePrice", 20,
+                "minStock", 1, "unit", "un", "active", true, "showcase", false), status().isCreated());
+        call(salon, post("/api/products"), Map.of("name", "Antigo", "costPrice", 5, "salePrice", 20,
+                "minStock", 1, "unit", "un", "active", false), status().isCreated());
+        String url = "/api/public/salons/" + salon.slug + "/products";
+
+        JsonNode shown = call(null, get(url), null, status().isOk());
+        assertThat(shown).hasSize(1);
+        assertThat(shown.get(0).get("name").asText()).isEqualTo("Esmalte");
+        assertThat(shown.get(0).get("price").decimalValue()).isEqualByComparingTo("15");
+        assertThat(shown.get(0).get("available").asBoolean()).isFalse(); // sem estoque
+        assertThat(shown.get(0).has("stock")).isFalse(); // o estoque não é divulgado
+        assertThat(shown.get(0).get("thumbUrl").isNull()).isTrue();
+
+        call(salon, post("/api/products/" + esmalte + "/movements"), Map.of("type", "IN", "quantity", 3, "unitValue", 10),
+                status().isCreated());
+        upload(salon, png(600, 600), Map.of("productId", String.valueOf(esmalte)), status().isCreated());
+        JsonNode again = call(null, get(url), null, status().isOk()).get(0);
+        assertThat(again.get("available").asBoolean()).isTrue();
+        assertThat(again.get("thumbUrl").asText()).contains("_t.jpg");
+        assertThat(again.get("imageUrl").asText()).endsWith(".jpg");
+
+        // o salão tira da vitrine
+        call(salon, put("/api/products/" + esmalte), Map.of("name", "Esmalte", "costPrice", 10, "salePrice", 15,
+                "minStock", 1, "unit", "un", "active", true, "showcase", false), status().isOk());
+        assertThat(call(null, get(url), null, status().isOk())).isEmpty();
+    }
+
+    @Test
     void portfolioUploadListOrderAndDelete() throws Exception {
         Tenant salon = register();
         Tenant other = register();

@@ -58,7 +58,7 @@ export default function ProductsPage() {
         title="Produtos e estoque"
         path="/api/products"
         productPhotos
-        defaults={{ name: "", costPrice: 0, markupPercent: "", salePrice: 0, minStock: 0, unit: "un", active: true }}
+        defaults={{ name: "", costPrice: 0, markupPercent: "", salePrice: 0, minStock: 0, unit: "un", active: true, showcase: true }}
         fields={[
           { key: "name", label: "Nome", required: true },
           { key: "unit", label: "Unidade (un, ml, g...)", required: true },
@@ -67,6 +67,7 @@ export default function ProductsPage() {
           { key: "salePrice", label: "Preço de venda (R$, 0 = uso interno)", type: "number", step: "0.01", required: true },
           { key: "minStock", label: "Estoque mínimo (alerta)", type: "number", step: "0.001", required: true },
           { key: "active", label: "Ativo", type: "checkbox" },
+          { key: "showcase", label: "Mostrar na vitrine para os clientes (precisa ter preço de venda)", type: "checkbox" },
         ]}
         onFieldChange={productPricing}
         formExtra={(v) => <ProfitPreview cost={Number(v.costPrice) || 0} price={Number(v.salePrice) || 0} />}
