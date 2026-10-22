@@ -34,11 +34,15 @@ public class ProductController {
 
     public record ProductResponse(Long id, String name, BigDecimal costPrice, BigDecimal salePrice, BigDecimal stock,
                                   BigDecimal minStock, String unit, boolean active, boolean lowStock,
-                                  BigDecimal markupPercent) {
+                                  BigDecimal markupPercent, String photoUrl) {
 
         public static ProductResponse from(Product p) {
+            return from(p, null);
+        }
+
+        public static ProductResponse from(Product p, String photoUrl) {
             return new ProductResponse(p.getId(), p.getName(), p.getCostPrice(), p.getSalePrice(), p.getStock(),
-                    p.getMinStock(), p.getUnit(), p.isActive(), p.isLowStock(), p.getMarkupPercent());
+                    p.getMinStock(), p.getUnit(), p.isActive(), p.isLowStock(), p.getMarkupPercent(), photoUrl);
         }
     }
 
@@ -58,8 +62,11 @@ public class ProductController {
     private final ProductRepository repository;
     private final StockMovementRepository movements;
     private final ProductService service;
+    private final com.max.salao.portfolio.PortfolioPhotoRepository photos;
 
-    public ProductController(ProductRepository repository, StockMovementRepository movements, ProductService service) {
+    public ProductController(ProductRepository repository, StockMovementRepository movements, ProductService service,
+                             com.max.salao.portfolio.PortfolioPhotoRepository photos) {
+        this.photos = photos;
         this.repository = repository;
         this.movements = movements;
         this.service = service;
@@ -67,7 +74,12 @@ public class ProductController {
 
     @GetMapping
     public List<ProductResponse> list() {
-        return repository.findAllByOrderByName().stream().map(ProductResponse::from).toList();
+        // miniatura = primeira foto de cada produto
+        java.util.Map<Long, String> thumbs = new java.util.HashMap<>();
+        for (Object[] row : photos.productThumbs()) {
+            thumbs.putIfAbsent((Long) row[0], (String) row[1]);
+        }
+        return repository.findAllByOrderByName().stream().map(p -> ProductResponse.from(p, thumbs.get(p.getId()))).toList();
     }
 
     @PostMapping

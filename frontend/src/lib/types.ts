@@ -155,6 +155,8 @@ export type Product = {
   lowStock: boolean;
   /** % que o salão quer ganhar em cima do custo (referência do preço). */
   markupPercent: number | null;
+  /** Miniatura da primeira foto do produto. */
+  photoUrl: string | null;
 };
 
 export type MovementType = "IN" | "SALE" | "USE" | "LOSS";

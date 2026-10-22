@@ -79,4 +79,29 @@ void main() {
     expect(await c.remove(c.photos.first), isNull);
     expect(c.photos.map((p) => p.id), [2]);
   });
+
+  test('produto novo: foto vai ligada ao produto (productId), não ao serviço', () async {
+    final bodies = <String>[];
+    final queries = <Map<String, String>>[];
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      httpClient: MockClient((req) async {
+        if (req.method == 'POST') {
+          bodies.add(req.body);
+          return http.Response(jsonEncode(_photo(1, 3)), 201, headers: {'content-type': 'application/json'});
+        }
+        queries.add(req.url.queryParameters);
+        return http.Response(jsonEncode([_photo(1, 3)]), 200, headers: {'content-type': 'application/json'});
+      }),
+    );
+    final c = ServicePhotosController(api: api, picker: _FakePicker(), product: true);
+    expect(await c.add(ImageSource.gallery), isNull);
+    expect(await c.uploadPending(3), isNull);
+    expect(bodies, isNotEmpty);
+    for (final b in bodies) {
+      expect(b, contains('name="productId"'));
+      expect(b, isNot(contains('name="serviceId"')));
+    }
+    expect(queries.single, {'productId': '3'});
+  });
 }

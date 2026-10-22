@@ -7,13 +7,23 @@ import { api } from "@/lib/api";
 import type { Photo } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
-/** Envia as fotos para o portfólio já ligadas ao serviço. */
-export async function uploadServicePhotos(serviceId: number, files: File[], onProgress?: (text: string) => void) {
+/** A foto é de um serviço (aparece na galeria e no agendamento) ou de um produto (só no cadastro e na lista). */
+export type PhotoOwner = "service" | "product";
+
+const FIELD: Record<PhotoOwner, string> = { service: "serviceId", product: "productId" };
+
+/** Envia as fotos já ligadas ao serviço (ou produto). */
+export async function uploadServicePhotos(
+  id: number,
+  files: File[],
+  onProgress?: (text: string) => void,
+  owner: PhotoOwner = "service",
+) {
   for (let i = 0; i < files.length; i++) {
     onProgress?.(`Enviando ${i + 1} de ${files.length}...`);
     const form = new FormData();
     form.append("file", files[i]);
-    form.append("serviceId", String(serviceId));
+    form.append(FIELD[owner], String(id));
     await api.upload<Photo>("/api/portfolio", form);
   }
 }
@@ -26,12 +36,15 @@ export function ServicePhotos({
   serviceId,
   files,
   onFiles,
+  owner = "service",
 }: {
   serviceId?: number;
   files: File[];
   onFiles: (files: File[]) => void;
+  owner?: PhotoOwner;
 }) {
-  const { data: photos, reload } = useApi<Photo[]>(serviceId ? `/api/portfolio?serviceId=${serviceId}` : null);
+  const product = owner === "product";
+  const { data: photos, reload } = useApi<Photo[]>(serviceId ? `/api/portfolio?${FIELD[owner]}=${serviceId}` : null);
   const input = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<string>();
   const [error, setError] = useState<string>();
@@ -45,7 +58,7 @@ export function ServicePhotos({
     if (!serviceId) return onFiles([...files, ...chosen]);
     setError(undefined);
     try {
-      await uploadServicePhotos(serviceId, chosen, setProgress);
+      await uploadServicePhotos(serviceId, chosen, setProgress, owner);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -62,9 +75,13 @@ export function ServicePhotos({
 
   return (
     <div>
-      <p className="text-sm font-semibold text-brand-ink">Fotos deste serviço</p>
+      <p className="text-sm font-semibold text-brand-ink">{product ? "Fotos deste produto" : "Fotos deste serviço"}</p>
       <p className="mb-2 text-xs text-zinc-500">
-        {serviceId ? "Aparecem na página de agendamento e no app do cliente." : "Escolha agora; elas são enviadas quando você salvar o serviço."}
+        {serviceId
+          ? product
+            ? "Só você vê, no cadastro e na lista de produtos."
+            : "Aparecem na página de agendamento e no app do cliente."
+          : `Escolha agora; elas são enviadas quando você salvar o ${product ? "produto" : "serviço"}.`}
       </p>
       <div className="flex flex-wrap gap-2">
         <input ref={input} type="file" accept="image/jpeg,image/png" multiple className="hidden" onChange={(e) => pick(e.target.files)} />

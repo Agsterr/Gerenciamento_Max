@@ -57,6 +57,7 @@ export default function ProductsPage() {
       <CrudPage<Product>
         title="Produtos e estoque"
         path="/api/products"
+        productPhotos
         defaults={{ name: "", costPrice: 0, markupPercent: "", salePrice: 0, minStock: 0, unit: "un", active: true }}
         fields={[
           { key: "name", label: "Nome", required: true },
@@ -70,7 +71,20 @@ export default function ProductsPage() {
         onFieldChange={productPricing}
         formExtra={(v) => <ProfitPreview cost={Number(v.costPrice) || 0} price={Number(v.salePrice) || 0} />}
         columns={[
-          { label: "Produto", render: (p) => <span className="font-medium">{p.name}</span> },
+          {
+            label: "Produto",
+            render: (p) => (
+              <span className="flex items-center gap-2 font-medium">
+                {p.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.photoUrl} alt="" className="h-9 w-9 rounded-lg object-cover" />
+                ) : (
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-xs text-zinc-400">📦</span>
+                )}
+                {p.name}
+              </span>
+            ),
+          },
           {
             label: "Estoque",
             render: (p) => (

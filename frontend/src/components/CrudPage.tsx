@@ -39,6 +39,8 @@ type Props<T extends { id: number }> = {
   toolbar?: React.ReactNode;
   /** Mostra "Fotos deste serviço" no formulário (só para serviços). */
   servicePhotos?: boolean;
+  /** Mesmo para produtos (fotos só para o salão). */
+  productPhotos?: boolean;
   /** Recalcula campos quando um muda (ex.: preço de venda a partir do custo e da margem). */
   onFieldChange?: (key: string, next: Record<string, unknown>) => Record<string, unknown>;
   /** Conteúdo extra no formulário (ex.: resumo do lucro). */
@@ -58,6 +60,7 @@ export function CrudPage<T extends { id: number }>({
   filter,
   toolbar,
   servicePhotos,
+  productPhotos,
   onFieldChange,
   formExtra,
 }: Props<T>) {
@@ -87,10 +90,10 @@ export function CrudPage<T extends { id: number }>({
       if (editing.id) await api.put(`${path}/${editing.id}`, body);
       else {
         const created = await api.post<{ id: number }>(path, body);
-        if (servicePhotos && files.length) {
+        if ((servicePhotos || productPhotos) && files.length) {
           // o serviço já existe: se alguma foto falhar, avisa na página em vez de repetir o cadastro
-          await uploadServicePhotos(created.id, files).catch((e) =>
-            setNotice(`Serviço salvo, mas as fotos não foram enviadas: ${(e as Error).message}`),
+          await uploadServicePhotos(created.id, files, undefined, productPhotos ? "product" : "service").catch((e) =>
+            setNotice(`${productPhotos ? "Produto" : "Serviço"} salvo, mas as fotos não foram enviadas: ${(e as Error).message}`),
           );
         }
       }
@@ -270,6 +273,7 @@ export function CrudPage<T extends { id: number }>({
                 </datalist>
               ))}
             {formExtra?.(editing)}
+            {productPhotos && <ServicePhotos owner="product" serviceId={editing.id as number | undefined} files={files} onFiles={setFiles} />}
             {servicePhotos && <ServicePhotos serviceId={editing.id as number | undefined} files={files} onFiles={setFiles} />}
             <ErrorMessage message={formError} />
             <Button className="w-full" disabled={busy}>

@@ -28,14 +28,15 @@ public class PortfolioService {
 
     public record PhotoResponse(Long id, String url, String thumbUrl, String caption, int width, int height,
                                 Long serviceId, String serviceName, Long professionalId, String professionalName,
-                                LocalDateTime createdAt) {
+                                LocalDateTime createdAt, Long productId) {
 
         static PhotoResponse from(PortfolioPhoto p) {
             ServiceItem s = p.getService();
             Professional pro = p.getProfessional();
             return new PhotoResponse(p.getId(), p.getImageUrl(), p.getThumbUrl(), p.getCaption(), p.getWidth(),
                     p.getHeight(), s != null ? s.getId() : null, s != null ? s.getName() : null,
-                    pro != null ? pro.getId() : null, pro != null ? pro.getName() : null, p.getCreatedAt());
+                    pro != null ? pro.getId() : null, pro != null ? pro.getName() : null, p.getCreatedAt(),
+                    p.getProduct() != null ? p.getProduct().getId() : null);
         }
     }
 
@@ -46,10 +47,12 @@ public class PortfolioService {
     private final MediaStorage storage;
     private final MediaProperties props;
     private final PlanService plans;
+    private final com.max.salao.product.ProductService products;
 
     public PortfolioService(PortfolioPhotoRepository photos, ServiceItemRepository services,
                             ProfessionalRepository professionals, ImageProcessor images, MediaStorage storage,
-                            MediaProperties props, PlanService plans) {
+                            MediaProperties props, PlanService plans, com.max.salao.product.ProductService products) {
+        this.products = products;
         this.photos = photos;
         this.services = services;
         this.professionals = professionals;
@@ -61,7 +64,14 @@ public class PortfolioService {
 
     @Transactional(readOnly = true)
     public List<PhotoResponse> list(Long serviceId) {
-        List<PortfolioPhoto> list = serviceId == null ? photos.findAllByOrderByPositionAscIdDesc()
+        return list(serviceId, null);
+    }
+
+    /** Com {@code productId}: fotos desse produto; senão a galeria de trabalhos (ou de um serviço). */
+    @Transactional(readOnly = true)
+    public List<PhotoResponse> list(Long serviceId, Long productId) {
+        List<PortfolioPhoto> list = productId != null ? photos.findByProductIdOrderByPositionAscIdDesc(productId)
+                : serviceId == null ? photos.findByProductIsNullOrderByPositionAscIdDesc()
                 : photos.findByServiceIdOrderByPositionAscIdDesc(serviceId);
         return list.stream().map(PhotoResponse::from).toList();
     }
@@ -69,14 +79,14 @@ public class PortfolioService {
     /** Página pública: só fotos sem serviço ou de serviço ativo; profissional inativo não aparece pelo nome. */
     @Transactional(readOnly = true)
     public List<PhotoResponse> listPublic(Long serviceId) {
-        return (serviceId == null ? photos.findAllByOrderByPositionAscIdDesc()
+        return (serviceId == null ? photos.findByProductIsNullOrderByPositionAscIdDesc()
                 : photos.findByServiceIdOrderByPositionAscIdDesc(serviceId)).stream()
                 .filter(p -> p.getService() == null || p.getService().isActive())
                 .map(p -> {
                     PhotoResponse r = PhotoResponse.from(p);
                     boolean hidePro = p.getProfessional() != null && !p.getProfessional().isActive();
                     return hidePro ? new PhotoResponse(r.id(), r.url(), r.thumbUrl(), r.caption(), r.width(),
-                            r.height(), r.serviceId(), r.serviceName(), null, null, r.createdAt()) : r;
+                            r.height(), r.serviceId(), r.serviceName(), null, null, r.createdAt(), null) : r;
                 })
                 .toList();
     }
@@ -86,6 +96,10 @@ public class PortfolioService {
      * nova entra no começo da galeria.
      */
     public PhotoResponse upload(MultipartFile file, String caption, Long serviceId, Long professionalId) {
+        return upload(file, caption, serviceId, professionalId, null);
+    }
+
+    public PhotoResponse upload(MultipartFile file, String caption, Long serviceId, Long professionalId, Long productId) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("Escolha uma foto");
         }
@@ -95,6 +109,7 @@ public class PortfolioService {
         plans.checkPhotoLimit();
         ServiceItem service = findService(serviceId);
         Professional professional = findProfessional(professionalId);
+        com.max.salao.product.Product product = findProduct(productId);
 
         byte[] data;
         try {
@@ -120,6 +135,7 @@ public class PortfolioService {
         PortfolioPhoto p = new PortfolioPhoto();
         p.setService(service);
         p.setProfessional(professional);
+        p.setProduct(product);
         p.setCaption(clean(caption));
         p.setImageKey(imageKey);
         p.setThumbKey(thumbKey);
@@ -148,7 +164,7 @@ public class PortfolioService {
         for (int i = 0; i < ids.size(); i++) {
             order.putIfAbsent(ids.get(i), i);
         }
-        List<PortfolioPhoto> all = photos.findAllByOrderByPositionAscIdDesc();
+        List<PortfolioPhoto> all = photos.findByProductIsNullOrderByPositionAscIdDesc();
         int next = ids.size();
         for (PortfolioPhoto p : all) {
             Integer pos = order.get(p.getId());
@@ -170,6 +186,10 @@ public class PortfolioService {
 
     private ServiceItem findService(Long id) {
         return id == null ? null : services.findById(id).orElseThrow(() -> new NotFoundException("Serviço não encontrado"));
+    }
+
+    private com.max.salao.product.Product findProduct(Long id) {
+        return id == null ? null : products.find(id);
     }
 
     private Professional findProfessional(Long id) {

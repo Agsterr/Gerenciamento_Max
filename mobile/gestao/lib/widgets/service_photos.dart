@@ -4,8 +4,17 @@ import 'package:salao_core/salao_core.dart';
 
 /// Fotos de um serviço dentro do cadastro dele. Serviço novo: as fotos escolhidas esperam na tela e
 /// são enviadas quando o serviço for salvo ([uploadPending]). Serviço existente: envia na hora.
+///
+/// [product]: a foto é de um produto (só o salão vê, no cadastro e na lista); senão é de um serviço
+/// (aparece na página de agendamento e no app do cliente).
 class ServicePhotosController extends ChangeNotifier {
-  ServicePhotosController({required this.api, this.serviceId, ImagePicker? picker}) : picker = picker ?? ImagePicker();
+  ServicePhotosController({required this.api, this.serviceId, ImagePicker? picker, this.product = false})
+      : picker = picker ?? ImagePicker();
+
+  final bool product;
+
+  /// Nome do campo da API que liga a foto ao dono.
+  String get _field => product ? 'productId' : 'serviceId';
 
   final ApiClient api;
   final ImagePicker picker;
@@ -21,7 +30,7 @@ class ServicePhotosController extends ChangeNotifier {
     loading = true;
     notifyListeners();
     try {
-      final json = await api.get('/api/portfolio?serviceId=$serviceId') as List;
+      final json = await api.get('/api/portfolio?$_field=$serviceId') as List;
       photos = json.map((e) => Photo.fromJson(e as Map<String, dynamic>)).toList();
     } finally {
       loading = false;
@@ -64,7 +73,7 @@ class ServicePhotosController extends ChangeNotifier {
         progress = 'Enviando ${i + 1} de ${files.length}...';
         notifyListeners();
         await api.upload('/api/portfolio',
-            bytes: await f.readAsBytes(), filename: f.name.contains('.') ? f.name : '${f.name}.jpg', fields: {'serviceId': '$serviceId'});
+            bytes: await f.readAsBytes(), filename: f.name.contains('.') ? f.name : '${f.name}.jpg', fields: {_field: '$serviceId'});
       }
     } catch (e) {
       error = e.toString();
@@ -162,12 +171,14 @@ class _ServicePhotosSectionState extends State<ServicePhotosSection> {
     final text = Theme.of(context).textTheme;
     final empty = c.photos.isEmpty && c.pending.isEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('Fotos deste serviço', style: text.titleSmall),
+      Text(c.product ? 'Fotos deste produto' : 'Fotos deste serviço', style: text.titleSmall),
       const SizedBox(height: 2),
       Text(
         c.serviceId == null
-            ? 'Escolha agora; elas são enviadas quando você salvar o serviço.'
-            : 'Aparecem na página de agendamento e no app do cliente.',
+            ? 'Escolha agora; elas são enviadas quando você salvar o ${c.product ? 'produto' : 'serviço'}.'
+            : c.product
+                ? 'Só você vê, no cadastro e na lista de produtos.'
+                : 'Aparecem na página de agendamento e no app do cliente.',
         style: text.bodySmall?.copyWith(color: Brand.muted),
       ),
       const SizedBox(height: 8),

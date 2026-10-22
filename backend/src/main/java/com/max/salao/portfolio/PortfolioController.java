@@ -37,8 +37,9 @@ public class PortfolioController {
     }
 
     @GetMapping("/api/portfolio")
-    public List<PhotoResponse> list(@RequestParam(required = false) Long serviceId) {
-        return service.list(serviceId);
+    public List<PhotoResponse> list(@RequestParam(required = false) Long serviceId,
+                                    @RequestParam(required = false) Long productId) {
+        return service.list(serviceId, productId);
     }
 
     @PostMapping(value = "/api/portfolio", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -46,8 +47,9 @@ public class PortfolioController {
     public PhotoResponse upload(@RequestPart("file") MultipartFile file,
                                 @RequestParam(required = false) String caption,
                                 @RequestParam(required = false) Long serviceId,
-                                @RequestParam(required = false) Long professionalId) {
-        return service.upload(file, caption, serviceId, professionalId);
+                                @RequestParam(required = false) Long professionalId,
+                                @RequestParam(required = false) Long productId) {
+        return service.upload(file, caption, serviceId, professionalId, productId);
     }
 
     @PutMapping("/api/portfolio/{id}")

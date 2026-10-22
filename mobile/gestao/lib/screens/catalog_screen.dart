@@ -147,6 +147,8 @@ class CatalogScreen extends StatelessWidget {
             canEdit: true,
             parse: Product.fromJson,
             title: 'produto',
+            withPhotos: true,
+            photosAreProducts: true,
             onChanged: productPricing,
             preview: (v) => ProductProfitPreview(cost: _parse(v['costPrice']), price: _parse(v['salePrice'])),
             fields: const [
@@ -171,15 +173,21 @@ class CatalogScreen extends StatelessWidget {
             tile: (p, reload, onTap) => _ItemCard(
               onTap: onTap,
               inactive: !p.active,
-              leading: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: p.lowStock ? const Color(0xFFFFE4E6) : const Color(0xFFF3E8FF),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Icon(Icons.inventory_2_outlined, color: p.lowStock ? const Color(0xFFBE123C) : const Color(0xFF7C3AED)),
-              ),
+              leading: p.photoUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Image.network(p.photoUrl!, width: 48, height: 48, fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const SizedBox(width: 48, height: 48)),
+                    )
+                  : Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: p.lowStock ? const Color(0xFFFFE4E6) : const Color(0xFFF3E8FF),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Icon(Icons.inventory_2_outlined, color: p.lowStock ? const Color(0xFFBE123C) : const Color(0xFF7C3AED)),
+                    ),
               title: p.name,
               pills: [
                 Pill('${formatQuantity(p.stock)} ${p.unit}',
@@ -274,6 +282,7 @@ class _CrudList<T> extends StatefulWidget {
     required this.id,
     required this.tile,
     this.withPhotos = false,
+    this.photosAreProducts = false,
     this.onChanged,
     this.preview,
     this.where,
@@ -287,6 +296,9 @@ class _CrudList<T> extends StatefulWidget {
 
   /// Mostra "Fotos deste serviço" no formulário (só para serviços).
   final bool withPhotos;
+
+  /// As fotos do formulário são de um produto (não de um serviço).
+  final bool photosAreProducts;
 
   final ApiClient api;
   final String path;
@@ -327,7 +339,8 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
   }
 
   Future<void> _edit([T? item]) async {
-    final photos = widget.withPhotos ? ServicePhotosController(api: widget.api, serviceId: item == null ? null : widget.id(item)) : null;
+    final photos = widget.withPhotos ? ServicePhotosController(
+            api: widget.api, serviceId: item == null ? null : widget.id(item), product: widget.photosAreProducts) : null;
     String? photoError;
     final saved = await showFormSheet(
       context,
@@ -344,7 +357,9 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
         if (photos != null) photoError = await photos.uploadPending(created['id'] as int);
       },
     );
-    if (photoError != null && mounted) showError(context, 'Serviço salvo, mas as fotos não foram enviadas: $photoError');
+    if (photoError != null && mounted) {
+      showError(context, '${widget.photosAreProducts ? 'Produto' : 'Serviço'} salvo, mas as fotos não foram enviadas: $photoError');
+    }
     if (saved) _load();
   }
 

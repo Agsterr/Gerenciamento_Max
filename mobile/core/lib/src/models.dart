@@ -545,6 +545,7 @@ class Product {
     required this.active,
     required this.lowStock,
     this.markupPercent,
+    this.photoUrl,
   });
 
   factory Product.fromJson(Map<String, dynamic> j) => Product(
@@ -558,7 +559,11 @@ class Product {
         active: j['active'] as bool,
         lowStock: j['lowStock'] as bool,
         markupPercent: (j['markupPercent'] as num?)?.toDouble(),
+        photoUrl: j['photoUrl'] as String?,
       );
+
+  /// Miniatura da primeira foto do produto.
+  final String? photoUrl;
 
   final int id;
   final String name;

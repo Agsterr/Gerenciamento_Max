@@ -147,6 +147,34 @@ class ReminderPortfolioIntegrationTest {
     }
 
     @Test
+    void productPhotosStayOutOfTheWorkGalleryAndShowAsListThumbnail() throws Exception {
+        Tenant salon = register();
+        Tenant other = register();
+        long product = call(salon, post("/api/products"), Map.of("name", "Esmalte", "costPrice", 10, "salePrice", 15,
+                "minStock", 1, "unit", "un", "active", true), status().isCreated()).get("id").asLong();
+        assertThat(call(salon, get("/api/products"), null, status().isOk()).get(0).get("photoUrl").isNull()).isTrue();
+
+        JsonNode photo = upload(salon, png(800, 800), Map.of("productId", String.valueOf(product)), status().isCreated());
+        assertThat(photo.get("productId").asLong()).isEqualTo(product);
+        JsonNode work = upload(salon, png(300, 300), Map.of(), status().isCreated());
+
+        // galeria de trabalhos (painel e página pública) só tem a foto de trabalho
+        assertThat(call(salon, get("/api/portfolio"), null, status().isOk())).hasSize(1);
+        assertThat(call(null, get("/api/public/salons/" + salon.slug + "/portfolio"), null, status().isOk())).hasSize(1);
+        // fotos do produto pelo filtro do produto
+        JsonNode mine = call(salon, get("/api/portfolio?productId=" + product), null, status().isOk());
+        assertThat(mine).hasSize(1);
+        assertThat(mine.get(0).get("id").asLong()).isEqualTo(photo.get("id").asLong());
+        // miniatura na lista de produtos
+        assertThat(call(salon, get("/api/products"), null, status().isOk()).get(0).get("photoUrl").asText())
+                .isEqualTo(photo.get("thumbUrl").asText());
+        // reordenar a galeria não mexe nas fotos de produtos; produto de outro salão não aceita foto
+        call(salon, put("/api/portfolio/order"), Map.of("ids", List.of(work.get("id").asLong())), status().isOk());
+        assertThat(call(salon, get("/api/portfolio?productId=" + product), null, status().isOk())).hasSize(1);
+        upload(other, png(100, 100), Map.of("productId", String.valueOf(product)), status().isNotFound());
+    }
+
+    @Test
     void portfolioUploadListOrderAndDelete() throws Exception {
         Tenant salon = register();
         Tenant other = register();

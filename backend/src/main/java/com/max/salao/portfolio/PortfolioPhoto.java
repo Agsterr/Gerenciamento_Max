@@ -26,6 +26,11 @@ public class PortfolioPhoto extends TenantEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private Professional professional;
 
+    /** Foto de um produto (não entra na galeria de trabalhos). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
+    private com.max.salao.product.Product product;
+
     private String caption;
 
     @Column(nullable = false, updatable = false)
