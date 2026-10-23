@@ -25,10 +25,26 @@ class Push {
 
   static bool _started = false;
 
+  static const _askedKey = 'asked_notifications';
+
+  /// Android 13+ só mostra notificação depois que a pessoa permite. Pede uma vez, logo ao entrar no app
+  /// (antes o pedido só aparecia ao salvar "Meus lembretes", então muita gente nunca recebia o aviso de novo agendamento).
+  static Future<void> _askPermissionOnce() async {
+    const storage = FlutterSecureStorage();
+    try {
+      if (await storage.read(key: _askedKey) != null) return;
+      await LocalReminders.instance.requestPermission();
+      await storage.write(key: _askedKey, value: '1');
+    } catch (_) {
+      // sem permissão ou sem storage: o app segue, só não mostra o aviso
+    }
+  }
+
   /// Depois do login: cadastra este celular no servidor e passa a tratar as mensagens.
   static Future<void> start(Session session) async {
     if (!configured || _started) return;
     _started = true;
+    await _askPermissionOnce();
     try {
       await Firebase.initializeApp(options: options);
       final messaging = FirebaseMessaging.instance;

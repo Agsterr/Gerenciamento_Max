@@ -242,6 +242,12 @@ public class AppointmentService {
         return a;
     }
 
+    /** O salão registra que o cliente confirmou a presença (a confirmação do cliente, não o aceite do salão). */
+    @Transactional
+    public Appointment confirmPresence(Long id) {
+        return changeStatus(id, x -> x.confirm(LocalDateTime.now(clock)));
+    }
+
     /** O salão aceita o agendamento feito pelo cliente. */
     @Transactional
     public Appointment accept(Long id) {

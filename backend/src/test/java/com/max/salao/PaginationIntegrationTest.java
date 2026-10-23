@@ -111,7 +111,7 @@ class PaginationIntegrationTest {
                     status().isCreated()).get("id").asLong());
         }
         call(token, post("/api/appointments/" + ids.get(0) + "/cancel"), null, status().isOk());
-        call(token, post("/api/appointments/" + ids.get(1) + "/confirm"), null, status().isOk());
+        call(token, post("/api/appointments/" + ids.get(1) + "/no-show"), null, status().isOk());
 
         JsonNode all = call(token, get("/api/appointments/search?size=4"), null, status().isOk());
         assertThat(all.get("total").asInt()).isEqualTo(6);
@@ -124,7 +124,7 @@ class PaginationIntegrationTest {
         assertThat(asc.get("items").get(0).get("startAt").asText()).startsWith(base.toString());
 
         assertThat(call(token, get("/api/appointments/search?status=CANCELED"), null, status().isOk()).get("total").asInt()).isEqualTo(1);
-        assertThat(call(token, get("/api/appointments/search?status=canceled,confirmed"), null, status().isOk()).get("total").asInt()).isEqualTo(2);
+        assertThat(call(token, get("/api/appointments/search?status=canceled,no_show"), null, status().isOk()).get("total").asInt()).isEqualTo(2);
         assertThat(call(token, get("/api/appointments/search?q=maria"), null, status().isOk()).get("total").asInt()).isEqualTo(3);
         assertThat(call(token, get("/api/appointments/search?q=33334444"), null, status().isOk()).get("total").asInt()).isEqualTo(3);
         assertThat(call(token, get("/api/appointments/search?q=corte&status=SCHEDULED"), null, status().isOk()).get("total").asInt()).isEqualTo(4);

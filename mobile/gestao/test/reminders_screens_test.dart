@@ -41,7 +41,7 @@ void main() {
                 'appointmentId': 2,
                 'daysBefore': 2,
                 'startAt': '2026-10-22T11:00:00',
-                'status': 'CONFIRMED',
+                'status': 'SCHEDULED',
                 'customerName': 'João',
                 'customerPhone': '11988880002',
                 'serviceName': 'Barba',
@@ -63,7 +63,7 @@ void main() {
     expect(find.text('Depois de amanhã'), findsOneWidget);
     expect(find.text('Maria Souza'), findsOneWidget);
     expect(find.text('Enviar'), findsOneWidget); // só quem ainda não confirmou
-    expect(find.text('Cliente confirmou'), findsOneWidget);
+    expect(find.text('Cliente confirmou presença'), findsOneWidget);
   });
 
   testWidgets('profissional escolhe "1 dia antes às 19h" e salva', (tester) async {

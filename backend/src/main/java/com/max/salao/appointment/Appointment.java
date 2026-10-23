@@ -127,15 +127,20 @@ public class Appointment extends TenantEntity {
         salonConfirmedAt = null;
     }
 
-    public void confirm() {
-        requireOpen();
-        status = AppointmentStatus.CONFIRMED;
+    /**
+     * O salão registra que o cliente confirmou a presença (por telefone, WhatsApp...). É a confirmação do CLIENTE:
+     * não aceita o horário pelo salão (isso é {@link #accept}) e não muda a situação do atendimento.
+     */
+    public void confirm(LocalDateTime now) {
+        confirmByCustomer(now);
     }
 
-    /** Cliente confirmou pelo lembrete. Repetir não muda nada (o link pode ser aberto várias vezes). */
+    /**
+     * Cliente confirmou que vai comparecer (link do lembrete ou app). Repetir não muda nada. É independente de o
+     * salão ter aceitado o horário: são duas confirmações diferentes.
+     */
     public void confirmByCustomer(LocalDateTime now) {
         requireOpen();
-        status = AppointmentStatus.CONFIRMED;
         if (customerConfirmedAt == null) {
             customerConfirmedAt = now;
         }
