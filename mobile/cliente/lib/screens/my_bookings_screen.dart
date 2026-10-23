@@ -23,6 +23,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   Map<String, Booking?> _details = {};
   bool _loading = true;
 
+  /// Quantos itens de cada grupo aparecem (o resto vem em "Mostrar mais"): a lista fica curta mesmo com muito histórico.
+  static const _pageSize = 10;
+  int _pastShown = _pageSize;
+  int _canceledShown = 5;
+  String _search = '';
+
   /// Agendamentos que o salão mudou (horário, profissional ou cancelamento) desde a última vez que o cliente viu.
   bool _changed(SavedBooking s) {
     final b = _details[s.token];
@@ -116,7 +122,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     ];
     final upcoming = withDetails.where((e) => e.$2.endAt.isAfter(now) && e.$2.status != AppointmentStatus.canceled).toList()
       ..sort((a, b) => a.$2.startAt.compareTo(b.$2.startAt));
-    final past = withDetails.where((e) => !upcoming.contains(e)).toList()..sort((a, b) => b.$2.startAt.compareTo(a.$2.startAt));
+    final rest = withDetails.where((e) => !upcoming.contains(e)).toList()..sort((a, b) => b.$2.startAt.compareTo(a.$2.startAt));
+    bool matches((SavedBooking, Booking) e) {
+      if (_search.isEmpty) return true;
+      final needle = _search.toLowerCase();
+      return e.$2.serviceName.toLowerCase().contains(needle) ||
+          e.$1.salonName.toLowerCase().contains(needle) ||
+          e.$2.professionalName.toLowerCase().contains(needle);
+    }
+
+    // anteriores (já aconteceram) e cancelados ficam separados dos próximos
+    final past = rest.where((e) => e.$2.status != AppointmentStatus.canceled).where(matches).toList();
+    final canceled = rest.where((e) => e.$2.status == AppointmentStatus.canceled).where(matches).toList();
+    final upcomingShown = upcoming.where(matches).toList();
 
     return RefreshIndicator(
       onRefresh: _refresh,
@@ -191,10 +209,41 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                if (upcoming.isNotEmpty) const SectionTitle('Próximos'),
-                for (final e in upcoming) _item(e.$1, e.$2, highlight: true),
-                if (past.isNotEmpty) const SectionTitle('Histórico'),
-                for (final e in past) _item(e.$1, e.$2),
+                if (withDetails.length > 6)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: TextField(
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        labelText: 'Buscar por serviço, salão ou profissional',
+                        prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+                      ),
+                      onChanged: (v) => setState(() {
+                        _search = v.trim();
+                        _pastShown = _pageSize;
+                        _canceledShown = 5;
+                      }),
+                    ),
+                  ),
+                if (upcomingShown.isNotEmpty) SectionTitle('Próximos (${upcomingShown.length})'),
+                for (final e in upcomingShown) _item(e.$1, e.$2, highlight: true),
+                if (past.isNotEmpty) SectionTitle('Anteriores (${past.length})'),
+                for (final e in past.take(_pastShown)) _item(e.$1, e.$2),
+                if (past.length > _pastShown)
+                  TextButton(
+                    onPressed: () => setState(() => _pastShown += _pageSize),
+                    child: Text('Mostrar mais (${past.length - _pastShown})'),
+                  ),
+                if (canceled.isNotEmpty) SectionTitle('Cancelados (${canceled.length})'),
+                for (final e in canceled.take(_canceledShown)) _item(e.$1, e.$2),
+                if (canceled.length > _canceledShown)
+                  TextButton(
+                    onPressed: () => setState(() => _canceledShown += 5),
+                    child: Text('Mostrar mais (${canceled.length - _canceledShown})'),
+                  ),
+                if (_search.isNotEmpty && upcomingShown.isEmpty && past.isEmpty && canceled.isEmpty)
+                  const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Nada encontrado para essa busca.'))),
                 const SizedBox(height: 8),
                 Text('Deslize para a esquerda para remover do aparelho.',
                     textAlign: TextAlign.center, style: text.bodySmall?.copyWith(color: Brand.muted)),
