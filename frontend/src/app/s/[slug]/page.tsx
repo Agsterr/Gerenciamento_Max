@@ -204,6 +204,7 @@ export default function PublicBookingPage() {
             <Gallery
               key={photoFilter ?? 0}
               photos={allPhotos ? shownPhotos : shownPhotos.slice(0, 9)}
+              showService
             />
             {!allPhotos && shownPhotos.length > 9 && (
               <button
@@ -290,7 +291,16 @@ export default function PublicBookingPage() {
           )}
         </Step>
 
-        {service && (
+        {service && salon.professionals.length === 0 && (
+          <section className="mt-7">
+            <p className="shadow-soft rounded-2xl bg-white p-4 text-sm text-brand-muted">
+              <strong className="block text-brand-ink">Agendamento online indisponível</strong>
+              Este salão ainda não tem um profissional disponível para atender. Fale direto com o salão para marcar o horário.
+            </p>
+          </section>
+        )}
+
+        {service && salon.professionals.length > 0 && (
           <Step n={2} title="Com quem?">
             <div className="flex gap-3 overflow-x-auto pb-1">
               {[
@@ -335,7 +345,7 @@ export default function PublicBookingPage() {
           </Step>
         )}
 
-        {service && (
+        {service && salon.professionals.length > 0 && (
           <Step n={3} title="Quando?">
             <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
               {days.map((d) => {
