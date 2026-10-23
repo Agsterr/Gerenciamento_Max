@@ -31,6 +31,8 @@ class AboutScreen extends StatelessWidget {
     return Scaffold(
       body: ListView(
         padding: EdgeInsets.zero,
+        // arrastar fecha o teclado; sobra espaço no fim para a versão nunca ficar atrás dele
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
           GradientHeader(
             child: Column(children: [
@@ -91,6 +93,7 @@ class AboutScreen extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 child: AppVersionTile(app: 'cliente'),
               ),
+              SizedBox(height: MediaQuery.viewInsetsOf(context).bottom + MediaQuery.paddingOf(context).bottom + 16),
             ]),
           ),
         ],

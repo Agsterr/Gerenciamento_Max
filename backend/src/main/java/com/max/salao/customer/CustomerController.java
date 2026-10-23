@@ -1,6 +1,7 @@
 package com.max.salao.customer;
 
 import com.max.salao.plan.PlanService;
+import com.max.salao.shared.PageResponse;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -48,8 +49,19 @@ public class CustomerController {
         this.repository = repository;
     }
 
+    /**
+     * Sem {@code page}: lista simples de até 100 (apps antigos). Com {@code page} (e opcionalmente
+     * {@code size}, {@code q}): página com total e "tem mais", em ordem alfabética.
+     */
     @GetMapping
-    public List<CustomerResponse> list(@RequestParam(required = false) String q) {
+    public Object list(@RequestParam(required = false) String q, @RequestParam(required = false) Integer page,
+                       @RequestParam(required = false) Integer size) {
+        if (page != null) {
+            String term = q == null ? "" : q.trim();
+            String digits = Customer.normalizePhone(term);
+            return PageResponse.of(repository.findPage(term, digits == null ? "" : digits, PageResponse.request(page, size)),
+                    CustomerResponse::from);
+        }
         List<Customer> result = q == null || q.isBlank()
                 ? repository.findAllByOrderByName(MAX_RESULTS)
                 : repository.search(q.trim(), MAX_RESULTS);

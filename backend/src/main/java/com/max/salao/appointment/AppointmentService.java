@@ -73,6 +73,26 @@ public class AppointmentService {
                 from.atStartOfDay(), to.plusDays(1).atStartOfDay());
     }
 
+    /**
+     * Histórico/busca de agendamentos em qualquer data. {@code statuses} vazio = todos; {@code newestFirst}
+     * mostra do mais recente (histórico) ou do mais próximo (próximos).
+     */
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<Appointment> search(String q, java.util.Set<AppointmentStatus> statuses,
+                                                                    LocalDate from, LocalDate to, boolean newestFirst,
+                                                                    Integer page, Integer size) {
+        String term = q == null ? "" : q.trim();
+        String digits = Customer.normalizePhone(term);
+        var sort = org.springframework.data.domain.Sort.by(newestFirst
+                ? org.springframework.data.domain.Sort.Order.desc("startAt")
+                : org.springframework.data.domain.Sort.Order.asc("startAt"));
+        return appointments.search(term, digits == null ? "" : digits,
+                statuses == null || statuses.isEmpty() ? java.util.EnumSet.allOf(AppointmentStatus.class) : statuses,
+                from == null ? LocalDateTime.of(1970, 1, 1, 0, 0) : from.atStartOfDay(),
+                to == null ? LocalDateTime.of(2999, 1, 1, 0, 0) : to.plusDays(1).atStartOfDay(),
+                com.max.salao.shared.PageResponse.request(page, size, sort));
+    }
+
     @Transactional(readOnly = true)
     public List<Appointment> history(Long customerId) {
         return appointments.findTop50ByCustomerIdOrderByStartAtDesc(customerId);
