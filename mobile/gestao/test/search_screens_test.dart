@@ -67,6 +67,8 @@ void main() {
     expect(find.text('2 agendamento(s)'), findsOneWidget);
     expect(seen.last.queryParameters['order'], 'desc');
 
+    await tester.ensureVisible(find.text('Finalizados')); // a fileira de situações rola para o lado
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Finalizados'));
     await tester.pumpAndSettle();
     expect(seen.last.queryParameters['status'], 'DONE');
