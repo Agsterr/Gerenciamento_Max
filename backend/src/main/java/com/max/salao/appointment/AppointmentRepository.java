@@ -51,7 +51,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
                    or (:digits <> '' and c.phone like concat('%', :digits, '%'))
                    or lower(s.name) like lower(concat('%', :q, '%'))
                    or lower(p.name) like lower(concat('%', :q, '%')))""")
-    @EntityGraph(attributePaths = {"customer", "professional", "service"})
+    @EntityGraph(attributePaths = {"customer", "professional", "service", "promotion"})
     Page<Appointment> search(String q, String digits, Collection<AppointmentStatus> statuses, LocalDateTime from,
                              LocalDateTime to, Pageable pageable);
 
