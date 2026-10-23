@@ -239,7 +239,7 @@ public class PublicBookingService {
     @Transactional
     public Appointment confirm(String token) {
         Appointment a = find(token);
-        if (a.getStatus() == AppointmentStatus.CONFIRMED && a.getCustomerConfirmedAt() != null) {
+        if (a.getCustomerConfirmedAt() != null) {
             return a;
         }
         if (!a.getStatus().isOpen() || !a.getStartAt().isAfter(LocalDateTime.now(clock))) {
@@ -250,9 +250,9 @@ public class PublicBookingService {
         return a;
     }
 
-    /** Ainda falta o cliente confirmar (mostra o botão "Confirmar presença"). */
+    /** Ainda falta o cliente confirmar que vai (mostra o botão "Confirmar presença"), com o salão tendo aceitado ou não. */
     public boolean canConfirm(Appointment a) {
-        return a.getStatus() == AppointmentStatus.SCHEDULED && a.getStartAt().isAfter(LocalDateTime.now(clock));
+        return a.getStatus().isOpen() && a.getCustomerConfirmedAt() == null && a.getStartAt().isAfter(LocalDateTime.now(clock));
     }
 
     /** O cliente só cancela ou remarca sozinho até {@value #CANCEL_MIN_HOURS} h antes do horário marcado. */

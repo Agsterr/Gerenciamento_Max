@@ -121,7 +121,7 @@ public class AppointmentController {
 
     @PostMapping("/appointments/{id}/confirm")
     public AppointmentResponse confirm(@PathVariable Long id) {
-        return AppointmentResponse.from(service.changeStatus(id, Appointment::confirm));
+        return AppointmentResponse.from(service.confirmPresence(id));
     }
 
     @PostMapping("/appointments/{id}/start")

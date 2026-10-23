@@ -70,8 +70,8 @@ function CustomerReminders() {
                   <div className="min-w-0 flex-1 text-sm">
                     <p className="font-bold">
                       {i.customerName}{" "}
-                      {i.status === "CONFIRMED" ? (
-                        <Badge className="bg-emerald-100 text-emerald-800">{i.customerConfirmed ? "Cliente confirmou" : "Confirmado"}</Badge>
+                      {i.customerConfirmed ? (
+                        <Badge className="bg-emerald-100 text-emerald-800">Cliente confirmou presença</Badge>
                       ) : i.reminderSentAt ? (
                         <Badge className="bg-sky-100 text-sky-800">Lembrete enviado</Badge>
                       ) : null}
@@ -81,7 +81,7 @@ function CustomerReminders() {
                     </p>
                     <p className="text-xs text-zinc-400">{formatPhone(i.customerPhone)}</p>
                   </div>
-                  {i.status !== "CONFIRMED" && (
+                  {!i.customerConfirmed && (
                     <Button size="sm" variant={i.reminderSentAt ? "secondary" : "primary"} onClick={() => send(i)}>
                       {i.reminderSentAt ? "Reenviar" : "WhatsApp"}
                     </Button>

@@ -468,9 +468,16 @@ class BookingStatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final b = booking;
     if (!b.status.isOpen) return StatusChip(b.status);
-    return b.salonConfirmed
+    final salon = b.salonConfirmed
         ? Pill(b.customerStatusLabel, icon: Icons.verified_outlined, color: const Color(0xFFDCFCE7), textColor: const Color(0xFF15803D))
         : Pill(b.customerStatusLabel, icon: Icons.hourglass_top_rounded, color: const Color(0xFFFFF4DB), textColor: const Color(0xFFB45309));
+    if (!b.presenceConfirmed) return salon;
+    // duas confirmações diferentes: a do salão (horário aceito) e a do próprio cliente (vai comparecer)
+    return Wrap(spacing: 6, runSpacing: 4, children: [
+      salon,
+      const Pill('Você confirmou presença',
+          icon: Icons.check_circle_outline_rounded, color: Color(0xFFE0E7FF), textColor: Color(0xFF3730A3)),
+    ]);
   }
 }
 

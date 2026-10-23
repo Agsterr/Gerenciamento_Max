@@ -69,7 +69,7 @@ void main() {
       httpClient: MockClient((req) async {
         if (req.url.path.endsWith('/confirm')) confirmed = true;
         final b = confirmed
-            ? {'status': 'CONFIRMED', 'confirmable': false}
+            ? {'status': 'SCHEDULED', 'confirmable': false, 'presenceConfirmed': true}
             : {'status': 'SCHEDULED', 'confirmable': true};
         return http.Response(
           jsonEncode({

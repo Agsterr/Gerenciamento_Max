@@ -84,7 +84,7 @@ export default function BookingPage() {
               {confirming ? "Confirmando..." : "Confirmar presença"}
             </Button>
           )}
-          {b.status === "CONFIRMED" && <p className="font-bold text-emerald-700">Presença confirmada. Até lá!</p>}
+          {b.presenceConfirmed && b.status !== "CANCELED" && <p className="font-bold text-emerald-700">Presença confirmada. Até lá!</p>}
           {b.cancelable && !rescheduling && (
             <>
               <Button variant={b.confirmable ? "secondary" : "primary"} onClick={() => setRescheduling(true)}>

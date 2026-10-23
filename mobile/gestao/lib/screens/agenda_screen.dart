@@ -28,6 +28,26 @@ class _AgendaScreenState extends State<AgendaScreen> {
   List<Appointment>? _items;
   String? _error;
   int? _professionalFilter;
+
+  /// Separa a lista do dia por situação (nulo = todos): aguardando aceite, sem/com confirmação do cliente, finalizados...
+  String? _stateFilter;
+
+  static const _states = <(String, String)>[
+    ('pending', 'Aguardando aceite'),
+    ('unconfirmed', 'Cliente não confirmou'),
+    ('confirmed', 'Cliente confirmou'),
+    ('done', 'Finalizados'),
+    ('canceled', 'Cancelados'),
+  ];
+
+  static bool _inState(Appointment a, String state) => switch (state) {
+        'pending' => a.pendingAcceptance,
+        'unconfirmed' => a.status.isOpen && !a.customerConfirmed,
+        'confirmed' => a.status.isOpen && a.customerConfirmed,
+        'done' => a.status == AppointmentStatus.done,
+        'canceled' => a.status == AppointmentStatus.canceled || a.status == AppointmentStatus.noShow,
+        _ => true,
+      };
   int _unread = 0;
   Timer? _poll;
   PlanInfo? _plan;
@@ -206,7 +226,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
             ),
           ),
           if (a.pendingAcceptance) item(Icons.verified_outlined, 'Aceitar horário', 'accept'),
-          if (a.status == AppointmentStatus.scheduled) item(Icons.check, 'Cliente confirmou presença', 'confirm'),
+          // anotar que o cliente confirmou por telefone/WhatsApp (é a confirmação do cliente; aceitar o horário é o botão acima)
+          if (open && !a.customerConfirmed) item(Icons.check, 'Anotar: cliente confirmou presença', 'confirm'),
           if (open) item(Icons.play_arrow, 'Iniciar atendimento', 'start'),
           if (open || a.status == AppointmentStatus.inProgress) item(Icons.done_all, 'Finalizar', 'finish'),
           if (open) item(Icons.event_repeat_rounded, 'Remarcar', 'reschedule'),
@@ -231,6 +252,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
     final items = _items;
     final professionals = {for (final a in items ?? <Appointment>[]) a.professional.id: a.professional.name};
     final visible = (items ?? []).where((a) => _professionalFilter == null || a.professional.id == _professionalFilter).toList();
+    // lista do dia (também filtrada por situação); os totais do topo continuam contando o dia todo
+    final listed = _stateFilter == null ? visible : visible.where((a) => _inState(a, _stateFilter!)).toList();
     final active = visible.where((a) => a.status != AppointmentStatus.canceled && a.status != AppointmentStatus.noShow).toList();
     final firstName = widget.session.user.name.split(' ').first;
 
@@ -349,10 +372,34 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   ],
                 ),
               ),
+            if (visible.length > 1)
+              SizedBox(
+                height: 48,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  children: [
+                    _FilterChip(label: 'Todos (${visible.length})', selected: _stateFilter == null, onTap: () => setState(() => _stateFilter = null)),
+                    for (final (key, label) in _states)
+                      if (visible.any((a) => _inState(a, key)))
+                        _FilterChip(
+                          label: '$label (${visible.where((a) => _inState(a, key)).length})',
+                          selected: _stateFilter == key,
+                          onTap: () => setState(() => _stateFilter = _stateFilter == key ? null : key),
+                        ),
+                  ],
+                ),
+              ),
             if (_error != null)
               ErrorRetry(message: _error!, onRetry: _load)
             else if (items == null)
               const Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator()))
+            else if (listed.isEmpty && visible.isNotEmpty)
+              const EmptyState(
+                icon: Icons.filter_alt_off_outlined,
+                title: 'Nada nesta situação',
+                message: 'Toque em "Todos" para ver os outros agendamentos do dia.',
+              )
             else if (visible.isEmpty)
               const EmptyState(
                 icon: Icons.event_note_rounded,
@@ -363,8 +410,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Column(children: [
-                  for (var i = 0; i < visible.length; i++)
-                    _TimelineItem(visible[i], last: i == visible.length - 1, onTap: () => _actions(visible[i])),
+                  for (var i = 0; i < listed.length; i++)
+                    _TimelineItem(listed[i], last: i == listed.length - 1, onTap: () => _actions(listed[i])),
                 ]),
               ),
           ],

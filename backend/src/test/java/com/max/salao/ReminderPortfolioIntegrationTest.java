@@ -89,14 +89,16 @@ class ReminderPortfolioIntegrationTest {
 
         // cliente confirma pelo link (repetir não dá erro)
         JsonNode confirmed = call(null, post(base + "/bookings/" + a + "/confirm"), null, status().isOk());
-        assertThat(confirmed.get("status").asText()).isEqualTo("CONFIRMED");
+        // confirmar presença é do cliente: não mexe na situação do atendimento
+        assertThat(confirmed.get("status").asText()).isEqualTo("SCHEDULED");
+        assertThat(confirmed.get("presenceConfirmed").asBoolean()).isTrue();
         assertThat(confirmed.get("confirmable").asBoolean()).isFalse();
         call(null, post(base + "/bookings/" + a + "/confirm"), null, status().isOk());
         call(null, post(base + "/bookings/inexistente/confirm"), null, status().isNotFound());
 
         // salão vê na agenda e no sino
         JsonNode agenda = call(salon, get("/api/appointments?from=" + tomorrow), null, status().isOk());
-        assertThat(agenda.get(0).get("status").asText()).isEqualTo("CONFIRMED");
+        assertThat(agenda.get(0).get("status").asText()).isEqualTo("SCHEDULED");
         assertThat(agenda.get(0).get("customerConfirmedAt").isNull()).isFalse();
         JsonNode inbox = call(salon, get("/api/notifications"), null, status().isOk());
         assertThat(inbox.get("items").get(0).get("type").asText()).isEqualTo("CONFIRMED");
@@ -124,6 +126,48 @@ class ReminderPortfolioIntegrationTest {
         assertThat(daily).hasSize(1);
         assertThat(daily.get(0).get("title").asText()).isEqualTo("1 cliente para lembrar");
         assertThat(c).isNotBlank();
+    }
+
+    /** Aceite do salão e confirmação de presença do cliente são duas coisas: nenhuma das duas faz a outra. */
+    @Test
+    void salonAcceptanceAndCustomerPresenceAreIndependent() throws Exception {
+        Tenant salon = register();
+        openEveryDay(salon, "ONE_DAY");
+        long service = createService(salon, "Corte");
+        String base = "/api/public/salons/" + salon.slug;
+        String token = book(base, service, tomorrow + "T10:00:00", "Maria Souza", "11988880011");
+        long id = call(salon, get("/api/appointments?from=" + tomorrow), null, status().isOk()).get(0).get("id").asLong();
+
+        // cliente agendou: o salão ainda não aceitou e o cliente ainda não confirmou
+        JsonNode booked = call(null, get(base + "/bookings/" + token), null, status().isOk());
+        assertThat(booked.get("salonConfirmed").asBoolean()).isFalse();
+        assertThat(booked.get("presenceConfirmed").asBoolean()).isFalse();
+        assertThat(booked.get("confirmable").asBoolean()).isTrue();
+
+        // o salão aceita: o cliente continua podendo confirmar presença
+        JsonNode accepted = call(salon, post("/api/appointments/" + id + "/accept"), null, status().isOk());
+        assertThat(accepted.get("pendingAcceptance").asBoolean()).isFalse();
+        assertThat(accepted.get("customerConfirmedAt").isNull()).isTrue();
+        JsonNode afterAccept = call(null, get(base + "/bookings/" + token), null, status().isOk());
+        assertThat(afterAccept.get("salonConfirmed").asBoolean()).isTrue();
+        assertThat(afterAccept.get("presenceConfirmed").asBoolean()).isFalse();
+        assertThat(afterAccept.get("confirmable").asBoolean()).isTrue();
+        assertThat(afterAccept.get("status").asText()).isEqualTo("SCHEDULED");
+
+        // o salão anota que o cliente confirmou por telefone: vira confirmação do cliente, sem aceitar nem mudar a situação
+        JsonNode other = call(null, get(base + "/bookings/" + book(base, service, inTwoDays + "T11:00:00", "João", "11988880012")), null, status().isOk());
+        assertThat(other.get("salonConfirmed").asBoolean()).isFalse();
+        long otherId = call(salon, get("/api/appointments?from=" + inTwoDays), null, status().isOk()).get(0).get("id").asLong();
+        JsonNode phoned = call(salon, post("/api/appointments/" + otherId + "/confirm"), null, status().isOk());
+        assertThat(phoned.get("customerConfirmedAt").isNull()).isFalse();
+        assertThat(phoned.get("status").asText()).isEqualTo("SCHEDULED");
+        assertThat(phoned.get("pendingAcceptance").asBoolean()).isTrue(); // continua aguardando o aceite do salão
+
+        // cliente confirma depois do aceite
+        JsonNode confirmed = call(null, post(base + "/bookings/" + token + "/confirm"), null, status().isOk());
+        assertThat(confirmed.get("presenceConfirmed").asBoolean()).isTrue();
+        assertThat(confirmed.get("salonConfirmed").asBoolean()).isTrue();
+        assertThat(confirmed.get("confirmable").asBoolean()).isFalse();
     }
 
     @Test
