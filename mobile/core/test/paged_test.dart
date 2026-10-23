@@ -20,7 +20,7 @@ ApiClient _api(int total, {List<Uri>? seen, Map<String, Completer<void>>? gate})
       await gate?[q]?.future;
       final all = [for (var i = 0; i < total; i++) 'Item $i'].where((s) => s.contains(q)).toList();
       final from = page * size;
-      final slice = all.skip(from).take(size).toList();
+      final slice = [for (final s in all.skip(from).take(size)) {'name': s}];
       return _json({'items': slice, 'page': page, 'size': size, 'total': all.length, 'hasMore': from + slice.length < all.length});
     }),
   );
@@ -29,7 +29,7 @@ ApiClient _api(int total, {List<Uri>? seen, Map<String, Completer<void>>? gate})
 PagedController<String> _controller(ApiClient api, {Map<String, String> filters = const {}}) => PagedController<String>(
       api: api,
       path: '/api/things',
-      parse: (j) => j as String,
+      parse: (j) => j['name'] as String,
       pageSize: 10,
       filters: filters,
       debounce: const Duration(milliseconds: 10),
