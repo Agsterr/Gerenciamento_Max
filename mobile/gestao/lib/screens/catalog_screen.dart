@@ -46,6 +46,7 @@ class CatalogScreen extends StatelessWidget {
             canEdit: owner,
             parse: ServiceItem.fromJson,
             where: (s) => !s.isKit,
+            searchable: true,
             title: 'serviço',
             withPhotos: true,
             fields: [
@@ -285,6 +286,7 @@ class _CrudList<T> extends StatefulWidget {
     required this.tile,
     this.withPhotos = false,
     this.photosAreProducts = false,
+    this.searchable = false,
     this.onChanged,
     this.preview,
     this.where,
@@ -295,6 +297,9 @@ class _CrudList<T> extends StatefulWidget {
 
   final void Function(String key, Map<String, TextEditingController> fields)? onChanged;
   final Widget Function(Map<String, String> values)? preview;
+
+  /// Lista paginada pelo servidor, com busca por nome/categoria (para listas que crescem, como os serviços).
+  final bool searchable;
 
   /// Mostra "Fotos deste serviço" no formulário (só para serviços).
   final bool withPhotos;
@@ -320,6 +325,15 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
   List<T>? _items;
   String? _error;
 
+  /// Só quando [_CrudList.searchable]: a lista vem do servidor, página a página.
+  late final PagedController<T>? _paged = widget.searchable
+      ? PagedController<T>(api: widget.api, path: widget.path, parse: widget.parse)..addListener(_pagedChanged)
+      : null;
+
+  void _pagedChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   bool get wantKeepAlive => true;
 
@@ -329,7 +343,15 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
     _load();
   }
 
+  @override
+  void dispose() {
+    _paged?.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
+    final paged = _paged;
+    if (paged != null) return paged.refresh();
     setState(() => _error = null);
     try {
       final json = await widget.api.get(widget.path) as List;
@@ -365,6 +387,51 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
     if (saved) _load();
   }
 
+  Widget _pagedBody() {
+    final c = _paged!;
+    final shown = [for (final i in c.items) if (widget.where == null || widget.where!(i)) i];
+    final state = pagedStateOrNull(
+      c,
+      empty: EmptyState(
+        icon: Icons.add_box_outlined,
+        title: c.query.isEmpty ? 'Nenhum ${widget.title} ainda' : 'Nada encontrado',
+        message: c.query.isEmpty ? 'Toque em "Novo" para cadastrar.' : 'Confira o que foi digitado.',
+      ),
+    );
+    return RefreshIndicator(
+      onRefresh: c.refresh,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (n) => loadMoreOnScroll(n, c),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 110),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          children: [
+            TextField(
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                labelText: 'Buscar por nome ou categoria',
+                prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+              ),
+              onChanged: c.search,
+            ),
+            const SizedBox(height: 12),
+            if (state != null)
+              state
+            else ...[
+              for (final item in shown)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: widget.tile(item, _load, widget.canEdit ? () => _edit(item) : null),
+                ),
+              PagedFooter(controller: c, noun: 'serviços'),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -372,7 +439,9 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
       floatingActionButton: widget.canEdit
           ? SizedBox(width: 140, child: GradientButton(label: 'Novo', icon: Icons.add_rounded, onPressed: _edit))
           : null,
-      body: _error != null
+      body: _paged != null
+          ? _pagedBody()
+          : _error != null
           ? ErrorRetry(message: _error!, onRetry: _load)
           : _items == null
               ? const Center(child: CircularProgressIndicator())

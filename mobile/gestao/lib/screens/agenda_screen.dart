@@ -5,6 +5,7 @@ import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
 import '../staff_reminders.dart';
+import 'appointment_search_screen.dart';
 import 'appointment_sheets.dart';
 import 'finish_sheet.dart';
 import 'new_appointment_sheet.dart';
@@ -123,6 +124,18 @@ class _AgendaScreenState extends State<AgendaScreen> {
       _items = null;
     });
     _load();
+  }
+
+  /// Busca em todas as datas; se tocar em um resultado, a agenda abre no dia dele.
+  Future<void> _search() async {
+    final day = await Navigator.push<DateTime>(context, MaterialPageRoute(builder: (_) => AppointmentSearchScreen(api: _api)));
+    if (day != null && mounted) {
+      setState(() {
+        _day = dateOnly(day);
+        _items = null;
+      });
+      _load();
+    }
   }
 
   Future<void> _pickDay() async {
@@ -245,6 +258,8 @@ class _AgendaScreenState extends State<AgendaScreen> {
                     ]),
                   ),
                   _Bell(unread: _unread, onTap: _openNotifications),
+                  const SizedBox(width: 6),
+                  _HeaderButton(icon: Icons.search_rounded, tooltip: 'Buscar agendamentos', onTap: _search),
                   const SizedBox(width: 6),
                   _HeaderButton(icon: Icons.chevron_left_rounded, tooltip: 'Semana anterior', onTap: () => _go(-7)),
                   const SizedBox(width: 6),

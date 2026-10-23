@@ -7,6 +7,7 @@ export 'src/format.dart';
 export 'src/gallery.dart';
 export 'src/local_reminders.dart';
 export 'src/models.dart';
+export 'src/paged.dart';
 export 'src/password_field.dart';
 export 'src/theme.dart';
 export 'src/update/app_update_service.dart';
