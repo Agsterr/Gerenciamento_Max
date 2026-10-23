@@ -327,7 +327,7 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
 
   /// Só quando [_CrudList.searchable]: a lista vem do servidor, página a página.
   late final PagedController<T>? _paged = widget.searchable
-      ? PagedController<T>(api: widget.api, path: widget.path, parse: widget.parse)..addListener(_pagedChanged)
+      ? (PagedController<T>(api: widget.api, path: widget.path, parse: widget.parse)..addListener(_pagedChanged))
       : null;
 
   void _pagedChanged() {
