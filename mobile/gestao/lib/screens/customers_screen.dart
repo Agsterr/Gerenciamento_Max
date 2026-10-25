@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
@@ -16,12 +14,14 @@ class CustomersScreen extends StatefulWidget {
 }
 
 class _CustomersScreenState extends State<CustomersScreen> {
-  List<Customer>? _items;
-  String? _error;
-  String _query = '';
-  Timer? _debounce;
+  late final PagedController<Customer> _list =
+      PagedController(api: _api, path: '/api/customers', parse: Customer.fromJson)..addListener(_changed);
 
   ApiClient get _api => widget.session.api;
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
 
   static const _fields = [
     FieldSpec('name', 'Nome', required: true),
@@ -33,23 +33,13 @@ class _CustomersScreenState extends State<CustomersScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _list.refresh();
   }
 
   @override
   void dispose() {
-    _debounce?.cancel();
+    _list.dispose();
     super.dispose();
-  }
-
-  Future<void> _load() async {
-    setState(() => _error = null);
-    try {
-      final json = await _api.get('/api/customers?q=${Uri.encodeQueryComponent(_query)}') as List;
-      if (mounted) setState(() => _items = json.map((e) => Customer.fromJson(e as Map<String, dynamic>)).toList());
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
-    }
   }
 
   Future<void> _edit([Customer? c]) async {
@@ -60,53 +50,46 @@ class _CustomersScreenState extends State<CustomersScreen> {
       initial: {'name': c?.name, 'phone': c?.phone, 'email': c?.email, 'notes': c?.notes},
       onSave: (v) => c == null ? _api.post('/api/customers', v) : _api.put('/api/customers/${c.id}', v),
     );
-    if (saved) _load();
+    if (saved) _list.refresh();
   }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final items = _items;
+    final items = _list.items;
+    final state = pagedStateOrNull(
+      _list,
+      empty: EmptyState(
+        icon: Icons.people_outline_rounded,
+        title: _list.query.isEmpty ? 'Nenhum cliente' : 'Nenhum cliente encontrado',
+        message: _list.query.isEmpty ? 'Clientes que agendam online entram aqui automaticamente.' : 'Confira o nome ou o telefone digitado.',
+      ),
+    );
     return Scaffold(
       floatingActionButton: SizedBox(
         width: 150,
         child: GradientButton(label: 'Cliente', icon: Icons.person_add_alt_1_rounded, onPressed: _edit),
       ),
       body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
+        onRefresh: _list.refresh,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (n) => loadMoreOnScroll(n, _list),
+          child: ListView(
           padding: const EdgeInsets.only(bottom: 110),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
             GradientHeader(
               gradient: Brand.nightGradient,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Clientes', style: text.headlineSmall?.copyWith(color: Colors.white)),
-                Text(items == null ? ' ' : '${items.length} cliente(s)${_query.isEmpty ? '' : ' encontrados'}',
+                Text(!_list.loaded ? ' ' : '${_list.total} cliente(s)${_list.query.isEmpty ? '' : ' encontrados'}',
                     style: text.bodyMedium?.copyWith(color: Colors.white70)),
                 const SizedBox(height: 16),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Buscar nome ou telefone',
-                    floatingLabelBehavior: FloatingLabelBehavior.never,
-                    prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-                  ),
-                  onChanged: (v) {
-                    _query = v.trim();
-                    _debounce?.cancel();
-                    _debounce = Timer(const Duration(milliseconds: 350), _load);
-                  },
-                ),
+                PagedSearchField(controller: _list, hint: 'Buscar nome ou telefone'),
               ]),
             ),
-            if (_error != null)
-              ErrorRetry(message: _error!, onRetry: _load)
-            else if (items == null)
-              const Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator()))
-            else if (items.isEmpty)
-              const EmptyState(icon: Icons.people_outline_rounded, title: 'Nenhum cliente', message: 'Clientes que agendam online entram aqui automaticamente.')
+            if (state != null)
+              state
             else
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -155,9 +138,11 @@ class _CustomersScreenState extends State<CustomersScreen> {
                         ]),
                       ),
                     ),
+                  PagedFooter(controller: _list, noun: 'clientes'),
                 ]),
               ),
           ],
+        ),
         ),
       ),
     );

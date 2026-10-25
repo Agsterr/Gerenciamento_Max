@@ -2,7 +2,6 @@ package com.max.salao.reminder;
 
 import java.util.List;
 
-import com.max.salao.appointment.AppointmentStatus;
 import com.max.salao.notification.NotificationService;
 import com.max.salao.salon.Salon;
 import com.max.salao.salon.SalonService;
@@ -58,7 +57,7 @@ public class ReminderJob {
     boolean notifySalon() {
         Salon salon = salons.current();
         long pending = reminders.due(salon).stream()
-                .filter(a -> a.getStatus() == AppointmentStatus.SCHEDULED && a.getReminderSentAt() == null)
+                .filter(a -> a.getCustomerConfirmedAt() == null && a.getReminderSentAt() == null)
                 .count();
         List<Integer> days = salon.getReminderMode().days();
         String when = days.size() > 1 ? "de amanhã e depois de amanhã"

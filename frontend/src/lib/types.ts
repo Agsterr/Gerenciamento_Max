@@ -361,6 +361,8 @@ export type Booking = {
   confirmable: boolean;
   /** false = o salão ainda não aceitou ("aguardando confirmação do salão"). */
   salonConfirmed: boolean;
+  /** O cliente já confirmou que vai (outra coisa que o aceite do salão). */
+  presenceConfirmed: boolean;
   reminderDays: number[];
 };
 

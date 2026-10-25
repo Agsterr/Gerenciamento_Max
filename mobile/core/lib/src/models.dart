@@ -244,6 +244,7 @@ class Booking {
     this.confirmable = false,
     this.reminderDays = const [],
     this.salonConfirmed = true,
+    this.presenceConfirmed = false,
   });
 
   factory Booking.fromJson(Map<String, dynamic> j) => Booking(
@@ -261,10 +262,14 @@ class Booking {
         confirmable: j['confirmable'] as bool? ?? false,
         reminderDays: _ints(j['reminderDays']),
         salonConfirmed: j['salonConfirmed'] as bool? ?? true,
+        presenceConfirmed: j['presenceConfirmed'] as bool? ?? false,
       );
 
   /// false = o salão ainda não aceitou o horário ("aguardando confirmação do salão").
   final bool salonConfirmed;
+
+  /// true = o cliente já confirmou que vai comparecer (é outra coisa que o aceite do salão).
+  final bool presenceConfirmed;
 
   /// Horário marcado que ainda espera o aceite do salão.
   bool get waitingForSalon => status.isOpen && !salonConfirmed;

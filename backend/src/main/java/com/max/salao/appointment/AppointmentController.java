@@ -11,6 +11,7 @@ import com.max.salao.appointment.AvailabilityService.Slot;
 import com.max.salao.catalog.ServiceItemRepository;
 import com.max.salao.professional.ProfessionalRepository;
 import com.max.salao.salon.SalonService;
+import com.max.salao.shared.PageResponse;
 import com.max.salao.shared.NotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -50,6 +51,33 @@ public class AppointmentController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return toResponse(service.list(from, to != null ? to : from));
+    }
+
+    /**
+     * Busca e histórico paginados, para quando há muitos agendamentos. {@code status} aceita vários separados por
+     * vírgula (ex.: DONE,CANCELED); {@code order=desc} (padrão) mostra os mais recentes primeiro.
+     */
+    @GetMapping("/appointments/search")
+    public PageResponse<AppointmentResponse> search(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "desc") String order,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        java.util.Set<AppointmentStatus> statuses = new java.util.HashSet<>();
+        if (status != null && !status.isBlank()) {
+            for (String s : status.split(",")) {
+                try {
+                    statuses.add(AppointmentStatus.valueOf(s.trim().toUpperCase()));
+                } catch (IllegalArgumentException e) {
+                    throw new com.max.salao.shared.BusinessException("Status inválido: " + s.trim());
+                }
+            }
+        }
+        return PageResponse.of(service.search(q, statuses, from, to, !"asc".equalsIgnoreCase(order), page, size),
+                AppointmentResponse::from);
     }
 
     @GetMapping("/customers/{customerId}/appointments")
@@ -93,7 +121,7 @@ public class AppointmentController {
 
     @PostMapping("/appointments/{id}/confirm")
     public AppointmentResponse confirm(@PathVariable Long id) {
-        return AppointmentResponse.from(service.changeStatus(id, Appointment::confirm));
+        return AppointmentResponse.from(service.confirmPresence(id));
     }
 
     @PostMapping("/appointments/{id}/start")

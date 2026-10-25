@@ -121,6 +121,41 @@ void main() {
     expect(find.textContaining('por '), findsWidgets);
   });
 
+  testWidgets('salão sem profissional: avisa que o agendamento online está indisponível', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    final store = await BookingStore.load();
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      httpClient: MockClient((req) async {
+        Object body = const [];
+        if (req.url.path == '/api/public/salons/bella') {
+          body = {
+            'name': 'Studio Bella', 'slug': 'bella', 'workDays': '2,3,4,5,6',
+            'services': [
+              {'id': 1, 'name': 'Corte', 'durationMinutes': 60, 'price': 80},
+            ],
+            'professionals': [],
+          };
+        }
+        return http.Response(jsonEncode(body), 200, headers: {'content-type': 'application/json; charset=utf-8'});
+      }),
+    );
+
+    await tester.pumpWidget(MaterialApp(home: SalonScreen(slug: 'bella', store: store, api: api)));
+    await tester.pumpAndSettle();
+    expect(find.text('Agendamento online indisponível'), findsNothing); // só depois de escolher um serviço
+    await tester.tap(find.text('Corte'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Agendamento online indisponível'), findsOneWidget);
+    expect(find.textContaining('Fale direto com o salão'), findsOneWidget);
+    expect(find.text('2. Com quem?'), findsNothing);
+    expect(find.text('3. Quando?'), findsNothing);
+  });
+
   testWidgets('vitrine: produtos à venda aparecem com preço e "Esgotado"', (tester) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;

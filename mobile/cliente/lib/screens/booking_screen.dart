@@ -130,7 +130,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 if (b.confirmable) ...[
                   GradientButton(label: 'Confirmar presença', icon: Icons.check_circle_outline_rounded, onPressed: _confirm),
                   const SizedBox(height: 10),
-                ] else if (b.status == AppointmentStatus.confirmed) ...[
+                ] else if (b.presenceConfirmed && b.status.isOpen) ...[
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     const Icon(Icons.verified_rounded, color: Brand.success),
                     const SizedBox(width: 6),

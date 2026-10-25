@@ -1,6 +1,7 @@
 package com.max.salao.catalog;
 
 import com.max.salao.plan.PlanService;
+import com.max.salao.shared.PageResponse;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -69,8 +71,15 @@ public class ServiceItemController {
         this.repository = repository;
     }
 
+    /** Sem {@code page}: todos (os apps usam para escolher o serviço). Com {@code page}: página com busca {@code q}. */
     @GetMapping
-    public List<ServiceResponse> list() {
+    public Object list(@RequestParam(required = false) String q, @RequestParam(required = false) Boolean active,
+                       @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size) {
+        if (page != null) {
+            String term = q == null ? "" : q.trim();
+            return PageResponse.of(repository.findPage(term, Boolean.TRUE.equals(active), PageResponse.request(page, size)),
+                    ServiceResponse::from);
+        }
         return repository.findAllByOrderByName().stream().map(ServiceResponse::from).toList();
     }
 

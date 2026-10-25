@@ -90,7 +90,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
 
   Widget _tile(ReminderItem i) {
     final text = Theme.of(context).textTheme;
-    final confirmed = i.status == AppointmentStatus.confirmed;
+    // confirmado = o CLIENTE confirmou que vai (não depende de o salão ter aceitado o horário)
+    final confirmed = i.customerConfirmed;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: SoftCard(
@@ -105,7 +106,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                   style: text.bodySmall?.copyWith(color: Brand.muted)),
               const SizedBox(height: 6),
               if (confirmed)
-                Pill(i.customerConfirmed ? 'Cliente confirmou' : 'Confirmado',
+                Pill('Cliente confirmou presença',
                     icon: Icons.verified_rounded, color: const Color(0xFFDCFCE7), textColor: const Color(0xFF047857))
               else if (i.reminderSent)
                 const Pill('Lembrete enviado', icon: Icons.mark_chat_read_outlined),

@@ -348,7 +348,6 @@ class _SalonScreenState extends State<SalonScreen> {
 
   List<Widget> _steps(PublicSalon salon) {
     final text = Theme.of(context).textTheme;
-    final servicePhotos = _service == null ? const <Photo>[] : _photos.where((p) => p.serviceId == _service!.id).toList();
     final groups = groupByCategory(salon.services, (s) => s.category);
     final categoryOf = {for (final s in salon.services) s.id: s.category ?? 'Outros'};
     final shown = _photoCategory == null ? _photos : _photos.where((p) => categoryOf[p.serviceId] == _photoCategory).toList();
@@ -378,7 +377,7 @@ class _SalonScreenState extends State<SalonScreen> {
                 ),
             ]),
           ),
-        if (shown.isEmpty) const Text('Ainda não há fotos desta categoria.') else PhotoGrid(photos: shown, maxItems: 6),
+        if (shown.isEmpty) const Text('Ainda não há fotos desta categoria.') else PhotoGrid(photos: shown, maxItems: 6, showServiceName: true),
         if (shown.length > 6)
           Align(
             alignment: Alignment.centerLeft,
@@ -428,6 +427,7 @@ class _SalonScreenState extends State<SalonScreen> {
                         textColor: const Color(0xFFB45309),
                       ),
                   ]),
+                  if (_photos.any((p) => p.serviceId == s.id)) _ServicePhotos(photos: [for (final p in _photos) if (p.serviceId == s.id) p]),
                 ]),
               ),
               _Price(price: s.price, promo: s.promoPriceOn(), full: s.kitFullPrice),
@@ -435,14 +435,9 @@ class _SalonScreenState extends State<SalonScreen> {
           ),
         ),
       ],
-      if (servicePhotos.isNotEmpty) ...[
-        Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 8),
-          child: Text('Fotos de ${_service!.name}', style: text.titleSmall?.copyWith(color: Brand.muted)),
-        ),
-        PhotoGrid(photos: servicePhotos, maxItems: 6),
-      ],
-      if (_service != null) ...[
+      if (_service != null && salon.professionals.isEmpty)
+        const _NoProfessionalCard()
+      else if (_service != null) ...[
         const SectionTitle('2. Com quem?'),
         SizedBox(
           height: 104,
@@ -713,6 +708,58 @@ class _ProductCard extends StatelessWidget {
               onPressed: onWhatsApp,
               child: const Text('Pedir pelo WhatsApp', style: TextStyle(fontSize: 12)),
             ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Miniaturas das fotos do próprio serviço, dentro do cartão dele (tocar abre em tela cheia).
+class _ServicePhotos extends StatelessWidget {
+  const _ServicePhotos({required this.photos});
+
+  final List<Photo> photos;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = photos.take(3).toList();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(children: [
+        for (final (i, p) in shown.indexed)
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: SizedBox(width: 54, height: 54, child: PhotoThumb(photo: p, onTap: () => PhotoViewer.open(context, photos, i))),
+          ),
+        if (photos.length > 3)
+          Text('+${photos.length - 3}', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Brand.muted)),
+      ]),
+    );
+  }
+}
+
+/// Salão sem profissional ativo: não existe horário livre para mostrar.
+class _NoProfessionalCard extends StatelessWidget {
+  const _NoProfessionalCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: SoftCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Icon(Icons.info_outline_rounded, color: Brand.rose),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Agendamento online indisponível', style: text.titleSmall),
+              const SizedBox(height: 4),
+              Text('Este salão ainda não tem um profissional disponível para atender. Fale direto com o salão para marcar o horário.',
+                  style: text.bodyMedium?.copyWith(color: Brand.muted)),
+            ]),
+          ),
         ]),
       ),
     );
