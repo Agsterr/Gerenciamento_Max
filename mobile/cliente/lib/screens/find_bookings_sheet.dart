@@ -153,16 +153,16 @@ class _FindBookingsSheetState extends State<_FindBookingsSheet> {
                         builder: (_) => BookingScreen(slug: widget.slug!, token: b.token, api: widget.api, salonName: widget.salonName),
                       ),
                     ),
-                    child: Row(children: [
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(b.serviceName, style: text.titleSmall),
-                          Text('${formatShortDateTime(b.startAt)} · ${b.professionalName}',
-                              style: text.bodySmall?.copyWith(color: Brand.muted)),
-                        ]),
-                      ),
-                      BookingStatusChip(b),
-                    ]),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(b.serviceName, style: text.titleSmall),
+                        Text('${formatShortDateTime(b.startAt)} · ${b.professionalName}',
+                            style: text.bodySmall?.copyWith(color: Brand.muted)),
+                        const SizedBox(height: 6),
+                        BookingStatusChip(b),
+                      ]),
+                    ),
                   ),
                 ),
             ],
