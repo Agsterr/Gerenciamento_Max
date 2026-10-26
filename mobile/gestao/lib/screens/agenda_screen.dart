@@ -463,9 +463,17 @@ class _Kpi extends StatelessWidget {
             Icon(icon, color: const Color(0xFFFFA3C2), size: 20),
             const SizedBox(height: 8),
             FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
               child: Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
             ),
-            Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.w600)),
+            // uma linha só: com fonte grande no celular o "s" de "Atendimentos" caía para a linha de baixo
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(label,
+                  maxLines: 1, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.w600)),
+            ),
           ]),
         ),
       );
@@ -560,26 +568,18 @@ class _TimelineItem extends StatelessWidget {
                     Text(formatMoney(a.price), style: text.titleSmall?.copyWith(color: Brand.rose)),
                   ]),
                   const SizedBox(height: 10),
-                  Row(children: [
-                    InitialsAvatar(a.professional.name, size: 24),
-                    const SizedBox(width: 6),
-                    Text(a.professional.name, style: text.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
-                    const Spacer(),
-                    if (a.pendingAcceptance)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 6),
-                        child: Pill('pendente', icon: Icons.hourglass_top_rounded, color: Color(0xFFFFF4DB), textColor: Color(0xFFB45309)),
-                      ),
-                    if (a.customerConfirmed)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 6),
-                        child: Pill('confirmou', icon: Icons.verified_rounded, color: Color(0xFFDCFCE7), textColor: Color(0xFF047857)),
-                      ),
-                    if (a.online) const Pill('online', icon: Icons.smartphone_rounded, color: Color(0xFFEDE9FE), textColor: Color(0xFF6D28D9)),
-                    if (a.realMinutes != null) ...[
+                  Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                    Row(mainAxisSize: MainAxisSize.min, children: [
+                      InitialsAvatar(a.professional.name, size: 24),
                       const SizedBox(width: 6),
-                      Pill('${a.realMinutes} min', icon: Icons.timer_outlined),
-                    ],
+                      Text(a.professional.name, style: text.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                    ]),
+                    if (a.pendingAcceptance)
+                      const Pill('pendente', icon: Icons.hourglass_top_rounded, color: Color(0xFFFFF4DB), textColor: Color(0xFFB45309)),
+                    if (a.customerConfirmed)
+                      const Pill('confirmou', icon: Icons.verified_rounded, color: Color(0xFFDCFCE7), textColor: Color(0xFF047857)),
+                    if (a.online) const Pill('online', icon: Icons.smartphone_rounded, color: Color(0xFFEDE9FE), textColor: Color(0xFF6D28D9)),
+                    if (a.realMinutes != null) Pill('${a.realMinutes} min', icon: Icons.timer_outlined),
                   ]),
                   if (a.serviceNotes != null) ...[
                     const SizedBox(height: 10),
