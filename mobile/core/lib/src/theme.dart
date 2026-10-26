@@ -133,7 +133,11 @@ class AppTheme {
       chipTheme: base.chipTheme.copyWith(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         side: BorderSide(color: scheme.outlineVariant),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        // cor explícita: sem ela o texto das etiquetas (ex.: categorias) ficava invisível em alguns celulares
+        labelStyle: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface),
+        backgroundColor: scheme.surface,
+        selectedColor: scheme.primaryContainer,
+        checkmarkColor: scheme.primary,
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scheme.surface,
