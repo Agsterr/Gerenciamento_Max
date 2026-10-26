@@ -23,7 +23,7 @@ Future<void> markNotified(int id) async {
 
 /// Confere o sino do salão e mostra notificação para o que for novo: agendamento online, cancelamento,
 /// remarcação e confirmação de presença do cliente. A primeira rodada só guarda a referência.
-Future<int> notifyNewStaffAlerts(ApiClient api) async {
+Future<int> notifyNewStaffAlerts(ApiClient api, {bool viaPush = false}) async {
   final inbox = Inbox.fromJson(await api.get('/api/notifications') as Map<String, dynamic>);
   final newest = inbox.items.fold(0, (m, n) => n.id > m ? n.id : m);
   final raw = await _storage.read(key: _lastKey);
@@ -34,7 +34,8 @@ Future<int> notifyNewStaffAlerts(ApiClient api) async {
   final last = int.tryParse(raw) ?? 0;
   final fresh = inbox.items.where((n) => n.id > last && !n.read && _types.contains(n.type)).toList()
     ..sort((a, b) => a.id.compareTo(b.id));
-  for (final n in fresh) {
+  // com o push ligado neste celular o servidor já avisou: aqui só avança a referência (senão chegam 2 avisos)
+  for (final n in viaPush ? const <AppNotification>[] : fresh) {
     await LocalReminders.instance.showNow(
       key: 'aviso:${n.id}',
       title: n.title,
@@ -59,7 +60,9 @@ void backgroundDispatcher() {
       await LocalReminders.instance.init();
       final session = Session();
       await session.restore();
-      if (session.state == SessionState.signedIn) await notifyNewStaffAlerts(session.api);
+      if (session.state == SessionState.signedIn) {
+        await notifyNewStaffAlerts(session.api, viaPush: Push.configured && await session.pushToken != null);
+      }
     } catch (e) {
       debugPrint('Verificação de avisos falhou: $e');
     }

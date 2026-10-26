@@ -69,6 +69,11 @@ void main() {
     await markNotified(20);
     items = [_note(15, 'BOOKED'), _note(21, 'CONFIRMED')];
     expect(await notifyNewStaffAlerts(api), 1); // 15 já foi marcado como avisado
+
+    // com push neste celular o servidor já avisou: não mostra de novo e avança a referência
+    items = [_note(30, 'BOOKED'), _note(21, 'CONFIRMED')];
+    expect(await notifyNewStaffAlerts(api, viaPush: true), 1);
+    expect(await notifyNewStaffAlerts(api), 0);
   });
 }
 
