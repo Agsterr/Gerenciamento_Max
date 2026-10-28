@@ -58,6 +58,19 @@ app:
     play-package: ${PLAY_PACKAGE:io.github.agsterr.salaomax.gestao}
     service-account-json: ${PLAY_SERVICE_ACCOUNT_JSON_BASE64:}
     cron: ${BILLING_SYNC_CRON:0 0 5 * * *}
+  # Pagamento pelo site (Stripe): chave secreta, preço da mensalidade (price_...) e segredo do webhook (whsec_...).
+  # Vazios = assinatura pelo site desligada. Ver docs/PAGAMENTOS.md.
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    price-id: ${STRIPE_PRICE_ID:}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    site-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
+  # Representantes: comissão fixa por mensalidade paga dos salões que indicaram (centavos) e dias de espera
+  # (prazo de estorno) até ficar disponível para repasse.
+  referral:
+    commission-cents: ${REFERRAL_COMMISSION_CENTS:1500}
+    hold-days: ${REFERRAL_HOLD_DAYS:7}
+    site-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
   # Push (Firebase Cloud Messaging) para o app do cliente: JSON da conta de serviço do Firebase.
   push:
     service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:}

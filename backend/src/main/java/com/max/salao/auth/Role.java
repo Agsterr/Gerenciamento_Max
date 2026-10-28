@@ -6,5 +6,7 @@ public enum Role {
     /** Recepção/profissional: agenda, clientes e produtos. */
     STAFF,
     /** Administrador da plataforma (fora dos salões): bloqueia salões/usuários e gerencia os APKs. */
-    PLATFORM_ADMIN
+    PLATFORM_ADMIN,
+    /** Representante: indica salões por um link e acompanha as comissões (fora dos salões). */
+    REPRESENTATIVE
 }

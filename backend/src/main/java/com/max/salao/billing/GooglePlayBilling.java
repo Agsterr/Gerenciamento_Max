@@ -57,6 +57,19 @@ class GooglePlayBilling implements PlayBilling {
     }
 
     @Override
+    public java.util.List<String> voidedOrderIds(Instant since) {
+        JsonNode n = call("GET", api + props.playPackage() + "/purchases/voidedpurchases?type=1&startTime=" + since.toEpochMilli(), null);
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        for (JsonNode v : n.path("voidedPurchases")) {
+            String id = v.path("orderId").asText("");
+            if (!id.isBlank()) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    @Override
     public void acknowledge(String productId, String purchaseToken) {
         call("POST", api + props.playPackage() + "/purchases/subscriptions/" + encode(productId) + "/tokens/"
                 + encode(purchaseToken) + ":acknowledge", "{}");

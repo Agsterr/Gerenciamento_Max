@@ -36,7 +36,8 @@ public class PlanService {
     public record PlanInfo(PlanStatus status, Plan plan, LocalDateTime trialEndsAt, LocalDate paidUntil, Long daysLeft,
                            Usage professionals, Usage services, Usage customers,
                            String contactWhatsapp, String contactEmail, Usage photos,
-                           boolean billingAvailable, String playProductId, boolean managedByPlay) {
+                           boolean billingAvailable, String playProductId, boolean managedByPlay,
+                           boolean webBillingAvailable, boolean managedByStripe) {
     }
 
     private final SalonService salons;
@@ -46,10 +47,12 @@ public class PlanService {
     private final CustomerRepository customers;
     private final PortfolioPhotoRepository photos;
     private final Clock clock;
+    private final com.max.salao.billing.StripeProperties stripe;
 
-    public PlanService(SalonService salons, PlatformSettings settings, ProfessionalRepository professionals,
+    public PlanService(com.max.salao.billing.StripeProperties stripe, SalonService salons, PlatformSettings settings, ProfessionalRepository professionals,
                        ServiceItemRepository services, CustomerRepository customers, PortfolioPhotoRepository photos,
                        Clock clock) {
+        this.stripe = stripe;
         this.photos = photos;
         this.salons = salons;
         this.settings = settings;
@@ -93,7 +96,10 @@ public class PlanService {
                 cfg.contactWhatsapp(), cfg.contactEmail(),
                 new Usage(photos.count(), photoLimit(status, cfg)),
                 // "Assinar" só aparece com a cobrança ligada para todos ou liberada para este salão (teste)
-                cfg.billingEnabled() || s.isBillingPreview(), cfg.playProductId(), s.getPlayPurchaseToken() != null);
+                cfg.billingEnabled() || s.isBillingPreview(), cfg.playProductId(), s.getPlayPurchaseToken() != null,
+                // assinar pelo site: só no site (a versão da loja usa a Play) e com o Stripe configurado
+                stripe.configured() && !AppChannel.isStoreApp() && s.getPlayPurchaseToken() == null,
+                s.getStripeSubscriptionId() != null);
     }
 
     private static int photoLimit(PlanStatus status, PlatformSettings.Values cfg) {

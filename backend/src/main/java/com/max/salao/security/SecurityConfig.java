@@ -41,11 +41,12 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/public/**", "/api/push/ack", "/actuator/health").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/public/**", "/api/push/ack", "/api/stripe/webhook", "/actuator/health").permitAll()
                         // APK fora da loja: consulta/download públicos; o deploy confere o X-Deploy-Token
                         .requestMatchers(HttpMethod.GET, "/api/app/version", "/api/app/download/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/app/releases/deploy").permitAll()
                         .requestMatchers("/api/platform/**").hasRole("PLATFORM_ADMIN")
+                        .requestMatchers("/api/representative/**").hasRole("REPRESENTATIVE")
                         .requestMatchers(HttpMethod.GET, "/api/me").authenticated()
                         // Gestão financeira e cadastros estruturais: só o dono
                         .requestMatchers("/api/reports/**", "/api/expenses/**", "/api/users/**", "/api/pricing/**").hasRole("OWNER")

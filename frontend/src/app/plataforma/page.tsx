@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { Badge, Button, Card, Empty, ErrorMessage, Field, Modal, PageHeader, PasswordField, Select } from "@/components/ui";
 import { api, appDownloadUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatDate, formatDateTime, isoDate } from "@/lib/format";
-import type { AppRelease, MobileApp, PlatformSalon, PlatformUser, TrialTerms, User } from "@/lib/types";
+import { formatCents, formatDate, formatDateTime, isoDate } from "@/lib/format";
+import type { AppRelease, MobileApp, PlatformRepresentative, PlatformSalon, PlatformUser, TrialTerms, User } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 const APPS: { id: MobileApp; label: string }[] = [
@@ -17,7 +17,7 @@ const APPS: { id: MobileApp; label: string }[] = [
 /** Administração da plataforma: bloqueio de salões/usuários e versões dos apps fora da loja. */
 export default function PlatformPage() {
   const { user, ready, signOut } = useAuth();
-  const [tab, setTab] = useState<"salons" | "trial" | "apps">("salons");
+  const [tab, setTab] = useState<"salons" | "reps" | "trial" | "apps">("salons");
 
   if (!ready) return <p className="p-8 text-center text-zinc-500">Carregando...</p>;
   if (user?.role !== "PLATFORM_ADMIN") return <PlatformLogin loggedAsSalon={!!user} />;
@@ -36,6 +36,7 @@ export default function PlatformPage() {
             {(
               [
                 ["salons", "Salões"],
+                ["reps", "Representantes"],
                 ["trial", "Teste grátis"],
                 ["apps", "Apps"],
               ] as const
@@ -59,7 +60,7 @@ export default function PlatformPage() {
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl p-4 md:p-8">{tab === "salons" ? <SalonsTab /> : tab === "trial" ? <TrialTab /> : <AppsTab />}</main>
+      <main className="mx-auto w-full max-w-6xl p-4 md:p-8">{tab === "salons" ? <SalonsTab /> : tab === "reps" ? <RepresentativesTab /> : tab === "trial" ? <TrialTab /> : <AppsTab />}</main>
     </div>
   );
 }
@@ -318,6 +319,104 @@ function BlockModal({ target, onClose, onDone }: { target: BlockTarget | null; o
         </div>
       </form>
     </Modal>
+  );
+}
+
+// ---------------- Representantes ----------------
+
+function RepresentativesTab() {
+  const { data: reps, error, reload } = useApi<PlatformRepresentative[]>("/api/platform/representatives");
+  const [blockTarget, setBlockTarget] = useState<BlockTarget | null>(null);
+  const [message, setMessage] = useState<string>();
+  const [actionError, setActionError] = useState<string>();
+
+  async function payOut(r: PlatformRepresentative) {
+    if (!confirm(`Marcar ${formatCents(r.totals.availableCents)} como pago a ${r.name}? Faça o Pix para ${r.pixKey ?? "(sem chave Pix cadastrada)"} antes.`)) return;
+    setActionError(undefined);
+    try {
+      const res = await api.post<{ paidCents: number }>(`/api/platform/representatives/${r.id}/pay-out`);
+      setMessage(`${formatCents(res.paidCents)} marcado como pago a ${r.name}.`);
+      reload();
+    } catch (e) {
+      setActionError((e as Error).message);
+    }
+  }
+
+  async function unblock(r: PlatformRepresentative) {
+    try {
+      await api.post(`/api/platform/users/${r.userId}/unblock`);
+      reload();
+    } catch (e) {
+      setActionError((e as Error).message);
+    }
+  }
+
+  return (
+    <>
+      <PageHeader title="Representantes" />
+      <p className="mb-4 text-sm text-zinc-600">
+        Cada mensalidade paga de um salão indicado gera a comissão para o representante. Ela fica em espera pelo prazo de estorno e
+        depois fica disponível: faça o Pix e use &quot;Marcar como pago&quot;. Comissão de pagamento estornado ou contestado é perdida.
+      </p>
+      <ErrorMessage message={error ?? actionError} />
+      {message && <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{message}</p>}
+      {!reps ? null : reps.length === 0 ? (
+        <Card>
+          <Empty>Nenhum representante cadastrado ainda. O cadastro é em /representantes.</Empty>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {reps.map((r) => (
+            <Card key={r.id}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-extrabold">
+                    {r.name} {r.blocked && <Badge className="bg-rose-100 text-rose-800">bloqueado</Badge>}
+                  </p>
+                  <p className="text-sm text-zinc-600">
+                    {r.email} · código <b>{r.code}</b>
+                  </p>
+                  <p className="text-sm text-zinc-600">Pix: {r.pixKey ?? "não informado"}</p>
+                  <p className="text-sm text-zinc-600">
+                    {r.salons} salão(ões) indicado(s) · {r.payingSalons} pagando · {r.totals.paidMonths} mensalidade(s) contadas
+                  </p>
+                </div>
+                <div className="text-right text-sm">
+                  <p>
+                    A pagar agora: <b className="text-lg">{formatCents(r.totals.availableCents)}</b>
+                  </p>
+                  <p className="text-zinc-500">Em espera: {formatCents(r.totals.releasingCents)}</p>
+                  <p className="text-zinc-500">Já pago: {formatCents(r.totals.paidCents)}</p>
+                  <p className="text-zinc-500">Estornado: {formatCents(r.totals.reversedCents)}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" disabled={r.totals.availableCents <= 0} onClick={() => payOut(r)}>
+                  Marcar como pago
+                </Button>
+                {r.blocked ? (
+                  <Button size="sm" variant="secondary" onClick={() => unblock(r)}>
+                    Desbloquear
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="danger" onClick={() => setBlockTarget({ kind: "user", id: r.userId, name: r.name })}>
+                    Bloquear
+                  </Button>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+      <BlockModal
+        target={blockTarget}
+        onClose={() => setBlockTarget(null)}
+        onDone={() => {
+          setBlockTarget(null);
+          reload();
+        }}
+      />
+    </>
   );
 }
 

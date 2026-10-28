@@ -19,6 +19,7 @@ const NAV = [
   { href: "/painel/portfolio", label: "Portfólio", ownerOnly: false },
   { href: "/painel/financeiro", label: "Financeiro e relatórios", ownerOnly: true },
   { href: "/painel/precificacao", label: "Precificação", ownerOnly: true },
+  { href: "/painel/assinatura", label: "Meu plano", ownerOnly: true },
   { href: "/painel/configuracoes", label: "Configurações", ownerOnly: true },
 ];
 
@@ -30,9 +31,10 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (ready && !user) router.replace("/login");
     if (user?.role === "PLATFORM_ADMIN") router.replace("/plataforma");
+    if (user?.role === "REPRESENTATIVE") router.replace("/representante");
   }, [ready, user, router]);
 
-  if (!user || user.role === "PLATFORM_ADMIN") return <p className="p-8 text-center text-zinc-500">Carregando...</p>;
+  if (!user || user.role === "PLATFORM_ADMIN" || user.role === "REPRESENTATIVE") return <p className="p-8 text-center text-zinc-500">Carregando...</p>;
 
   const items = NAV.filter((n) => !n.ownerOnly || user.role === "OWNER");
 

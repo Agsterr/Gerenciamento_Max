@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, ErrorMessage, Field, NewPasswordFields } from "@/components/ui";
 import { api } from "@/lib/api";
 import { subscribeLink } from "@/components/PlanBanner";
 import { useAuth } from "@/lib/auth";
 import { useApi } from "@/lib/useApi";
 import type { TrialTerms, User } from "@/lib/types";
+
+export const REF_KEY = "salao.ref";
 
 const toSlug = (name: string) =>
   name
@@ -29,6 +31,17 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  // código do representante: vem do link /r/CODIGO (?ref=) ou fica guardado do último link aberto neste aparelho
+  const [ref, setRef] = useState("");
+  useEffect(() => {
+    try {
+      const fromUrl = new URLSearchParams(window.location.search).get("ref");
+      setRef((fromUrl || localStorage.getItem(REF_KEY) || "").toUpperCase());
+    } catch {
+      // sem armazenamento: segue sem indicação
+    }
+  }, []);
+  const { data: referral } = useApi<{ valid: boolean; name: string | null }>(ref ? `/api/public/referral/${encodeURIComponent(ref)}` : null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -43,6 +56,7 @@ export default function RegisterPage() {
         ownerName: form.get("ownerName"),
         email: form.get("email"),
         password,
+        referralCode: referral?.valid ? ref : undefined,
       });
       signIn(res.token, res.user);
       router.push("/painel/configuracoes");
@@ -60,6 +74,9 @@ export default function RegisterPage() {
           Salão Max
         </Link>
         <h1 className="mt-2 text-xl font-semibold">Cadastre seu salão</h1>
+        {referral?.valid && (
+          <p className="mt-2 rounded-xl bg-[#FFF1F6] px-3 py-2 text-sm font-semibold text-brand-rose">Indicado por {referral.name}</p>
+        )}
         <TrialTermsBox />
         <form onSubmit={onSubmit} className="space-y-3">
           <Field

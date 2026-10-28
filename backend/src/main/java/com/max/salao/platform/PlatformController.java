@@ -35,8 +35,11 @@ public class PlatformController {
     private final PlatformService service;
     private final AppReleaseService releases;
     private final PlatformSettings settings;
+    private final com.max.salao.referral.ReferralService referrals;
 
-    public PlatformController(PlatformService service, AppReleaseService releases, PlatformSettings settings) {
+    public PlatformController(PlatformService service, AppReleaseService releases, PlatformSettings settings,
+                              com.max.salao.referral.ReferralService referrals) {
+        this.referrals = referrals;
         this.service = service;
         this.releases = releases;
         this.settings = settings;
@@ -77,6 +80,21 @@ public class PlatformController {
                 req.maxPhotosPaid() != null ? req.maxPhotosPaid() : current.maxPhotosPaid(),
                 req.billingEnabled() != null ? req.billingEnabled() : current.billingEnabled(),
                 req.playProductId() != null ? req.playProductId() : current.playProductId()));
+    }
+
+    public record PayOutResponse(long paidCents) {
+    }
+
+    /** Representantes com o que cada um tem a receber. */
+    @GetMapping("/representatives")
+    public List<com.max.salao.referral.ReferralService.RepresentativeSummary> representatives() {
+        return referrals.listForAdmin();
+    }
+
+    /** Repassa (marca como pagas) as comissões disponíveis do representante; o Pix é feito por fora. */
+    @PostMapping("/representatives/{id}/pay-out")
+    public PayOutResponse payOut(@PathVariable Long id) {
+        return new PayOutResponse(referrals.payOut(id));
     }
 
     @GetMapping("/salons/{id}/users")

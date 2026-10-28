@@ -107,6 +107,13 @@ public class Salon {
     private String playPurchaseToken;
     private LocalDateTime playCheckedAt;
 
+    /** Representante que indicou o salão no cadastro (nulo = sem indicação). */
+    private Long referrerId;
+
+    /** Assinatura pelo site (Stripe): cliente e assinatura ligados ao salão. */
+    private String stripeCustomerId;
+    private String stripeSubscriptionId;
+
     /** Mostra a tela "Assinar" no app mesmo com a cobrança desligada para todos (teste da compra). */
     private boolean billingPreview;
 

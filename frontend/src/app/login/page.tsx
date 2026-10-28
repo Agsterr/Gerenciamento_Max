@@ -27,7 +27,7 @@ export default function LoginPage() {
       signIn(res.token, res.user);
       if (form.get("keep")) credStore.set(String(form.get("email")), String(form.get("password")));
       else credStore.clear();
-      router.push(res.user.role === "PLATFORM_ADMIN" ? "/plataforma" : "/painel");
+      router.push(res.user.role === "PLATFORM_ADMIN" ? "/plataforma" : res.user.role === "REPRESENTATIVE" ? "/representante" : "/painel");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -61,6 +61,11 @@ export default function LoginPage() {
           Novo por aqui?{" "}
           <Link href="/cadastro" className="font-bold text-brand-rose">
             Cadastre seu salão
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-sm text-zinc-600">
+          <Link href="/representantes" className="font-bold text-brand-rose">
+            Quero ser representante
           </Link>
         </p>
       </Card>

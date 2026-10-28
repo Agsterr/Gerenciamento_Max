@@ -18,6 +18,10 @@ public interface SalonRepository extends JpaRepository<Salon, Long> {
     @Query("select s from Salon s where s.playPurchaseToken is not null and (s.paidUntil is null or s.paidUntil <= :limit)")
     List<Salon> playSubscribersDueUntil(@Param("limit") java.time.LocalDate limit);
 
+    Optional<Salon> findByStripeCustomerId(String customerId);
+
+    List<Salon> findByReferrerIdOrderByCreatedAtDesc(Long referrerId);
+
     boolean existsBySlug(String slug);
 
     /** Busca pública: ignora salões bloqueados. */

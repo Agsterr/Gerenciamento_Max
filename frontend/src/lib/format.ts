@@ -1,5 +1,8 @@
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
+/** Valor em centavos -> "R$ 15,00". */
+export const formatCents = (cents: number | null | undefined) => money.format((cents ?? 0) / 100);
+
 export const formatMoney = (value: number | null | undefined) => money.format(value ?? 0);
 
 /** "2026-10-20T14:30:00" -> "14:30" */

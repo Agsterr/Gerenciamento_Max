@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { whatsappLink } from "@/lib/format";
 import type { PlanInfo, TrialTerms } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
@@ -44,7 +45,11 @@ export function PlanBanner() {
           </>
         )}
       </div>
-      {link && (
+      {plan.webBillingAvailable ? (
+        <Link href="/painel/assinatura" className="bg-brand shrink-0 rounded-xl px-4 py-2 font-extrabold text-white shadow-glow">
+          {expired ? "Ativar meu plano" : "Quero assinar"}
+        </Link>
+      ) : link && (
         <a
           href={link}
           target="_blank"

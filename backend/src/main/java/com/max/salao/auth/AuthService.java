@@ -1,6 +1,7 @@
 package com.max.salao.auth;
 
 import com.max.salao.plan.PlanService;
+import com.max.salao.referral.ReferralService;
 import java.util.List;
 
 import com.max.salao.auth.AuthDtos.CreateUserRequest;
@@ -28,10 +29,12 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final PlanService plans;
+    private final ReferralService referrals;
 
     public AuthService(AppUserRepository users, SalonRepository salons, PasswordEncoder passwordEncoder,
-                       JwtService jwtService, PlanService plans) {
+                       JwtService jwtService, PlanService plans, ReferralService referrals) {
         this.plans = plans;
+        this.referrals = referrals;
         this.users = users;
         this.salons = salons;
         this.passwordEncoder = passwordEncoder;
@@ -50,6 +53,8 @@ public class AuthService {
         salon.setName(req.salonName());
         salon.setSlug(req.slug());
         plans.startTrial(salon);
+        // indicação por um representante (link com código): vale só no cadastro; código desconhecido é ignorado
+        referrals.findIdByCode(req.referralCode()).ifPresent(salon::setReferrerId);
         salon = salons.save(salon);
 
         AppUser owner = newUser(salon.getId(), req.ownerName(), req.email(), req.password(), Role.OWNER);
@@ -99,7 +104,7 @@ public class AuthService {
 
     @Transactional
     public UserResponse createUser(CreateUserRequest req) {
-        if (req.role() == Role.PLATFORM_ADMIN) {
+        if (req.role() == Role.PLATFORM_ADMIN || req.role() == Role.REPRESENTATIVE) {
             throw new BusinessException("Papel inválido");
         }
         ensureEmailFree(req.email());

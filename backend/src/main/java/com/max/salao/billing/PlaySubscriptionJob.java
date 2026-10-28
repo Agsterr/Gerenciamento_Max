@@ -16,5 +16,10 @@ class PlaySubscriptionJob {
     @Scheduled(cron = "${app.billing.cron:0 0 5 * * *}", zone = "${app.timezone}")
     void run() {
         billing.syncDue();
+        try {
+            billing.reverseVoidedPlayOrders();
+        } catch (RuntimeException e) {
+            org.slf4j.LoggerFactory.getLogger(PlaySubscriptionJob.class).warn("Estornos da Play não conferidos: {}", e.getMessage());
+        }
     }
 }

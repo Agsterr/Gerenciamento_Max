@@ -1,4 +1,4 @@
-export type Role = "OWNER" | "STAFF" | "PLATFORM_ADMIN";
+export type Role = "OWNER" | "STAFF" | "PLATFORM_ADMIN" | "REPRESENTATIVE";
 
 export type User = {
   id: number;
@@ -489,6 +489,9 @@ export type PlanInfo = {
   billingAvailable: boolean;
   playProductId: string;
   managedByPlay: boolean;
+  /** Assinar pelo site (cartão): só no site e com o Stripe configurado. */
+  webBillingAvailable: boolean;
+  managedByStripe: boolean;
 };
 
 /** Condições do teste grátis (página de cadastro) e configuração da plataforma. */
@@ -515,3 +518,57 @@ export const TIMEZONES: { value: string; label: string }[] = [
   { value: "America/Rio_Branco", label: "Acre (2h a menos)" },
   { value: "America/Noronha", label: "Fernando de Noronha (1h a mais)" },
 ];
+
+// ---- Representantes (indicação de salões) ----
+
+export type RepTotals = {
+  releasingCents: number;
+  availableCents: number;
+  paidCents: number;
+  reversedCents: number;
+  paidMonths: number;
+};
+
+export type RepSalon = {
+  id: number;
+  name: string;
+  createdAt: string;
+  status: "PAGANDO" | "TESTE" | "VENCIDO";
+  paidMonths: number;
+  earnedCents: number;
+};
+
+export type RepCommission = {
+  id: number;
+  salonName: string;
+  createdAt: string;
+  amountCents: number;
+  status: "PENDING" | "PAID" | "REVERSED";
+  availableAt: string;
+};
+
+export type RepDashboard = {
+  name: string;
+  email: string;
+  code: string;
+  link: string;
+  pixKey: string | null;
+  commissionCents: number;
+  holdDays: number;
+  totals: RepTotals;
+  salons: RepSalon[];
+  commissions: RepCommission[];
+};
+
+export type PlatformRepresentative = {
+  id: number;
+  userId: number;
+  name: string;
+  email: string;
+  code: string;
+  pixKey: string | null;
+  blocked: boolean;
+  salons: number;
+  payingSalons: number;
+  totals: RepTotals;
+};

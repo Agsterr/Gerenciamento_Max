@@ -16,7 +16,8 @@ public final class AuthDtos {
             @NotBlank @Pattern(regexp = "[a-z0-9-]{3,60}", message = "use letras minúsculas, números e hífen") String slug,
             @NotBlank String ownerName,
             @NotBlank @Email String email,
-            @NotBlank @Size(min = 6) String password) {
+            @NotBlank @Size(min = 6) String password,
+            /* opcional: código do representante que indicou */ @Size(max = 20) String referralCode) {
     }
 
     public record LoginRequest(@NotBlank String email, @NotBlank String password) {

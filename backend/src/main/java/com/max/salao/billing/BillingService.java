@@ -10,6 +10,9 @@ import com.max.salao.plan.Plan;
 import com.max.salao.plan.PlanService;
 import com.max.salao.plan.PlanService.PlanInfo;
 import com.max.salao.plan.PlatformSettings;
+import com.max.salao.auth.AppUserRepository;
+import com.max.salao.referral.ReferralProperties;
+import com.max.salao.referral.ReferralService;
 import com.max.salao.salon.Salon;
 import com.max.salao.salon.SalonRepository;
 import com.max.salao.salon.SalonService;
@@ -39,9 +42,20 @@ public class BillingService {
     private final PlatformSettings settings;
     private final PlanService plans;
     private final Clock clock;
+    private final ReferralService referrals;
+    private final ReferralProperties referralProps;
+    private final WebBilling web;
+    private final StripeProperties stripe;
+    private final AppUserRepository users;
 
     public BillingService(PlayBilling play, SalonService salons, SalonRepository salonRepository,
-                          PlatformSettings settings, PlanService plans, Clock clock) {
+                          PlatformSettings settings, PlanService plans, Clock clock, ReferralService referrals,
+                          ReferralProperties referralProps, WebBilling web, StripeProperties stripe, AppUserRepository users) {
+        this.referrals = referrals;
+        this.referralProps = referralProps;
+        this.web = web;
+        this.stripe = stripe;
+        this.users = users;
         this.play = play;
         this.salons = salons;
         this.salonRepository = salonRepository;
@@ -128,9 +142,86 @@ public class BillingService {
     /** O plano vale até o fim do período pago; se a Google não renovar, o salão volta a só consulta sozinho. */
     private void apply(Salon salon, String token, PlaySubscription sub) {
         LocalDate until = sub.expiry().atZone(clock.getZone()).toLocalDate().plusDays(GRACE_DAYS);
+        // cada renovação paga (pedido novo) entra no registro de pagamentos e gera a comissão de quem indicou
+        boolean advanced = salon.getPaidUntil() == null || until.isAfter(salon.getPaidUntil());
+        if (advanced && sub.entitled(Instant.now()) && sub.orderId() != null && !sub.orderId().isBlank()) {
+            referrals.recordPayment(salon, "PLAY", sub.orderId(), sub.orderId(), referralProps.playPriceCents(),
+                    until.minusDays(GRACE_DAYS), LocalDateTime.now(clock));
+        }
         salon.setPlan(Plan.PAID);
         salon.setPaidUntil(until);
         salon.setPlayPurchaseToken(token);
         salon.setPlayCheckedAt(LocalDateTime.now(clock));
+    }
+
+    // ---- Pagamento pelo site (Stripe) ----
+
+    /** Abre a tela de pagamento do site para o salão atual. */
+    @Transactional
+    public String webCheckout(Long userId) {
+        Salon salon = salons.current();
+        if (com.max.salao.shared.AppChannel.isStoreApp()) {
+            throw new BusinessException("Na versão da loja a assinatura é feita pela Google Play.");
+        }
+        if (!stripe.configured()) {
+            throw new BusinessException("O pagamento pelo site ainda não está disponível.");
+        }
+        if (salon.getPlayPurchaseToken() != null && plans.status(salon) == com.max.salao.plan.PlanStatus.ACTIVE) {
+            throw new BusinessException("Seu plano é assinado pela Google Play. Gerencie por lá.");
+        }
+        if (salon.getStripeSubscriptionId() != null && plans.status(salon) == com.max.salao.plan.PlanStatus.ACTIVE) {
+            throw new BusinessException("Seu plano já está ativo. Use \"Gerenciar assinatura\" para trocar o cartão ou cancelar.");
+        }
+        String email = users.findById(userId).map(u -> u.getEmail()).orElse(null);
+        return web.checkoutUrl(salon, email);
+    }
+
+    /** Portal do cliente (trocar cartão, faturas, cancelar). */
+    @Transactional(readOnly = true)
+    public String webPortal() {
+        Salon salon = salons.current();
+        if (salon.getStripeCustomerId() == null) {
+            throw new BusinessException("Este salão ainda não assinou pelo site.");
+        }
+        return web.portalUrl(salon.getStripeCustomerId());
+    }
+
+    /** Pagamento confirmado: plano pago até o fim do período (mais a folga), sem encurtar o que já valia. */
+    @Transactional
+    void extendUntil(Salon salon, LocalDate periodEnd) {
+        LocalDate until = periodEnd.plusDays(GRACE_DAYS);
+        salon.setPlan(Plan.PAID);
+        if (salon.getPaidUntil() == null || until.isAfter(salon.getPaidUntil())) {
+            salon.setPaidUntil(until);
+        }
+        salonRepository.save(salon);
+    }
+
+    /** Pagamento estornado: se era o período em vigor, o acesso pago acaba hoje. */
+    @Transactional
+    void revokeAccess(Long salonId, LocalDate periodEnd) {
+        if (salonId == null || periodEnd == null) {
+            return;
+        }
+        salonRepository.findById(salonId).ifPresent(salon -> {
+            if (periodEnd.plusDays(GRACE_DAYS).equals(salon.getPaidUntil())) {
+                salon.setPaidUntil(LocalDate.now(clock).minusDays(1));
+                salonRepository.save(salon);
+            }
+        });
+    }
+
+    /** Rotina diária: pedidos da Play estornados nos últimos 30 dias tiram a comissão e o acesso. */
+    @Transactional
+    public int reverseVoidedPlayOrders() {
+        int reversed = 0;
+        for (String orderId : play.voidedOrderIds(Instant.now().minus(java.time.Duration.ofDays(30)))) {
+            var refunded = referrals.refund("PLAY", List.of(orderId));
+            if (refunded.isPresent()) {
+                revokeAccess(refunded.get().salonId(), refunded.get().periodEnd());
+                reversed++;
+            }
+        }
+        return reversed;
     }
 }
