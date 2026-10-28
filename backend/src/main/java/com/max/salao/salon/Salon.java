@@ -110,9 +110,10 @@ public class Salon {
     /** Representante que indicou o salão no cadastro (nulo = sem indicação). */
     private Long referrerId;
 
-    /** Assinatura pelo site (Stripe): cliente e assinatura ligados ao salão. */
-    private String stripeCustomerId;
-    private String stripeSubscriptionId;
+    /** Assinatura pelo site (Asaas): link de pagamento criado, cliente e assinatura ligados ao salão. */
+    private String asaasLinkId;
+    private String asaasCustomerId;
+    private String asaasSubscriptionId;
 
     /** Mostra a tela "Assinar" no app mesmo com a cobrança desligada para todos (teste da compra). */
     private boolean billingPreview;

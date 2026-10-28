@@ -489,9 +489,9 @@ export type PlanInfo = {
   billingAvailable: boolean;
   playProductId: string;
   managedByPlay: boolean;
-  /** Assinar pelo site (cartão): só no site e com o Stripe configurado. */
+  /** Assinar pelo site (Pix, boleto ou cartão): só no site e com o Asaas configurado. */
   webBillingAvailable: boolean;
-  managedByStripe: boolean;
+  managedByWeb: boolean;
 };
 
 /** Condições do teste grátis (página de cadastro) e configuração da plataforma. */

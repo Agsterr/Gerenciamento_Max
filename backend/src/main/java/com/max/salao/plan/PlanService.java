@@ -37,7 +37,7 @@ public class PlanService {
                            Usage professionals, Usage services, Usage customers,
                            String contactWhatsapp, String contactEmail, Usage photos,
                            boolean billingAvailable, String playProductId, boolean managedByPlay,
-                           boolean webBillingAvailable, boolean managedByStripe) {
+                           boolean webBillingAvailable, boolean managedByWeb) {
     }
 
     private final SalonService salons;
@@ -47,12 +47,12 @@ public class PlanService {
     private final CustomerRepository customers;
     private final PortfolioPhotoRepository photos;
     private final Clock clock;
-    private final com.max.salao.billing.StripeProperties stripe;
+    private final com.max.salao.billing.AsaasProperties asaas;
 
-    public PlanService(com.max.salao.billing.StripeProperties stripe, SalonService salons, PlatformSettings settings, ProfessionalRepository professionals,
+    public PlanService(com.max.salao.billing.AsaasProperties asaas, SalonService salons, PlatformSettings settings, ProfessionalRepository professionals,
                        ServiceItemRepository services, CustomerRepository customers, PortfolioPhotoRepository photos,
                        Clock clock) {
-        this.stripe = stripe;
+        this.asaas = asaas;
         this.photos = photos;
         this.salons = salons;
         this.settings = settings;
@@ -97,9 +97,9 @@ public class PlanService {
                 new Usage(photos.count(), photoLimit(status, cfg)),
                 // "Assinar" só aparece com a cobrança ligada para todos ou liberada para este salão (teste)
                 cfg.billingEnabled() || s.isBillingPreview(), cfg.playProductId(), s.getPlayPurchaseToken() != null,
-                // assinar pelo site: só no site (a versão da loja usa a Play) e com o Stripe configurado
-                stripe.configured() && !AppChannel.isStoreApp() && s.getPlayPurchaseToken() == null,
-                s.getStripeSubscriptionId() != null);
+                // assinar pelo site: só no site (a versão da loja usa a Play) e com o Asaas configurado
+                asaas.configured() && !AppChannel.isStoreApp() && s.getPlayPurchaseToken() == null,
+                s.getAsaasSubscriptionId() != null);
     }
 
     private static int photoLimit(PlanStatus status, PlatformSettings.Values cfg) {

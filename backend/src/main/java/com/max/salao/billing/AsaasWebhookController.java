@@ -7,20 +7,20 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Webhook do Stripe: público, protegido pela assinatura do cabeçalho (corpo cru, sem reprocessar o JSON). */
+/** Webhook do Asaas: público, protegido pelo token do cabeçalho {@code asaas-access-token}. */
 @RestController
-public class StripeWebhookController {
+public class AsaasWebhookController {
 
-    private final StripeWebhookService service;
+    private final AsaasWebhookService service;
 
-    public StripeWebhookController(StripeWebhookService service) {
+    public AsaasWebhookController(AsaasWebhookService service) {
         this.service = service;
     }
 
-    @PostMapping("/api/stripe/webhook")
+    @PostMapping("/api/asaas/webhook")
     @ResponseStatus(HttpStatus.OK)
-    public void receive(@RequestBody String payload, @RequestHeader(value = "Stripe-Signature", required = false) String signature) {
-        service.verify(payload, signature);
+    public void receive(@RequestBody String payload, @RequestHeader(value = "asaas-access-token", required = false) String token) {
+        service.verify(token);
         service.handle(payload);
     }
 }

@@ -45,16 +45,16 @@ public class BillingService {
     private final ReferralService referrals;
     private final ReferralProperties referralProps;
     private final WebBilling web;
-    private final StripeProperties stripe;
+    private final AsaasProperties asaas;
     private final AppUserRepository users;
 
     public BillingService(PlayBilling play, SalonService salons, SalonRepository salonRepository,
                           PlatformSettings settings, PlanService plans, Clock clock, ReferralService referrals,
-                          ReferralProperties referralProps, WebBilling web, StripeProperties stripe, AppUserRepository users) {
+                          ReferralProperties referralProps, WebBilling web, AsaasProperties asaas, AppUserRepository users) {
         this.referrals = referrals;
         this.referralProps = referralProps;
         this.web = web;
-        this.stripe = stripe;
+        this.asaas = asaas;
         this.users = users;
         this.play = play;
         this.salons = salons;
@@ -154,36 +154,58 @@ public class BillingService {
         salon.setPlayCheckedAt(LocalDateTime.now(clock));
     }
 
-    // ---- Pagamento pelo site (Stripe) ----
+    // ---- Pagamento pelo site (Asaas) ----
 
-    /** Abre a tela de pagamento do site para o salão atual. */
+    /** Abre a página de pagamento do site (Pix, boleto ou cartão) para o salão atual. */
     @Transactional
-    public String webCheckout(Long userId) {
+    public String webCheckout() {
         Salon salon = salons.current();
         if (com.max.salao.shared.AppChannel.isStoreApp()) {
             throw new BusinessException("Na versão da loja a assinatura é feita pela Google Play.");
         }
-        if (!stripe.configured()) {
+        if (!asaas.configured()) {
             throw new BusinessException("O pagamento pelo site ainda não está disponível.");
         }
-        if (salon.getPlayPurchaseToken() != null && plans.status(salon) == com.max.salao.plan.PlanStatus.ACTIVE) {
+        boolean active = plans.status(salon) == com.max.salao.plan.PlanStatus.ACTIVE;
+        if (salon.getPlayPurchaseToken() != null && active) {
             throw new BusinessException("Seu plano é assinado pela Google Play. Gerencie por lá.");
         }
-        if (salon.getStripeSubscriptionId() != null && plans.status(salon) == com.max.salao.plan.PlanStatus.ACTIVE) {
-            throw new BusinessException("Seu plano já está ativo. Use \"Gerenciar assinatura\" para trocar o cartão ou cancelar.");
+        if (salon.getAsaasSubscriptionId() != null && active) {
+            throw new BusinessException("Seu plano já está ativo. O próximo pagamento chega por e-mail no vencimento.");
         }
-        String email = users.findById(userId).map(u -> u.getEmail()).orElse(null);
-        return web.checkoutUrl(salon, email);
+        // link já criado e ainda sem pagamento: reaproveita (um pagamento no link antigo continua ligado ao salão)
+        if (salon.getAsaasLinkId() != null && salon.getAsaasSubscriptionId() == null) {
+            var existing = web.findLink(salon.getAsaasLinkId());
+            if (existing.isPresent()) {
+                return existing.get().url();
+            }
+        }
+        // assinatura anterior que ficou sem pagar: encerra para não cobrar duas vezes
+        if (salon.getAsaasSubscriptionId() != null) {
+            try {
+                web.cancelSubscription(salon.getAsaasSubscriptionId());
+            } catch (RuntimeException e) {
+                log.warn("Não foi possível encerrar a assinatura anterior do salão {}: {}", salon.getId(), e.getMessage());
+            }
+            salon.setAsaasSubscriptionId(null);
+        }
+        WebBilling.Link link = web.createLink(salon);
+        salon.setAsaasLinkId(link.id());
+        salonRepository.save(salon);
+        return link.url();
     }
 
-    /** Portal do cliente (trocar cartão, faturas, cancelar). */
-    @Transactional(readOnly = true)
-    public String webPortal() {
+    /** Cancela a assinatura do site: não cobra mais; o plano vale até o fim do período já pago. */
+    @Transactional
+    public PlanInfo webCancel() {
         Salon salon = salons.current();
-        if (salon.getStripeCustomerId() == null) {
-            throw new BusinessException("Este salão ainda não assinou pelo site.");
+        if (salon.getAsaasSubscriptionId() == null) {
+            throw new BusinessException("Este salão não tem assinatura pelo site para cancelar.");
         }
-        return web.portalUrl(salon.getStripeCustomerId());
+        web.cancelSubscription(salon.getAsaasSubscriptionId());
+        salon.setAsaasSubscriptionId(null);
+        salonRepository.save(salon);
+        return plans.info();
     }
 
     /** Pagamento confirmado: plano pago até o fim do período (mais a folga), sem encurtar o que já valia. */

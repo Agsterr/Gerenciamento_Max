@@ -58,12 +58,14 @@ app:
     play-package: ${PLAY_PACKAGE:io.github.agsterr.salaomax.gestao}
     service-account-json: ${PLAY_SERVICE_ACCOUNT_JSON_BASE64:}
     cron: ${BILLING_SYNC_CRON:0 0 5 * * *}
-  # Pagamento pelo site (Stripe): chave secreta, preço da mensalidade (price_...) e segredo do webhook (whsec_...).
+  # Pagamento pelo site (Asaas: Pix, boleto e cartão). ASAAS_API_KEY = chave de API; ASAAS_WEBHOOK_TOKEN = token que o
+  # Asaas manda em cada aviso (você define); ASAAS_BASE_URL = https://api-sandbox.asaas.com/v3 para testar.
   # Vazios = assinatura pelo site desligada. Ver docs/PAGAMENTOS.md.
-  stripe:
-    secret-key: ${STRIPE_SECRET_KEY:}
-    price-id: ${STRIPE_PRICE_ID:}
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+  asaas:
+    api-key: ${ASAAS_API_KEY:}
+    webhook-token: ${ASAAS_WEBHOOK_TOKEN:}
+    base-url: ${ASAAS_BASE_URL:https://api.asaas.com/v3}
+    price-cents: ${ASAAS_PRICE_CENTS:4990}
     site-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
   # Representantes: comissão fixa por mensalidade paga dos salões que indicaram (centavos) e dias de espera
   # (prazo de estorno) até ficar disponível para repasse.

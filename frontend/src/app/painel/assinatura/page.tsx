@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/format";
 import type { PlanInfo } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
-/** Meu plano: assinar pelo site (cartão), trocar o cartão ou cancelar. A versão da loja usa a Google Play. */
+/** Meu plano: assinar pelo site (Pix, boleto ou cartão) ou cancelar. A versão da loja usa a Google Play. */
 export default function SubscriptionPage() {
   const { data: plan, error, reload } = useApi<PlanInfo>("/api/salon/plan");
   const [busy, setBusy] = useState(false);
@@ -18,21 +18,35 @@ export default function SubscriptionPage() {
   useEffect(() => {
     const status = new URLSearchParams(window.location.search).get("assinatura");
     setReturned(status);
-    // o Stripe avisa o servidor logo depois do pagamento; recarrega para pegar o plano já ativo
+    // o Asaas avisa o servidor logo depois do pagamento; recarrega para pegar o plano já ativo
     if (status === "ok") {
       const t = setTimeout(reload, 3000);
       return () => clearTimeout(t);
     }
   }, [reload]);
 
-  async function open(path: string) {
+  async function subscribe() {
     setBusy(true);
     setActionError(undefined);
     try {
-      const res = await api.post<{ url: string }>(path);
+      const res = await api.post<{ url: string }>("/api/billing/web/checkout");
       window.location.href = res.url;
     } catch (e) {
       setActionError((e as Error).message);
+      setBusy(false);
+    }
+  }
+
+  async function cancel() {
+    if (!confirm("Cancelar a assinatura? Você continua com o plano até o fim do período já pago e não será cobrado de novo.")) return;
+    setBusy(true);
+    setActionError(undefined);
+    try {
+      await api.post("/api/billing/web/cancel");
+      reload();
+    } catch (e) {
+      setActionError((e as Error).message);
+    } finally {
       setBusy(false);
     }
   }
@@ -73,14 +87,14 @@ export default function SubscriptionPage() {
 
         <div className="mt-4 flex flex-wrap gap-2">
           {plan.managedByPlay && <p className="text-sm text-zinc-600">Seu plano é assinado pela Google Play. Para trocar a forma de pagamento ou cancelar, use a Play Store no celular.</p>}
-          {!plan.managedByPlay && plan.webBillingAvailable && !(active && plan.managedByStripe) && (
-            <Button disabled={busy} onClick={() => open("/api/billing/web/checkout")}>
+          {!plan.managedByPlay && plan.webBillingAvailable && !(active && plan.managedByWeb) && (
+            <Button disabled={busy} onClick={subscribe}>
               {busy ? "Abrindo..." : active ? "Renovar pelo site" : "Assinar pelo site"}
             </Button>
           )}
-          {plan.managedByStripe && (
-            <Button variant="secondary" disabled={busy} onClick={() => open("/api/billing/web/portal")}>
-              Gerenciar assinatura (cartão, faturas, cancelar)
+          {plan.managedByWeb && (
+            <Button variant="secondary" disabled={busy} onClick={cancel}>
+              Cancelar assinatura
             </Button>
           )}
           {!plan.webBillingAvailable && !plan.managedByPlay && link && (
@@ -90,8 +104,8 @@ export default function SubscriptionPage() {
           )}
         </div>
         <p className="mt-4 text-xs text-zinc-500">
-          Duas formas de pagar: pelo site, com cartão, ou pelo aplicativo na Google Play. Cancelar é a qualquer momento e o plano
-          vale até o fim do período já pago.
+          Duas formas de pagar: pelo site, com Pix, boleto ou cartão (cartão renova sozinho; Pix e boleto chegam por e-mail todo mês),
+          ou pelo aplicativo na Google Play. Cancelar é a qualquer momento e o plano vale até o fim do período já pago.
         </p>
       </Card>
     </>

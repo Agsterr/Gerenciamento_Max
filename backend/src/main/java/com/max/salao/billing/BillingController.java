@@ -1,8 +1,6 @@
 package com.max.salao.billing;
 
 import com.max.salao.plan.PlanService.PlanInfo;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -38,15 +36,15 @@ public class BillingController {
         return billing.sync();
     }
 
-    /** Tela de pagamento do site (cartão): a pessoa volta para o painel depois de pagar. */
+    /** Página de pagamento do site (Pix, boleto ou cartão): a pessoa volta para o painel depois de pagar. */
     @PostMapping("/api/billing/web/checkout")
-    public UrlResponse checkout(@AuthenticationPrincipal Jwt jwt) {
-        return new UrlResponse(billing.webCheckout(Long.valueOf(jwt.getSubject())));
+    public UrlResponse checkout() {
+        return new UrlResponse(billing.webCheckout());
     }
 
-    /** Portal para trocar o cartão, ver faturas ou cancelar a assinatura do site. */
-    @PostMapping("/api/billing/web/portal")
-    public UrlResponse portal() {
-        return new UrlResponse(billing.webPortal());
+    /** Cancela a assinatura feita pelo site; o plano vale até o fim do período já pago. */
+    @PostMapping("/api/billing/web/cancel")
+    public PlanInfo cancel() {
+        return billing.webCancel();
     }
 }

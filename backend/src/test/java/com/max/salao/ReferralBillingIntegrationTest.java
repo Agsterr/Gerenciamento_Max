@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.max.salao.billing.BillingService;
 import com.max.salao.billing.PlayBilling;
 import com.max.salao.billing.PlaySubscription;
-import com.max.salao.billing.StripeWebhookService;
 import com.max.salao.billing.WebBilling;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,14 +27,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-/** Pagamento pelo site (Stripe), Play e comissões dos representantes (PostgreSQL real, Stripe/Play falsos). */
+/** Pagamento pelo site (Asaas), Play e comissões dos representantes (PostgreSQL real, Asaas e Play falsos). */
 @SpringBootTest(properties = {
         "spring.datasource.url=${TEST_DB_URL:jdbc:postgresql://localhost:5432/salao_test}",
         "app.platform-admin.email=" + ReferralBillingIntegrationTest.ADMIN_EMAIL,
         "app.platform-admin.password=senha-da-plataforma",
-        "app.stripe.secret-key=sk_test_x",
-        "app.stripe.price-id=price_x",
-        "app.stripe.webhook-secret=whsec_teste",
+        "app.asaas.api-key=chave-de-teste",
+        "app.asaas.webhook-token=token-do-webhook-de-teste-123456789",
         "app.referral.hold-days=7"})
 @AutoConfigureMockMvc
 class ReferralBillingIntegrationTest {
@@ -48,8 +46,6 @@ class ReferralBillingIntegrationTest {
     ObjectMapper json;
     @Autowired
     JdbcTemplate jdbc;
-    @Autowired
-    StripeWebhookService webhook;
     @Autowired
     BillingService billing;
 
@@ -92,74 +88,85 @@ class ReferralBillingIntegrationTest {
         assertThat(dash.get("salons")).hasSize(1);
         assertThat(dash.at("/salons/0/status").asText()).isEqualTo("TESTE");
 
-        // pagamento pelo site: o dono pede a tela de pagamento; a equipe não
-        org.mockito.Mockito.when(web.checkoutUrl(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
-                .thenReturn("https://checkout.stripe.test/c/abc");
+        // pagamento pelo site: o dono pede a página de pagamento (a mesma se clicar de novo); a equipe não
+        String run = UUID.randomUUID().toString().substring(0, 8);
+        String link1 = "link_" + run;
+        String linkOrg = "linkorg_" + run;
+        String payOrg = "payorg_" + run;
+        String subOrg = "suborg_" + run;
+        String cusOrg = "cusorg_" + run;
+        String pay3 = "pay3_" + run;
+        org.mockito.Mockito.when(web.createLink(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new WebBilling.Link(link1, "https://www.asaas.com/c/abc"));
+        org.mockito.Mockito.when(web.findLink(link1))
+                .thenReturn(java.util.Optional.of(new WebBilling.Link(link1, "https://www.asaas.com/c/abc")));
         assertThat(call(referred.token, get("/api/salon/plan"), null, status().isOk()).get("webBillingAvailable").asBoolean()).isTrue();
         assertThat(call(referred.token, post("/api/billing/web/checkout"), null, status().isOk()).get("url").asText())
-                .isEqualTo("https://checkout.stripe.test/c/abc");
-        call(referred.token, post("/api/billing/web/portal"), null, status().isUnprocessableEntity()); // ainda sem cliente
+                .isEqualTo("https://www.asaas.com/c/abc");
+        assertThat(call(referred.token, post("/api/billing/web/checkout"), null, status().isOk()).get("url").asText())
+                .isEqualTo("https://www.asaas.com/c/abc");
+        org.mockito.Mockito.verify(web, org.mockito.Mockito.times(1)).createLink(org.mockito.ArgumentMatchers.any());
+        call(referred.token, post("/api/billing/web/cancel"), null, status().isUnprocessableEntity()); // ainda sem assinatura
 
-        // webhook: sem assinatura ou com assinatura errada é recusado
-        call(null, post("/api/stripe/webhook").header("Stripe-Signature", "t=1,v1=zz"), "{}", status().isBadRequest());
-        String customer = "cus_" + UUID.randomUUID().toString().substring(0, 8);
-        send("checkout.session.completed", Map.of("mode", "subscription", "id", "cs_1", "customer", customer,
-                "subscription", "sub_1", "client_reference_id", String.valueOf(referred.id)));
-        assertThat(jdbc.queryForObject("select stripe_customer_id from salon where id = ?", String.class, referred.id)).isEqualTo(customer);
-        call(referred.token, post("/api/billing/web/portal"), null, status().isOk());
+        // webhook: sem token ou com token errado é recusado
+        call(null, post("/api/asaas/webhook"), "{}", status().isUnauthorized());
+        call(null, post("/api/asaas/webhook").header("asaas-access-token", "errado"), "{}", status().isUnauthorized());
 
-        // 1ª mensalidade: plano ativo e comissão de R$ 15 em espera (prazo de estorno)
-        String in1 = "in_" + UUID.randomUUID().toString().substring(0, 8);
-        String pi1 = "pi_" + UUID.randomUUID().toString().substring(0, 8);
-        long end1 = Instant.now().plusSeconds(30L * 86400).getEpochSecond();
-        send("invoice.paid", invoice(in1, customer, referred.id, 4990, end1, pi1));
+        // 1ª mensalidade (pelo link): plano ativo e comissão de R$ 15 em espera (prazo de estorno)
+        String sub = "sub_" + UUID.randomUUID().toString().substring(0, 8);
+        String cus = "cus_" + UUID.randomUUID().toString().substring(0, 8);
+        String pay1 = "pay_" + UUID.randomUUID().toString().substring(0, 8);
+        send("PAYMENT_CONFIRMED", payment(pay1, sub, cus, link1, 49.90, java.time.LocalDate.now()));
+        assertThat(jdbc.queryForObject("select asaas_subscription_id from salon where id = ?", String.class, referred.id)).isEqualTo(sub);
         assertThat(call(referred.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText()).isEqualTo("ACTIVE");
         dash = call(repToken, get("/api/representative/me"), null, status().isOk());
         assertThat(dash.at("/totals/releasingCents").asInt()).isEqualTo(1500);
         assertThat(dash.at("/salons/0/status").asText()).isEqualTo("PAGANDO");
         assertThat(dash.at("/salons/0/paidMonths").asInt()).isEqualTo(1);
 
-        // o Stripe reenvia o mesmo evento: nada duplica
-        send("invoice.paid", invoice(in1, customer, referred.id, 4990, end1, pi1));
+        // o Asaas manda CONFIRMED e depois RECEIVED (e reenvia): conta uma vez só
+        send("PAYMENT_RECEIVED", payment(pay1, sub, cus, link1, 49.90, java.time.LocalDate.now()));
+        send("PAYMENT_RECEIVED", payment(pay1, sub, cus, link1, 49.90, java.time.LocalDate.now()));
         assertThat(call(repToken, get("/api/representative/me"), null, status().isOk()).at("/totals/releasingCents").asInt()).isEqualTo(1500);
 
-        // 2ª mensalidade
-        String in2 = "in_" + UUID.randomUUID().toString().substring(0, 8);
-        String pi2 = "pi_" + UUID.randomUUID().toString().substring(0, 8);
-        long end2 = Instant.now().plusSeconds(60L * 86400).getEpochSecond();
-        send("invoice.paid", invoice(in2, customer, referred.id, 4990, end2, pi2));
+        // 2ª mensalidade (Pix do mês seguinte, achada pela assinatura)
+        String pay2 = "pay_" + UUID.randomUUID().toString().substring(0, 8);
+        send("PAYMENT_RECEIVED", payment(pay2, sub, cus, null, 49.90, java.time.LocalDate.now().plusMonths(1)));
         assertThat(call(repToken, get("/api/representative/me"), null, status().isOk()).at("/totals/releasingCents").asInt()).isEqualTo(3000);
 
-        // estorno parcial não muda nada; estorno total da 1ª perde só a comissão dela e o plano segue (a 2ª vale)
-        send("charge.refunded", Map.of("object", "charge", "id", "ch_1", "payment_intent", pi1, "amount", 4990, "amount_refunded", 1000,
-                "customer", customer));
-        assertThat(call(repToken, get("/api/representative/me"), null, status().isOk()).at("/totals/reversedCents").asInt()).isZero();
-        send("charge.refunded", Map.of("object", "charge", "id", "ch_1", "payment_intent", pi1, "amount", 4990, "amount_refunded", 4990,
-                "customer", customer));
+        // estorno da 1ª: perde só a comissão dela e o plano segue (a 2ª vale)
+        send("PAYMENT_REFUNDED", payment(pay1, sub, cus, link1, 49.90, java.time.LocalDate.now()));
         dash = call(repToken, get("/api/representative/me"), null, status().isOk());
         assertThat(dash.at("/totals/reversedCents").asInt()).isEqualTo(1500);
         assertThat(dash.at("/totals/releasingCents").asInt()).isEqualTo(1500);
         assertThat(call(referred.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText()).isEqualTo("ACTIVE");
 
         // contestação (chargeback) da 2ª: perde a comissão e o acesso daquele período
-        send("charge.dispute.created", Map.of("object", "dispute", "id", "dp_1", "charge", "ch_2", "payment_intent", pi2));
+        send("PAYMENT_CHARGEBACK_REQUESTED", payment(pay2, sub, cus, null, 49.90, java.time.LocalDate.now().plusMonths(1)));
         dash = call(repToken, get("/api/representative/me"), null, status().isOk());
         assertThat(dash.at("/totals/reversedCents").asInt()).isEqualTo(3000);
         assertThat(dash.at("/totals/releasingCents").asInt()).isZero();
         assertThat(call(referred.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText()).isEqualTo("EXPIRED");
 
+        // aviso que não dá para ligar a nenhum salão não derruba o webhook (falhas seguidas pausariam a fila do Asaas)
+        send("PAYMENT_RECEIVED", payment("pay_orfao", "sub_orfa", "cus_orfao", "link_orfao", 49.90, java.time.LocalDate.now()));
+
         // salão sem indicação paga e ninguém ganha comissão
-        String inOrganic = "in_" + UUID.randomUUID().toString().substring(0, 8);
-        String cusOrganic = "cus_" + UUID.randomUUID().toString().substring(0, 8);
-        send("checkout.session.completed", Map.of("mode", "subscription", "id", "cs_2", "customer", cusOrganic,
-                "subscription", "sub_2", "client_reference_id", String.valueOf(organic.id)));
-        send("invoice.paid", invoice(inOrganic, cusOrganic, organic.id, 4990, end1, "pi_org"));
+        org.mockito.Mockito.when(web.createLink(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new WebBilling.Link(linkOrg, "https://www.asaas.com/c/org"));
+        call(organic.token, post("/api/billing/web/checkout"), null, status().isOk());
+        send("PAYMENT_CONFIRMED", payment(payOrg, subOrg, cusOrg, linkOrg, 49.90, java.time.LocalDate.now()));
         assertThat(jdbc.queryForObject("select count(*) from commission where salon_id = ?", Integer.class, organic.id)).isZero();
         assertThat(call(organic.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText()).isEqualTo("ACTIVE");
 
+        // cancelar: pede ao Asaas, desliga a assinatura e o plano segue até o fim do período pago
+        call(organic.token, post("/api/billing/web/cancel"), null, status().isOk());
+        org.mockito.Mockito.verify(web).cancelSubscription(subOrg);
+        assertThat(jdbc.queryForObject("select asaas_subscription_id from salon where id = ?", String.class, organic.id)).isNull();
+        assertThat(call(organic.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText()).isEqualTo("ACTIVE");
+
         // repasse: só o que passou do prazo de estorno; o admin vê e paga
-        String in3 = "in_" + UUID.randomUUID().toString().substring(0, 8);
-        send("invoice.paid", invoice(in3, customer, referred.id, 4990, end2 + 86400L * 30, "pi_3"));
+        send("PAYMENT_RECEIVED", payment(pay3, sub, cus, null, 49.90, java.time.LocalDate.now().plusMonths(2)));
         JsonNode list = call(admin, get("/api/platform/representatives"), null, status().isOk());
         long repId = list.findValuesAsText("code").indexOf(code) >= 0 ? repIdOf(list, code) : -1;
         assertThat(repId).isPositive();
@@ -220,20 +227,22 @@ class ReferralBillingIntegrationTest {
         return -1;
     }
 
-    private Map<String, Object> invoice(String id, String customer, long salonId, int amount, long periodEnd, String paymentIntent) {
-        return Map.of("id", id, "customer", customer, "amount_paid", amount, "payment_intent", paymentIntent,
-                "subscription", "sub_1",
-                "lines", Map.of("data", java.util.List.of(Map.of("period", Map.of("end", periodEnd),
-                        "metadata", Map.of("salon_id", String.valueOf(salonId))))));
+    private Map<String, Object> payment(String id, String subscription, String customer, String link, double value, java.time.LocalDate due) {
+        Map<String, Object> p = new java.util.HashMap<>();
+        p.put("id", id);
+        p.put("subscription", subscription);
+        p.put("customer", customer);
+        p.put("paymentLink", link);
+        p.put("value", value);
+        p.put("dueDate", due.toString());
+        p.put("paymentDate", java.time.LocalDate.now().toString());
+        return p;
     }
 
-    private void send(String type, Map<String, Object> object) throws Exception {
-        ObjectNode event = json.createObjectNode().put("type", type);
-        event.putObject("data").set("object", json.valueToTree(object));
-        String payload = json.writeValueAsString(event);
-        long now = Instant.now().getEpochSecond();
-        mvc.perform(post("/api/stripe/webhook").contentType(MediaType.APPLICATION_JSON).content(payload)
-                .header("Stripe-Signature", webhook.sign(now, payload))).andExpect(status().isOk());
+    private void send(String event, Map<String, Object> payment) throws Exception {
+        mvc.perform(post("/api/asaas/webhook").contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("id", "evt_" + UUID.randomUUID(), "event", event, "payment", payment)))
+                .header("asaas-access-token", "token-do-webhook-de-teste-123456789")).andExpect(status().isOk());
     }
 
     private Salon register(String referralCode) throws Exception {
