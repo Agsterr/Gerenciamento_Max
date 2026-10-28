@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,7 +20,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-/** Conversa com o Asaas contra um servidor falso: cabeçalhos, corpo do link recorrente, reaproveitar e cancelar. */
+/** Conversa com o Asaas contra um servidor falso: cliente, assinatura mensal, link da cobrança e cancelamento. */
 class AsaasWebBillingTest {
 
     private final ObjectMapper json = new ObjectMapper();
@@ -30,18 +33,24 @@ class AsaasWebBillingTest {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/v3", ex -> {
             String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            requests.add(ex.getRequestMethod() + " " + ex.getRequestURI().getPath() + " key=" + ex.getRequestHeaders().getFirst("access_token")
-                    + " ua=" + ex.getRequestHeaders().getFirst("User-Agent") + " " + body);
             String path = ex.getRequestURI().getPath();
+            requests.add(ex.getRequestMethod() + " " + path + " key=" + ex.getRequestHeaders().getFirst("access_token")
+                    + " ua=" + ex.getRequestHeaders().getFirst("User-Agent") + " " + body);
             String res;
             int status = 200;
-            if (path.equals("/v3/paymentLinks") && ex.getRequestMethod().equals("POST")) {
-                res = "{\"id\":\"link_9\",\"url\":\"https://www.asaas.com/c/xyz\"}";
-            } else if (path.equals("/v3/paymentLinks/link_9")) {
-                res = "{\"id\":\"link_9\",\"url\":\"https://www.asaas.com/c/xyz\",\"active\":true,\"deleted\":false}";
-            } else if (path.equals("/v3/paymentLinks/link_gone")) {
-                res = "{\"errors\":[{\"description\":\"não encontrado\"}]}";
-                status = 404;
+            if (path.equals("/v3/customers") && ex.getRequestMethod().equals("POST")) {
+                if (body.contains("\"cpfCnpj\":\"00000000000\"")) {
+                    res = "{\"errors\":[{\"code\":\"invalid_object\",\"description\":\"CPF/CNPJ inválido\"}]}";
+                    status = 400;
+                } else {
+                    res = "{\"id\":\"cus_9\"}";
+                }
+            } else if (path.equals("/v3/subscriptions") && ex.getRequestMethod().equals("POST")) {
+                res = "{\"id\":\"sub_9\"}";
+            } else if (path.equals("/v3/subscriptions/sub_9/payments")) {
+                res = "{\"data\":[{\"id\":\"pay_1\",\"status\":\"PENDING\",\"invoiceUrl\":\"https://www.asaas.com/i/abc\"}]}";
+            } else if (path.equals("/v3/subscriptions/sub_paga/payments")) {
+                res = "{\"data\":[{\"id\":\"pay_2\",\"status\":\"RECEIVED\",\"invoiceUrl\":\"https://www.asaas.com/i/paga\"}]}";
             } else if (path.equals("/v3/subscriptions/sub_1")) {
                 res = "{\"deleted\":true,\"id\":\"sub_1\"}";
             } else {
@@ -56,7 +65,7 @@ class AsaasWebBillingTest {
         });
         server.start();
         client = new AsaasWebBilling(new AsaasProperties("chave-secreta", "token", "http://127.0.0.1:" + server.getAddress().getPort() + "/v3",
-                4990, "https://salao.test"), json);
+                4990, "https://salao.test"), json, Clock.fixed(Instant.parse("2026-10-28T12:00:00Z"), ZoneOffset.UTC));
     }
 
     @AfterEach
@@ -64,28 +73,54 @@ class AsaasWebBillingTest {
         server.stop(0);
     }
 
-    @Test
-    void createsARecurringMonthlyLinkWithTheSalonPrice() throws Exception {
+    private static Salon salon() {
         Salon salon = new Salon();
         salon.setName("Studio Bella");
         salon.setSlug("bella");
-        WebBilling.Link link = client.createLink(salon);
-        assertThat(link.id()).isEqualTo("link_9");
-        assertThat(link.url()).isEqualTo("https://www.asaas.com/c/xyz");
-        String sent = requests.get(0);
-        assertThat(sent).startsWith("POST /v3/paymentLinks key=chave-secreta ua=SalaoMax");
-        JsonNode body = json.readTree(sent.substring(sent.indexOf('{')));
-        assertThat(body.get("chargeType").asText()).isEqualTo("RECURRENT");
-        assertThat(body.get("subscriptionCycle").asText()).isEqualTo("MONTHLY");
-        assertThat(body.get("billingType").asText()).isEqualTo("UNDEFINED");
-        assertThat(body.get("value").decimalValue()).isEqualByComparingTo("49.90");
-        assertThat(body.at("/callback/successUrl").asText()).isEqualTo("https://salao.test/painel/assinatura?assinatura=ok");
+        return salon;
     }
 
     @Test
-    void reusesAnExistingLinkAndCancelsSubscriptions() {
-        assertThat(client.findLink("link_9")).hasValueSatisfying(l -> assertThat(l.url()).isEqualTo("https://www.asaas.com/c/xyz"));
-        assertThat(client.findLink("link_gone")).isEmpty();
+    void createsCustomerAndMonthlySubscriptionAndReturnsTheFirstInvoiceUrl() throws Exception {
+        WebBilling.Subscribed s = client.subscribe(salon(), "Maria", "maria@teste.com", "123.456.789-09");
+        assertThat(s.customerId()).isEqualTo("cus_9");
+        assertThat(s.subscriptionId()).isEqualTo("sub_9");
+        assertThat(s.url()).isEqualTo("https://www.asaas.com/i/abc");
+
+        String customer = requests.get(0);
+        assertThat(customer).startsWith("POST /v3/customers key=chave-secreta ua=SalaoMax");
+        JsonNode c = json.readTree(customer.substring(customer.indexOf('{')));
+        assertThat(c.get("cpfCnpj").asText()).isEqualTo("12345678909");
+        assertThat(c.get("email").asText()).isEqualTo("maria@teste.com");
+
+        String subscription = requests.get(1);
+        JsonNode body = json.readTree(subscription.substring(subscription.indexOf('{')));
+        assertThat(body.get("customer").asText()).isEqualTo("cus_9");
+        assertThat(body.get("billingType").asText()).isEqualTo("UNDEFINED");
+        assertThat(body.get("cycle").asText()).isEqualTo("MONTHLY");
+        assertThat(body.get("value").decimalValue()).isEqualByComparingTo("49.90");
+        assertThat(body.get("nextDueDate").asText()).isEqualTo("2026-10-29");
+    }
+
+    @Test
+    void reusesAnExistingCustomerAndRefusesWithoutADocument() {
+        Salon known = salon();
+        known.setAsaasCustomerId("cus_existente");
+        client.subscribe(known, "Maria", "maria@teste.com", null);
+        assertThat(requests).noneMatch(r -> r.startsWith("POST /v3/customers"));
+
+        assertThatThrownBy(() -> client.subscribe(salon(), "Maria", "maria@teste.com", "123"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("CPF ou CNPJ");
+        // o Asaas recusou o documento: a mensagem dele chega para a pessoa
+        assertThatThrownBy(() -> client.subscribe(salon(), "Maria", "maria@teste.com", "000.000.000-00"))
+                .isInstanceOf(BusinessException.class).hasMessage("CPF/CNPJ inválido");
+    }
+
+    @Test
+    void findsOnlyAnOpenInvoiceAndCancelsSubscriptions() {
+        assertThat(client.openPaymentUrl("sub_9")).contains("https://www.asaas.com/i/abc");
+        assertThat(client.openPaymentUrl("sub_paga")).isEmpty(); // já paga: não há cobrança em aberto
+        assertThat(client.openPaymentUrl("sub_apagada")).isEmpty();
         client.cancelSubscription("sub_1");
         client.cancelSubscription("sub_inexistente"); // já não existe: nada a fazer
         assertThat(requests).anyMatch(r -> r.startsWith("DELETE /v3/subscriptions/sub_1 "));
@@ -93,7 +128,8 @@ class AsaasWebBillingTest {
 
     @Test
     void refusesWhenNotConfigured() {
-        AsaasWebBilling off = new AsaasWebBilling(new AsaasProperties("", "", null, null, ""), json);
-        assertThatThrownBy(() -> off.createLink(new Salon())).isInstanceOf(BusinessException.class).hasMessageContaining("configurado");
+        AsaasWebBilling off = new AsaasWebBilling(new AsaasProperties("", "", null, null, ""), json, Clock.systemUTC());
+        assertThatThrownBy(() -> off.subscribe(salon(), "Maria", "m@t.com", "12345678909"))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("configurado");
     }
 }

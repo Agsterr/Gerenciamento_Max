@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { subscribeLink } from "@/components/PlanBanner";
-import { Button, Card, ErrorMessage, PageHeader } from "@/components/ui";
+import { Button, Card, ErrorMessage, Field, PageHeader } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import type { PlanInfo } from "@/lib/types";
@@ -14,6 +14,7 @@ export default function SubscriptionPage() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string>();
   const [returned, setReturned] = useState<string | null>(null);
+  const [cpfCnpj, setCpfCnpj] = useState("");
 
   useEffect(() => {
     const status = new URLSearchParams(window.location.search).get("assinatura");
@@ -29,7 +30,7 @@ export default function SubscriptionPage() {
     setBusy(true);
     setActionError(undefined);
     try {
-      const res = await api.post<{ url: string }>("/api/billing/web/checkout");
+      const res = await api.post<{ url: string }>("/api/billing/web/checkout", { cpfCnpj });
       window.location.href = res.url;
     } catch (e) {
       setActionError((e as Error).message);
@@ -84,6 +85,17 @@ export default function SubscriptionPage() {
         )}
 
         <ErrorMessage message={actionError} />
+
+        {!plan.managedByPlay && plan.webBillingAvailable && !(active && plan.managedByWeb) && (
+          <Field
+            label="CPF ou CNPJ do titular da assinatura"
+            className="mt-4 max-w-sm"
+            inputMode="numeric"
+            placeholder="Só números ou com pontos e traço"
+            value={cpfCnpj}
+            onChange={(e) => setCpfCnpj(e.target.value)}
+          />
+        )}
 
         <div className="mt-4 flex flex-wrap gap-2">
           {plan.managedByPlay && <p className="text-sm text-zinc-600">Seu plano é assinado pela Google Play. Para trocar a forma de pagamento ou cancelar, use a Play Store no celular.</p>}

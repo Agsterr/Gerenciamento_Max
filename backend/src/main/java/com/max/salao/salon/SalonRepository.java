@@ -22,8 +22,6 @@ public interface SalonRepository extends JpaRepository<Salon, Long> {
 
     Optional<Salon> findByAsaasSubscriptionId(String subscriptionId);
 
-    Optional<Salon> findByAsaasLinkId(String linkId);
-
     List<Salon> findByReferrerIdOrderByCreatedAtDesc(Long referrerId);
 
     boolean existsBySlug(String slug);

@@ -1,20 +1,26 @@
 package com.max.salao.billing;
 
+import java.util.Optional;
+
 import com.max.salao.salon.Salon;
 
-/** Cobrança pelo site: cria a página de pagamento da mensalidade e cancela a assinatura. */
+/** Cobrança pelo site: cria a assinatura mensal, acha a cobrança em aberto e cancela. */
 public interface WebBilling {
 
-    /** Página de pagamento da mensalidade para este salão (a pessoa escolhe Pix, boleto ou cartão). */
-    Link createLink(Salon salon);
+    /**
+     * Cria (ou reaproveita) o cliente e a assinatura mensal no Asaas e devolve a página da primeira cobrança, onde a
+     * pessoa escolhe Pix, boleto ou cartão.
+     *
+     * @param cpfCnpj documento do titular (obrigatório no Asaas; pode ser nulo se o salão já é cliente lá)
+     */
+    Subscribed subscribe(Salon salon, String ownerName, String ownerEmail, String cpfCnpj);
 
-    /** Link já criado (para reaproveitar a mesma página se a pessoa clicar de novo); vazio se não existe mais. */
-    java.util.Optional<Link> findLink(String linkId);
+    /** Página da cobrança ainda em aberto (pendente/vencida) da assinatura, para reaproveitar; vazio se não há. */
+    Optional<String> openPaymentUrl(String subscriptionId);
 
     /** Cancela a assinatura (não gera mais cobranças; o que já foi pago continua valendo). */
     void cancelSubscription(String subscriptionId);
 
-    /** @param id identificador do link no Asaas (liga o pagamento ao salão) @param url endereço para abrir */
-    record Link(String id, String url) {
+    record Subscribed(String customerId, String subscriptionId, String url) {
     }
 }

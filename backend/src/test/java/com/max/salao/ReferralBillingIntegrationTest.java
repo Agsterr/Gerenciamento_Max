@@ -88,35 +88,39 @@ class ReferralBillingIntegrationTest {
         assertThat(dash.get("salons")).hasSize(1);
         assertThat(dash.at("/salons/0/status").asText()).isEqualTo("TESTE");
 
-        // pagamento pelo site: o dono pede a página de pagamento (a mesma se clicar de novo); a equipe não
+        // pagamento pelo site: o dono pede a página de pagamento (a mesma cobrança em aberto se clicar de novo); a equipe não
         String run = UUID.randomUUID().toString().substring(0, 8);
-        String link1 = "link_" + run;
-        String linkOrg = "linkorg_" + run;
-        String payOrg = "payorg_" + run;
+        String sub = "sub_" + run;
+        String cus = "cus_" + run;
         String subOrg = "suborg_" + run;
         String cusOrg = "cusorg_" + run;
+        String payOrg = "payorg_" + run;
         String pay3 = "pay3_" + run;
-        org.mockito.Mockito.when(web.createLink(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new WebBilling.Link(link1, "https://www.asaas.com/c/abc"));
-        org.mockito.Mockito.when(web.findLink(link1))
-                .thenReturn(java.util.Optional.of(new WebBilling.Link(link1, "https://www.asaas.com/c/abc")));
+        String invoice = "https://www.asaas.com/i/" + run;
+        org.mockito.Mockito.when(web.subscribe(org.mockito.ArgumentMatchers.argThat(sl -> sl != null && sl.getId().equals(referred.id)),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("12345678909")))
+                .thenReturn(new WebBilling.Subscribed(cus, sub, invoice));
+        org.mockito.Mockito.when(web.openPaymentUrl(sub)).thenReturn(java.util.Optional.of(invoice));
         assertThat(call(referred.token, get("/api/salon/plan"), null, status().isOk()).get("webBillingAvailable").asBoolean()).isTrue();
-        assertThat(call(referred.token, post("/api/billing/web/checkout"), null, status().isOk()).get("url").asText())
-                .isEqualTo("https://www.asaas.com/c/abc");
-        assertThat(call(referred.token, post("/api/billing/web/checkout"), null, status().isOk()).get("url").asText())
-                .isEqualTo("https://www.asaas.com/c/abc");
-        org.mockito.Mockito.verify(web, org.mockito.Mockito.times(1)).createLink(org.mockito.ArgumentMatchers.any());
-        call(referred.token, post("/api/billing/web/cancel"), null, status().isUnprocessableEntity()); // ainda sem assinatura
+        assertThat(call(referred.token, post("/api/billing/web/checkout"), Map.of("cpfCnpj", "123.456.789-09"), status().isOk())
+                .get("url").asText()).isEqualTo(invoice);
+        assertThat(call(referred.token, post("/api/billing/web/checkout"), Map.of("cpfCnpj", "123.456.789-09"), status().isOk())
+                .get("url").asText()).isEqualTo(invoice);
+        org.mockito.Mockito.verify(web, org.mockito.Mockito.times(1)).subscribe(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        assertThat(jdbc.queryForObject("select asaas_subscription_id from salon where id = ?", String.class, referred.id)).isEqualTo(sub);
+        call(referred.token, post("/api/billing/web/cancel"), null, status().isOk());
+        org.mockito.Mockito.verify(web).cancelSubscription(sub);
+        // arrependeu do cancelamento: a mesma assinatura volta a valer com o próximo pagamento (aviso traz a assinatura)
+        jdbc.update("update salon set asaas_subscription_id = ? where id = ?", sub, referred.id);
 
         // webhook: sem token ou com token errado é recusado
         call(null, post("/api/asaas/webhook"), "{}", status().isUnauthorized());
         call(null, post("/api/asaas/webhook").header("asaas-access-token", "errado"), "{}", status().isUnauthorized());
 
         // 1ª mensalidade (pelo link): plano ativo e comissão de R$ 15 em espera (prazo de estorno)
-        String sub = "sub_" + UUID.randomUUID().toString().substring(0, 8);
-        String cus = "cus_" + UUID.randomUUID().toString().substring(0, 8);
         String pay1 = "pay_" + UUID.randomUUID().toString().substring(0, 8);
-        send("PAYMENT_CONFIRMED", payment(pay1, sub, cus, link1, 49.90, java.time.LocalDate.now()));
+        send("PAYMENT_CONFIRMED", payment(pay1, sub, cus, 49.90, java.time.LocalDate.now()));
         assertThat(jdbc.queryForObject("select asaas_subscription_id from salon where id = ?", String.class, referred.id)).isEqualTo(sub);
         assertThat(call(referred.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText()).isEqualTo("ACTIVE");
         dash = call(repToken, get("/api/representative/me"), null, status().isOk());
@@ -125,37 +129,38 @@ class ReferralBillingIntegrationTest {
         assertThat(dash.at("/salons/0/paidMonths").asInt()).isEqualTo(1);
 
         // o Asaas manda CONFIRMED e depois RECEIVED (e reenvia): conta uma vez só
-        send("PAYMENT_RECEIVED", payment(pay1, sub, cus, link1, 49.90, java.time.LocalDate.now()));
-        send("PAYMENT_RECEIVED", payment(pay1, sub, cus, link1, 49.90, java.time.LocalDate.now()));
+        send("PAYMENT_RECEIVED", payment(pay1, sub, cus, 49.90, java.time.LocalDate.now()));
+        send("PAYMENT_RECEIVED", payment(pay1, sub, cus, 49.90, java.time.LocalDate.now()));
         assertThat(call(repToken, get("/api/representative/me"), null, status().isOk()).at("/totals/releasingCents").asInt()).isEqualTo(1500);
 
         // 2ª mensalidade (Pix do mês seguinte, achada pela assinatura)
         String pay2 = "pay_" + UUID.randomUUID().toString().substring(0, 8);
-        send("PAYMENT_RECEIVED", payment(pay2, sub, cus, null, 49.90, java.time.LocalDate.now().plusMonths(1)));
+        send("PAYMENT_RECEIVED", payment(pay2, sub, cus, 49.90, java.time.LocalDate.now().plusMonths(1)));
         assertThat(call(repToken, get("/api/representative/me"), null, status().isOk()).at("/totals/releasingCents").asInt()).isEqualTo(3000);
 
         // estorno da 1ª: perde só a comissão dela e o plano segue (a 2ª vale)
-        send("PAYMENT_REFUNDED", payment(pay1, sub, cus, link1, 49.90, java.time.LocalDate.now()));
+        send("PAYMENT_REFUNDED", payment(pay1, sub, cus, 49.90, java.time.LocalDate.now()));
         dash = call(repToken, get("/api/representative/me"), null, status().isOk());
         assertThat(dash.at("/totals/reversedCents").asInt()).isEqualTo(1500);
         assertThat(dash.at("/totals/releasingCents").asInt()).isEqualTo(1500);
         assertThat(call(referred.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText()).isEqualTo("ACTIVE");
 
         // contestação (chargeback) da 2ª: perde a comissão e o acesso daquele período
-        send("PAYMENT_CHARGEBACK_REQUESTED", payment(pay2, sub, cus, null, 49.90, java.time.LocalDate.now().plusMonths(1)));
+        send("PAYMENT_CHARGEBACK_REQUESTED", payment(pay2, sub, cus, 49.90, java.time.LocalDate.now().plusMonths(1)));
         dash = call(repToken, get("/api/representative/me"), null, status().isOk());
         assertThat(dash.at("/totals/reversedCents").asInt()).isEqualTo(3000);
         assertThat(dash.at("/totals/releasingCents").asInt()).isZero();
         assertThat(call(referred.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText()).isEqualTo("EXPIRED");
 
         // aviso que não dá para ligar a nenhum salão não derruba o webhook (falhas seguidas pausariam a fila do Asaas)
-        send("PAYMENT_RECEIVED", payment("pay_orfao", "sub_orfa", "cus_orfao", "link_orfao", 49.90, java.time.LocalDate.now()));
+        send("PAYMENT_RECEIVED", payment("pay_orfao", "sub_orfa", "cus_orfao", 49.90, java.time.LocalDate.now()));
 
         // salão sem indicação paga e ninguém ganha comissão
-        org.mockito.Mockito.when(web.createLink(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new WebBilling.Link(linkOrg, "https://www.asaas.com/c/org"));
-        call(organic.token, post("/api/billing/web/checkout"), null, status().isOk());
-        send("PAYMENT_CONFIRMED", payment(payOrg, subOrg, cusOrg, linkOrg, 49.90, java.time.LocalDate.now()));
+        org.mockito.Mockito.when(web.subscribe(org.mockito.ArgumentMatchers.argThat(sl -> sl != null && sl.getId().equals(organic.id)),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new WebBilling.Subscribed(cusOrg, subOrg, "https://www.asaas.com/i/org"));
+        call(organic.token, post("/api/billing/web/checkout"), Map.of("cpfCnpj", "12345678909"), status().isOk());
+        send("PAYMENT_CONFIRMED", payment(payOrg, subOrg, cusOrg, 49.90, java.time.LocalDate.now()));
         assertThat(jdbc.queryForObject("select count(*) from commission where salon_id = ?", Integer.class, organic.id)).isZero();
         assertThat(call(organic.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText()).isEqualTo("ACTIVE");
 
@@ -166,7 +171,7 @@ class ReferralBillingIntegrationTest {
         assertThat(call(organic.token, get("/api/salon/plan"), null, status().isOk()).get("status").asText()).isEqualTo("ACTIVE");
 
         // repasse: só o que passou do prazo de estorno; o admin vê e paga
-        send("PAYMENT_RECEIVED", payment(pay3, sub, cus, null, 49.90, java.time.LocalDate.now().plusMonths(2)));
+        send("PAYMENT_RECEIVED", payment(pay3, sub, cus, 49.90, java.time.LocalDate.now().plusMonths(2)));
         JsonNode list = call(admin, get("/api/platform/representatives"), null, status().isOk());
         long repId = list.findValuesAsText("code").indexOf(code) >= 0 ? repIdOf(list, code) : -1;
         assertThat(repId).isPositive();
@@ -227,12 +232,12 @@ class ReferralBillingIntegrationTest {
         return -1;
     }
 
-    private Map<String, Object> payment(String id, String subscription, String customer, String link, double value, java.time.LocalDate due) {
+    private Map<String, Object> payment(String id, String subscription, String customer, double value, java.time.LocalDate due) {
         Map<String, Object> p = new java.util.HashMap<>();
         p.put("id", id);
         p.put("subscription", subscription);
         p.put("customer", customer);
-        p.put("paymentLink", link);
+        p.put("status", "RECEIVED");
         p.put("value", value);
         p.put("dueDate", due.toString());
         p.put("paymentDate", java.time.LocalDate.now().toString());

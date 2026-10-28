@@ -158,7 +158,7 @@ public class BillingService {
 
     /** Abre a página de pagamento do site (Pix, boleto ou cartão) para o salão atual. */
     @Transactional
-    public String webCheckout() {
+    public String webCheckout(Long userId, String cpfCnpj) {
         Salon salon = salons.current();
         if (com.max.salao.shared.AppChannel.isStoreApp()) {
             throw new BusinessException("Na versão da loja a assinatura é feita pela Google Play.");
@@ -173,15 +173,13 @@ public class BillingService {
         if (salon.getAsaasSubscriptionId() != null && active) {
             throw new BusinessException("Seu plano já está ativo. O próximo pagamento chega por e-mail no vencimento.");
         }
-        // link já criado e ainda sem pagamento: reaproveita (um pagamento no link antigo continua ligado ao salão)
-        if (salon.getAsaasLinkId() != null && salon.getAsaasSubscriptionId() == null) {
-            var existing = web.findLink(salon.getAsaasLinkId());
-            if (existing.isPresent()) {
-                return existing.get().url();
-            }
-        }
-        // assinatura anterior que ficou sem pagar: encerra para não cobrar duas vezes
+        // cobrança em aberto da assinatura anterior: reaproveita (não cria assinatura duplicada)
         if (salon.getAsaasSubscriptionId() != null) {
+            var open = web.openPaymentUrl(salon.getAsaasSubscriptionId());
+            if (open.isPresent()) {
+                return open.get();
+            }
+            // assinatura que ficou sem pagar ou já sem cobrança em aberto: encerra para não cobrar duas vezes
             try {
                 web.cancelSubscription(salon.getAsaasSubscriptionId());
             } catch (RuntimeException e) {
@@ -189,10 +187,13 @@ public class BillingService {
             }
             salon.setAsaasSubscriptionId(null);
         }
-        WebBilling.Link link = web.createLink(salon);
-        salon.setAsaasLinkId(link.id());
+        var owner = users.findById(userId);
+        WebBilling.Subscribed created = web.subscribe(salon, owner.map(u -> u.getName()).orElse(null),
+                owner.map(u -> u.getEmail()).orElse(null), cpfCnpj == null ? null : cpfCnpj.replaceAll("\\D", ""));
+        salon.setAsaasCustomerId(created.customerId());
+        salon.setAsaasSubscriptionId(created.subscriptionId());
         salonRepository.save(salon);
-        return link.url();
+        return created.url();
     }
 
     /** Cancela a assinatura do site: não cobra mais; o plano vale até o fim do período já pago. */

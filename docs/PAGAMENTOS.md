@@ -14,29 +14,32 @@ dentro do app da loja.
 
 ## Como funciona o pagamento pelo site (Asaas)
 
-O botão **Assinar pelo site** cria um *link de pagamento recorrente mensal* no Asaas e abre a página dele: a pessoa
-informa os dados e escolhe Pix, boleto ou cartão. **Cartão renova sozinho**; **Pix e boleto** o Asaas manda por e-mail
-todo mês, e o plano é estendido quando o pagamento é confirmado (boleto pode levar 1 a 3 dias). O Asaas avisa o
-servidor por webhook; cada pagamento confirmado/recebido estende o plano e gera a comissão do representante.
-**Cancelar assinatura** (botão em "Meu plano") cancela a cobrança no Asaas.
+Mesmo desenho do sistema de estoque (`Gerenciamento_de_estoque`), que já usa o Asaas: o botão **Assinar pelo site**
+pede o **CPF ou CNPJ** do titular (o Asaas exige), cria o **cliente** e uma **assinatura mensal** (`billingType
+UNDEFINED`) e abre a página da primeira cobrança, onde a pessoa escolhe Pix, boleto ou cartão. **Cartão renova sozinho**;
+**Pix e boleto** o Asaas manda por e-mail todo mês, e o plano é estendido quando o pagamento é confirmado (boleto pode
+levar 1 a 3 dias). Cada pagamento recebido avisa o servidor por webhook, estende o plano e gera a comissão do
+representante. **Cancelar assinatura** (botão em "Meu plano") cancela a cobrança no Asaas. Clicar de novo em "Assinar"
+reaproveita a cobrança em aberto, sem criar assinatura duplicada.
 
-> A API do Asaas foi integrada pela referência pública que o código usa (links de pagamento, webhook com o cabeçalho
-> `asaas-access-token`, eventos `PAYMENT_CONFIRMED`, `PAYMENT_RECEIVED`, `PAYMENT_REFUNDED`,
-> `PAYMENT_CHARGEBACK_REQUESTED`). **Teste primeiro no sandbox** antes de ligar para clientes (passo a passo abaixo).
+O servidor liga o aviso ao salão pelo id da assinatura (ou do cliente, ou pela referência `salon:ID` que vai na
+assinatura). Eventos tratados: `PAYMENT_CONFIRMED` e `PAYMENT_RECEIVED` (pago), `PAYMENT_REFUNDED` e
+`PAYMENT_CHARGEBACK_REQUESTED` (estorno/contestação: perde acesso do período e a comissão).
 
 ## Ligar (uma vez)
 
-1. **Sandbox (teste):** crie uma conta em https://sandbox.asaas.com, gere a chave de API (Integrações → Chave de API) e,
-   no `.env` do servidor, coloque `ASAAS_API_KEY`, um `ASAAS_WEBHOOK_TOKEN` inventado por você (32+ caracteres, sem
-   espaços) e `ASAAS_BASE_URL=https://api-sandbox.asaas.com/v3`.
+1. **Sandbox (teste):** crie uma conta em https://sandbox.asaas.com, gere a chave de API (Integrações → Chaves de API,
+   prefixo `$aact_hmlg_`) e, no `.env` do servidor, coloque `ASAAS_API_KEY`, um `ASAAS_WEBHOOK_TOKEN` inventado por você
+   (32+ caracteres, sem espaços) e `ASAAS_BASE_URL=https://api-sandbox.asaas.com/v3`.
 2. No Asaas (Integrações → Webhooks → Novo webhook): URL `https://salaomax.focodev.com.br/api/asaas/webhook`, o mesmo
-   token em "Token de autenticação", fila ativa, eventos de **Cobranças** (ao menos pagamento confirmado, recebido,
-   estornado e chargeback).
-3. `docker compose up -d`, abra **Meu plano** num salão de teste, clique em **Assinar pelo site**, pague no sandbox e
-   confira que o plano ficou ativo e que a comissão apareceu para o representante.
-4. **Produção:** repita com a conta de produção (chave de API de produção, `ASAAS_BASE_URL=https://api.asaas.com/v3`,
-   webhook novo na conta de produção). Se a sua conta Asaas já tem webhook de outro sistema (o de estoque), crie um
-   webhook separado para esta URL, com um token só dele.
+   token em "Token de autenticação", fila ativa, eventos de **Cobranças**.
+3. `docker compose up -d`, abra **Meu plano** num salão de teste e clique em **Assinar pelo site**. No sandbox o CPF pode
+   ficar em branco (usa um CPF de teste). Para simular o pagamento sem pagar de verdade, confirme a cobrança no painel do
+   sandbox ou pela API (`POST /v3/sandbox/payment/{id}/confirm` com o header `access_token`, como faz o sistema de
+   estoque). Confira que o plano ficou ativo e que a comissão apareceu para o representante.
+4. **Produção:** repita com a conta de produção (chave `$aact_prod_...`, `ASAAS_BASE_URL=https://api.asaas.com/v3`,
+   webhook novo na conta de produção). Se a conta já tem webhook de outro sistema (o de estoque), crie um webhook
+   separado para esta URL, com um token só dele.
 
 Sem `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN`, o botão do site não aparece. A chave e o token ficam só no servidor.
 

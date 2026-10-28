@@ -110,8 +110,7 @@ public class Salon {
     /** Representante que indicou o salão no cadastro (nulo = sem indicação). */
     private Long referrerId;
 
-    /** Assinatura pelo site (Asaas): link de pagamento criado, cliente e assinatura ligados ao salão. */
-    private String asaasLinkId;
+    /** Assinatura pelo site (Asaas): cliente e assinatura ligados ao salão. */
     private String asaasCustomerId;
     private String asaasSubscriptionId;
 

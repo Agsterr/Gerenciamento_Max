@@ -6,9 +6,12 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,60 +22,111 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * API v3 do Asaas por HTTP. A mensalidade é um link de pagamento recorrente mensal: a própria página do Asaas pede os
- * dados da pessoa e deixa escolher Pix, boleto ou cartão (cartão renova sozinho; Pix e boleto chegam por e-mail todo mês).
+ * API v3 do Asaas por HTTP, no mesmo desenho do sistema de estoque (já em uso): cliente (com CPF/CNPJ), assinatura mensal
+ * com {@code billingType UNDEFINED} (a pessoa escolhe Pix, boleto ou cartão na página da cobrança) e a {@code invoiceUrl}
+ * da primeira cobrança. Cartão renova sozinho; Pix e boleto chegam por e-mail todo mês.
  */
 @Component
 class AsaasWebBilling implements WebBilling {
 
     private static final Logger log = LoggerFactory.getLogger(AsaasWebBilling.class);
+    /** CPF de teste do sandbox quando ninguém informou documento (só vale se a URL for do sandbox). */
+    private static final String SANDBOX_CPF = "24971563792";
 
     private final AsaasProperties props;
     private final ObjectMapper json;
+    private final Clock clock;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
-    AsaasWebBilling(AsaasProperties props, ObjectMapper json) {
+    AsaasWebBilling(AsaasProperties props, ObjectMapper json, Clock clock) {
         this.props = props;
         this.json = json;
+        this.clock = clock;
     }
 
     @Override
-    public Link createLink(Salon salon) {
+    public Subscribed subscribe(Salon salon, String ownerName, String ownerEmail, String cpfCnpj) {
+        String customerId = salon.getAsaasCustomerId() != null ? salon.getAsaasCustomerId()
+                : createCustomer(salon, ownerName, ownerEmail, cpfCnpj);
+
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", "Salão Max - mensalidade (" + salon.getSlug() + ")");
-        body.put("description", "Mensalidade do Salão Max para " + salon.getName());
+        body.put("customer", customerId);
         body.put("billingType", "UNDEFINED");
-        body.put("chargeType", "RECURRENT");
-        body.put("subscriptionCycle", "MONTHLY");
         body.put("value", BigDecimal.valueOf(props.priceCents(), 2));
-        body.put("dueDateLimitDays", 5);
-        body.put("notificationEnabled", true);
-        body.put("callback", Map.of("successUrl", props.siteUrl() + "/painel/assinatura?assinatura=ok", "autoRedirect", true));
-        JsonNode res = call("POST", "/paymentLinks", body);
-        String id = res.path("id").asText("");
-        String url = res.path("url").asText("");
-        if (id.isBlank() || url.isBlank()) {
-            log.warn("Asaas não devolveu o link de pagamento: {}", res);
+        body.put("nextDueDate", LocalDate.now(clock).plusDays(1).toString());
+        body.put("cycle", "MONTHLY");
+        body.put("description", "Mensalidade Salão Max - " + salon.getName());
+        body.put("externalReference", "salon:" + salon.getId());
+        JsonNode subscription = call("POST", "/subscriptions", body);
+        String subscriptionId = subscription.path("id").asText("");
+        if (subscriptionId.isBlank()) {
+            log.warn("Asaas não devolveu o id da assinatura: {}", subscription);
             throw new BusinessException("Não foi possível abrir o pagamento agora. Tente de novo em instantes.");
         }
-        return new Link(id, url);
+        // a primeira cobrança é gerada logo depois de criar a assinatura
+        for (int attempt = 0; attempt < 6; attempt++) {
+            Optional<String> url = firstPaymentUrl(subscriptionId, false);
+            if (url.isPresent()) {
+                return new Subscribed(customerId, subscriptionId, url.get());
+            }
+            sleep(400);
+        }
+        throw new BusinessException("O pagamento ainda está sendo preparado. Tente de novo em instantes.");
     }
 
     @Override
-    public java.util.Optional<Link> findLink(String linkId) {
+    public Optional<String> openPaymentUrl(String subscriptionId) {
         try {
-            JsonNode res = call("GET", "/paymentLinks/" + linkId, null);
-            String url = res.path("url").asText("");
-            boolean usable = !url.isBlank() && !res.path("deleted").asBoolean(false) && res.path("active").asBoolean(true);
-            return usable ? java.util.Optional.of(new Link(linkId, url)) : java.util.Optional.empty();
+            return firstPaymentUrl(subscriptionId, true);
         } catch (BusinessException e) {
-            return java.util.Optional.empty();
+            return Optional.empty(); // assinatura apagada ou fora do ar: cria uma nova
         }
     }
 
     @Override
     public void cancelSubscription(String subscriptionId) {
         call("DELETE", "/subscriptions/" + subscriptionId, null);
+    }
+
+    private String createCustomer(Salon salon, String ownerName, String ownerEmail, String cpfCnpj) {
+        String document = cpfCnpj == null ? "" : cpfCnpj.replaceAll("\\D", "");
+        if (document.isEmpty() && props.baseUrl().contains("sandbox")) {
+            document = SANDBOX_CPF;
+        }
+        if (document.length() != 11 && document.length() != 14) {
+            throw new BusinessException("Informe o CPF ou CNPJ do titular da assinatura.");
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("name", ownerName == null || ownerName.isBlank() ? salon.getName() : ownerName);
+        body.put("email", ownerEmail);
+        body.put("cpfCnpj", document);
+        body.put("externalReference", "salon:" + salon.getId());
+        JsonNode customer = call("POST", "/customers", body);
+        String id = customer.path("id").asText("");
+        if (id.isBlank()) {
+            log.warn("Asaas não devolveu o id do cliente: {}", customer);
+            throw new BusinessException("Não foi possível abrir o pagamento agora. Tente de novo em instantes.");
+        }
+        return id;
+    }
+
+    /** Primeira cobrança da assinatura (ou, com {@code onlyOpen}, só se estiver pendente/vencida). */
+    private Optional<String> firstPaymentUrl(String subscriptionId, boolean onlyOpen) {
+        JsonNode list = call("GET", "/subscriptions/" + subscriptionId + "/payments", null);
+        for (JsonNode payment : list.path("data")) {
+            String status = payment.path("status").asText("");
+            if (onlyOpen && !status.equals("PENDING") && !status.equals("OVERDUE")) {
+                continue;
+            }
+            String url = payment.path("invoiceUrl").asText("");
+            if (url.isBlank()) {
+                url = payment.path("bankSlipUrl").asText("");
+            }
+            if (!url.isBlank()) {
+                return Optional.of(url);
+            }
+        }
+        return Optional.empty();
     }
 
     private JsonNode call(String method, String path, Object body) {
@@ -92,7 +146,7 @@ class AsaasWebBilling implements WebBilling {
             }
             if (res.statusCode() / 100 != 2) {
                 log.warn("Asaas respondeu {} em {} {}: {}", res.statusCode(), method, path, res.body());
-                throw new BusinessException("Não foi possível falar com o serviço de pagamento agora. Tente de novo em instantes.");
+                throw new BusinessException(describe(res.body()));
             }
             return res.body().isBlank() ? json.createObjectNode() : json.readTree(res.body());
         } catch (IOException e) {
@@ -100,6 +154,27 @@ class AsaasWebBilling implements WebBilling {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Consulta ao Asaas interrompida", e);
+        }
+    }
+
+    /** Mensagem do próprio Asaas (ex.: "CPF/CNPJ inválido") quando houver; senão uma genérica. */
+    private String describe(String responseBody) {
+        try {
+            String description = json.readTree(responseBody).path("errors").path(0).path("description").asText("");
+            if (!description.isBlank()) {
+                return description;
+            }
+        } catch (IOException ignored) {
+            // corpo que não é JSON: usa a mensagem genérica
+        }
+        return "Não foi possível falar com o serviço de pagamento agora. Tente de novo em instantes.";
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }

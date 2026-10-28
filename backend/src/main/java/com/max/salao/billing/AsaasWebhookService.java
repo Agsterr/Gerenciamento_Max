@@ -81,10 +81,14 @@ public class AsaasWebhookService {
         if (id.isBlank() || value.signum() <= 0) {
             return;
         }
+        String status = payment.path("status").asText("");
+        if (!status.isEmpty() && !status.equals("RECEIVED") && !status.equals("CONFIRMED") && !status.equals("RECEIVED_IN_CASH")) {
+            return; // ainda não está pago de fato
+        }
         Optional<Salon> found = salonOf(payment);
         if (found.isEmpty()) {
-            log.error("Pagamento do Asaas {} sem salão correspondente (assinatura {}, link {}, referência {})", id,
-                    payment.path("subscription").asText(), payment.path("paymentLink").asText(),
+            log.error("Pagamento do Asaas {} sem salão correspondente (assinatura {}, cliente {}, referência {})", id,
+                    payment.path("subscription").asText(), payment.path("customer").asText(),
                     payment.path("externalReference").asText());
             return;
         }
@@ -109,18 +113,11 @@ public class AsaasWebhookService {
         referrals.refund(PROVIDER, List.of(id)).ifPresent(r -> billing.revokeAccess(r.salonId(), r.periodEnd()));
     }
 
-    /** Assinatura, link de pagamento, referência ou cliente: o que ligar primeiro ao salão. */
+    /** Assinatura, cliente ou referência ({@code salon:ID}): o que ligar primeiro ao salão. */
     private Optional<Salon> salonOf(JsonNode payment) {
         String subscription = payment.path("subscription").asText("");
         if (!subscription.isBlank()) {
             Optional<Salon> s = salons.findByAsaasSubscriptionId(subscription);
-            if (s.isPresent()) {
-                return s;
-            }
-        }
-        String link = payment.path("paymentLink").asText("");
-        if (!link.isBlank()) {
-            Optional<Salon> s = salons.findByAsaasLinkId(link);
             if (s.isPresent()) {
                 return s;
             }
@@ -134,7 +131,7 @@ public class AsaasWebhookService {
         }
         try {
             String ref = payment.path("externalReference").asText("");
-            return ref.isBlank() ? Optional.empty() : salons.findById(Long.valueOf(ref));
+            return ref.startsWith("salon:") ? salons.findById(Long.valueOf(ref.substring(6))) : Optional.empty();
         } catch (NumberFormatException e) {
             return Optional.empty();
         }
