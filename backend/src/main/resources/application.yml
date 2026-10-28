@@ -70,6 +70,8 @@ app:
   referral:
     commission-cents: ${REFERRAL_COMMISSION_CENTS:1500}
     hold-days: ${REFERRAL_HOLD_DAYS:7}
+    # preço da mensalidade na Play (mais alto que o do site por causa da taxa da loja); só informativo nos relatórios
+    play-price-cents: ${PLAY_PRICE_CENTS:5890}
     site-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
   # Push (Firebase Cloud Messaging) para o app do cliente: JSON da conta de serviço do Firebase.
   push:

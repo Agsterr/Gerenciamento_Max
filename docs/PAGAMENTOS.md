@@ -1,11 +1,12 @@
 # Pagamentos e representantes
 
-Duas formas de a pessoa assinar o Salão Max (R$ 49,90/mês), as duas gerando o mesmo plano pago:
+Duas formas de a pessoa assinar o Salão Max, as duas gerando o mesmo plano pago. O preço da Play é mais alto
+(**R$ 58,90** contra **R$ 49,90** no site) para cobrir a taxa da loja (~15%) e sobrar o mesmo líquido:
 
 | Onde | Como | Quem cobra |
 |---|---|---|
-| **Site** (`/painel/assinatura`, "Meu plano") | cartão, tela de pagamento do Stripe | Stripe Billing |
-| **App de gestão na Play Store** | assinatura da loja | Google Play (já configurado, `docs/PLAY_STORE.md`) |
+| **Site** (`/painel/assinatura`, "Meu plano") | cartão, R$ 49,90, tela de pagamento do Stripe | Stripe Billing |
+| **App de gestão na Play Store** | assinatura da loja, R$ 58,90 | Google Play (já configurado, `docs/PLAY_STORE.md`) |
 
 O plano vale até o fim do período pago (+1 dia de folga). Cancelar não derruba na hora: o acesso segue até o vencimento.
 Quem assina pelo app não vê o botão do site, e vice-versa (regra de pagamentos da Google).
@@ -41,3 +42,9 @@ Quem assina pelo app não vê o botão do site, e vice-versa (regra de pagamento
 
 Limitação conhecida: se um estorno acontecer *depois* de a comissão já ter sido repassada, ela aparece como estornada, mas
 não há desconto automático do próximo repasse (faça o acerto à mão).
+
+## Preço na Play
+
+O valor se muda no Play Console (plano base da assinatura `salao_max_mensal`), não no código. `PLAY_PRICE_CENTS` (padrão
+5890) é só o valor de referência guardado no registro de pagamentos; mantenha igual ao do Play Console. Não mostre o preço
+do site dentro do app da loja (regra de pagamentos da Google): o app já esconde o botão do site.

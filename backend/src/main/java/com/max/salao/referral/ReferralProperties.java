@@ -12,7 +12,7 @@ public record ReferralProperties(Integer commissionCents, Integer holdDays, Inte
     public ReferralProperties {
         commissionCents = commissionCents == null ? 1500 : commissionCents;
         holdDays = holdDays == null ? 7 : holdDays;
-        playPriceCents = playPriceCents == null ? 4990 : playPriceCents;
+        playPriceCents = playPriceCents == null ? 5890 : playPriceCents;
         siteUrl = siteUrl == null ? "" : siteUrl.trim().replaceAll("/+$", "");
     }
 }

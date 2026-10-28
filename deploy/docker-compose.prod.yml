@@ -118,6 +118,7 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       REFERRAL_COMMISSION_CENTS: ${REFERRAL_COMMISSION_CENTS:-1500}
       REFERRAL_HOLD_DAYS: ${REFERRAL_HOLD_DAYS:-7}
+      PLAY_PRICE_CENTS: ${PLAY_PRICE_CENTS:-5890}
       JAVA_TOOL_OPTIONS: -Xms96m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -Xss512k
     volumes:
       - apk_releases:/app/releases
