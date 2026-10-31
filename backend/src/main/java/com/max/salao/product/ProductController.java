@@ -9,6 +9,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -64,9 +65,12 @@ public class ProductController {
     private final StockMovementRepository movements;
     private final ProductService service;
     private final com.max.salao.portfolio.PortfolioPhotoRepository photos;
+    private final com.max.salao.portfolio.PortfolioService portfolio;
 
     public ProductController(ProductRepository repository, StockMovementRepository movements, ProductService service,
-                             com.max.salao.portfolio.PortfolioPhotoRepository photos) {
+                             com.max.salao.portfolio.PortfolioPhotoRepository photos,
+                             com.max.salao.portfolio.PortfolioService portfolio) {
+        this.portfolio = portfolio;
         this.photos = photos;
         this.repository = repository;
         this.movements = movements;
@@ -92,6 +96,23 @@ public class ProductController {
     @PutMapping("/{id}")
     public ProductResponse update(@PathVariable Long id, @Valid @RequestBody ProductRequest req) {
         return ProductResponse.from(repository.save(apply(service.find(id), req)));
+    }
+
+    /** Exclui o produto sem movimentação de estoque; com histórico o caminho é desativar (Editar, desmarcar Ativo). */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @org.springframework.transaction.annotation.Transactional
+    public void delete(@PathVariable Long id) {
+        Product p = service.find(id);
+        var files = portfolio.removeRows(portfolio.photosOfProduct(id));
+        try {
+            repository.delete(p);
+            repository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new com.max.salao.shared.BusinessException("Este produto já tem movimentações de estoque e não pode ser apagado. "
+                    + "Para tirá-lo da lista, edite e desmarque \"Ativo\".");
+        }
+        portfolio.deleteFiles(files);
     }
 
     @GetMapping("/{id}/movements")

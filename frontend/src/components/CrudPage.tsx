@@ -34,6 +34,8 @@ type Props<T extends { id: number }> = {
   ownerOnly?: boolean;
   rowActions?: (row: T, reload: () => void) => React.ReactNode;
   listPath?: string;
+  /** Mostra o botão Excluir (só dono; o servidor recusa o que tem histórico e explica como desativar). */
+  deletable?: boolean;
   /** Mostra só parte da lista (ex.: serviços sem os pacotes). */
   filter?: (row: T) => boolean;
   toolbar?: React.ReactNode;
@@ -57,6 +59,7 @@ export function CrudPage<T extends { id: number }>({
   ownerOnly,
   rowActions,
   listPath,
+  deletable,
   filter,
   toolbar,
   servicePhotos,
@@ -77,6 +80,20 @@ export function CrudPage<T extends { id: number }>({
   const [busy, setBusy] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [notice, setNotice] = useState<string>();
+  const [deleteError, setDeleteError] = useState<string>();
+
+  async function remove(row: T) {
+    const name = (row as unknown as { name?: string }).name ?? "este cadastro";
+    if (!confirm(`Excluir "${name}"? Não dá para desfazer.`)) return;
+    setDeleteError(undefined);
+    try {
+      await api.del(`${path}/${row.id}`);
+      reload();
+    } catch (e) {
+      // o servidor explica: com histórico não apaga, é para desativar (Editar, desmarcar Ativo)
+      setDeleteError((e as Error).message);
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -123,7 +140,7 @@ export function CrudPage<T extends { id: number }>({
           </Button>
         )}
       </PageHeader>
-      <ErrorMessage message={error ?? notice} />
+      <ErrorMessage message={error ?? notice ?? deleteError} />
       <Card className="overflow-x-auto p-0">
         {data && data.length === 0 ? (
           <Empty>Nenhum registro ainda.</Empty>
@@ -160,6 +177,11 @@ export function CrudPage<T extends { id: number }>({
                         }}
                       >
                         Editar
+                      </Button>
+                    )}
+                    {canEdit && deletable && user?.role === "OWNER" && (
+                      <Button variant="ghost" size="sm" className="text-brand-rose" onClick={() => remove(row)}>
+                        Excluir
                       </Button>
                     )}
                   </td>

@@ -48,6 +48,8 @@ class CatalogScreen extends StatelessWidget {
             where: (s) => !s.isKit,
             searchable: true,
             title: 'serviço',
+            label: (s) => s.name,
+            canDelete: owner,
             withPhotos: true,
             fields: [
               const FieldSpec('name', 'Nome', required: true),
@@ -79,8 +81,9 @@ class CatalogScreen extends StatelessWidget {
               'active': s?.active ?? true,
             },
             id: (s) => s.id,
-            tile: (s, _, onTap) => _ItemCard(
+            tile: (s, _, onTap, menu) => _ItemCard(
               onTap: onTap,
+              menu: menu,
               inactive: !s.active,
               leading: ServiceIcon(s.name),
               title: s.name,
@@ -100,6 +103,7 @@ class CatalogScreen extends StatelessWidget {
             canEdit: owner,
             parse: Professional.fromJson,
             title: 'profissional',
+            label: (p) => p.name,
             fields: [
               const FieldSpec('name', 'Nome', required: true),
               FieldSpec(
@@ -129,8 +133,9 @@ class CatalogScreen extends StatelessWidget {
               'active': p?.active ?? true,
             },
             id: (p) => p.id,
-            tile: (p, _, onTap) => _ItemCard(
+            tile: (p, _, onTap, menu) => _ItemCard(
               onTap: onTap,
+              menu: menu,
               inactive: !p.active,
               leading: InitialsAvatar(p.name, size: 48),
               title: p.name,
@@ -148,6 +153,8 @@ class CatalogScreen extends StatelessWidget {
             canEdit: true,
             parse: Product.fromJson,
             title: 'produto',
+            label: (p) => p.name,
+            canDelete: owner,
             withPhotos: true,
             photosAreProducts: true,
             onChanged: productPricing,
@@ -173,8 +180,9 @@ class CatalogScreen extends StatelessWidget {
               'showcase': p?.showcase ?? true,
             },
             id: (p) => p.id,
-            tile: (p, reload, onTap) => _ItemCard(
+            tile: (p, reload, onTap, menu) => _ItemCard(
               onTap: onTap,
+              menu: menu,
               inactive: !p.active,
               leading: p.photoUrl != null
                   ? ClipRRect(
@@ -284,6 +292,8 @@ class _CrudList<T> extends StatefulWidget {
     required this.toForm,
     required this.id,
     required this.tile,
+    required this.label,
+    this.canDelete = false,
     this.withPhotos = false,
     this.photosAreProducts = false,
     this.searchable = false,
@@ -315,7 +325,13 @@ class _CrudList<T> extends StatefulWidget {
   final List<FieldSpec> fields;
   final Map<String, Object?> Function(T?) toForm;
   final int Function(T) id;
-  final Widget Function(T item, VoidCallback reload, VoidCallback? onTap) tile;
+  final Widget Function(T item, VoidCallback reload, VoidCallback? onTap, Widget? menu) tile;
+
+  /// Nome mostrado ao confirmar a exclusão.
+  final String Function(T) label;
+
+  /// Só o dono exclui (e só onde o servidor permite: serviços e produtos).
+  final bool canDelete;
 
   @override
   State<_CrudList<T>> createState() => _CrudListState<T>();
@@ -387,6 +403,46 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
     if (saved) _load();
   }
 
+  Future<void> _delete(T item) async {
+    final name = widget.label(item);
+    if (!await confirmDialog(context, 'Excluir ${widget.title} "$name"? Não dá para desfazer.',
+        confirm: 'Excluir', danger: true)) {
+      return;
+    }
+    try {
+      await widget.api.delete('${widget.path}/${widget.id(item)}');
+      if (mounted) showMessage(context, '${widget.title[0].toUpperCase()}${widget.title.substring(1)} excluído.');
+      _load();
+    } catch (e) {
+      // o servidor explica: com histórico não apaga, é para desativar
+      if (mounted) showError(context, e);
+    }
+  }
+
+  /// "⋮" do cartão: editar e (para o dono) excluir. Tocar no cartão também abre a edição.
+  Widget? _menu(T item) {
+    if (!widget.canEdit) return null;
+    return PopupMenuButton<String>(
+      tooltip: 'Editar ou excluir',
+      icon: const Icon(Icons.more_vert_rounded, color: Brand.muted),
+      onSelected: (v) => v == 'edit' ? _edit(item) : _delete(item),
+      itemBuilder: (_) => [
+        const PopupMenuItem(
+          value: 'edit',
+          child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Editar'), contentPadding: EdgeInsets.zero),
+        ),
+        if (widget.canDelete)
+          const PopupMenuItem(
+            value: 'delete',
+            child: ListTile(
+                leading: Icon(Icons.delete_outline_rounded, color: Color(0xFFBE123C)),
+                title: Text('Excluir', style: TextStyle(color: Color(0xFFBE123C))),
+                contentPadding: EdgeInsets.zero),
+          ),
+      ],
+    );
+  }
+
   Widget _pagedBody() {
     final c = _paged!;
     final shown = [for (final i in c.items) if (widget.where == null || widget.where!(i)) i];
@@ -422,7 +478,7 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
               for (final item in shown)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: widget.tile(item, _load, widget.canEdit ? () => _edit(item) : null),
+                  child: widget.tile(item, _load, widget.canEdit ? () => _edit(item) : null, _menu(item)),
                 ),
               PagedFooter(controller: c, noun: 'serviços'),
             ],
@@ -455,7 +511,7 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
                       for (final item in _items!)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: widget.tile(item, _load, widget.canEdit ? () => _edit(item) : null),
+                          child: widget.tile(item, _load, widget.canEdit ? () => _edit(item) : null, _menu(item)),
                         ),
                     ],
                   ),
@@ -472,6 +528,7 @@ class _ItemCard extends StatelessWidget {
     required this.trailing,
     required this.onTap,
     required this.inactive,
+    this.menu,
   });
 
   final Widget leading;
@@ -480,6 +537,7 @@ class _ItemCard extends StatelessWidget {
   final Widget trailing;
   final VoidCallback? onTap;
   final bool inactive;
+  final Widget? menu;
 
   @override
   Widget build(BuildContext context) => Opacity(
@@ -499,6 +557,7 @@ class _ItemCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             trailing,
+            ?menu,
           ]),
         ),
       );

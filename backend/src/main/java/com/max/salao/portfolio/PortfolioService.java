@@ -180,6 +180,32 @@ public class PortfolioService {
         storage.delete(p.getThumbKey());
     }
 
+    /** Fotos de um serviço (ler antes de excluí-lo, para apagar só depois que a exclusão der certo). */
+    public List<PortfolioPhoto> photosOfService(Long serviceId) {
+        return photos.findByServiceIdOrderByPositionAscIdDesc(serviceId);
+    }
+
+    /** Fotos de um produto (idem). */
+    public List<PortfolioPhoto> photosOfProduct(Long productId) {
+        return photos.findByProductIdOrderByPositionAscIdDesc(productId);
+    }
+
+    /** Remove as fotos do banco (junto com a exclusão do serviço/produto) e devolve os arquivos a apagar depois. */
+    public List<String> removeRows(List<PortfolioPhoto> list) {
+        List<String> keys = new java.util.ArrayList<>();
+        for (PortfolioPhoto p : list) {
+            keys.add(p.getImageKey());
+            keys.add(p.getThumbKey());
+        }
+        photos.deleteAll(list);
+        return keys;
+    }
+
+    /** Apaga os arquivos das fotos (só depois de a exclusão no banco ter dado certo). */
+    public void deleteFiles(List<String> keys) {
+        keys.stream().filter(java.util.Objects::nonNull).forEach(storage::delete);
+    }
+
     private PortfolioPhoto find(Long id) {
         return photos.findById(id).orElseThrow(() -> new NotFoundException("Foto não encontrada"));
     }

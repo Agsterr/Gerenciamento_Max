@@ -11,6 +11,7 @@ export default function ServicesPage() {
       title="Serviços"
       path="/api/services"
       ownerOnly
+      deletable
       servicePhotos
       filter={(s) => s.kitServiceIds.length === 0}
       defaults={{ name: "", category: "", professionalIds: [], description: "", durationMinutes: 30, price: 0, cost: 0, active: true }}

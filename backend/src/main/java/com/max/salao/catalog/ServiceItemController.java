@@ -20,6 +20,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -64,8 +65,11 @@ public class ServiceItemController {
     private final ServiceItemRepository repository;
     private final PlanService plans;
     private final ProfessionalRepository professionals;
+    private final com.max.salao.portfolio.PortfolioService portfolio;
 
-    public ServiceItemController(ServiceItemRepository repository, PlanService plans, ProfessionalRepository professionals) {
+    public ServiceItemController(ServiceItemRepository repository, PlanService plans, ProfessionalRepository professionals,
+                                 com.max.salao.portfolio.PortfolioService portfolio) {
+        this.portfolio = portfolio;
         this.professionals = professionals;
         this.plans = plans;
         this.repository = repository;
@@ -100,6 +104,29 @@ public class ServiceItemController {
             kit.recomputeKit();
         }
         return ServiceResponse.from(saved);
+    }
+
+    /**
+     * Exclui o serviço (ou pacote) que nunca foi usado. Com atendimentos no histórico ou dentro de um pacote não dá
+     * para apagar: o histórico e o financeiro dependem dele; nesse caso o caminho é desativar (Editar, desmarcar Ativo).
+     */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void delete(@PathVariable Long id) {
+        ServiceItem s = repository.findById(id).orElseThrow(() -> new NotFoundException("Serviço não encontrado"));
+        if (!s.isKit() && !repository.findKitsContaining(id).isEmpty()) {
+            throw new BusinessException("Este serviço faz parte de um pacote. Tire-o do pacote (ou apague o pacote) antes de excluir.");
+        }
+        var files = portfolio.removeRows(portfolio.photosOfService(id));
+        try {
+            repository.delete(s);
+            repository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new BusinessException("Este serviço já tem atendimentos no histórico e não pode ser apagado. "
+                    + "Para tirá-lo do agendamento, edite e desmarque \"Ativo\".");
+        }
+        portfolio.deleteFiles(files);
     }
 
     private ServiceItem apply(ServiceItem s, ServiceRequest req) {

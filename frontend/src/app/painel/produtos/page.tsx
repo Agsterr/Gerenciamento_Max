@@ -57,6 +57,7 @@ export default function ProductsPage() {
       <CrudPage<Product>
         title="Produtos e estoque"
         path="/api/products"
+        deletable
         productPhotos
         defaults={{ name: "", costPrice: 0, markupPercent: "", salePrice: 0, minStock: 0, unit: "un", active: true, showcase: true }}
         fields={[
