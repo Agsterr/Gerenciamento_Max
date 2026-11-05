@@ -8,6 +8,7 @@ import com.max.salao.auth.AuthDtos.RegisterRequest;
 import com.max.salao.auth.AuthDtos.TokenResponse;
 import com.max.salao.auth.AuthDtos.UserResponse;
 import com.max.salao.booking.LookupRateLimiter;
+import com.max.salao.shared.AbuseLimiter;
 import com.max.salao.booking.PublicBookingController;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -34,23 +35,29 @@ public class AuthController {
     private final AccountDeletionService deletionService;
     private final PasswordResetService passwordReset;
     private final LookupRateLimiter rateLimiter;
+    private final AbuseLimiter abuse;
 
     public AuthController(AuthService service, AccountDeletionService deletionService,
-                          PasswordResetService passwordReset, LookupRateLimiter rateLimiter) {
+                          PasswordResetService passwordReset, LookupRateLimiter rateLimiter,
+                          AbuseLimiter abuse) {
         this.service = service;
         this.deletionService = deletionService;
         this.passwordReset = passwordReset;
         this.rateLimiter = rateLimiter;
+        this.abuse = abuse;
     }
 
     @PostMapping("/api/auth/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public TokenResponse register(@Valid @RequestBody RegisterRequest req) {
+    public TokenResponse register(@Valid @RequestBody RegisterRequest req, HttpServletRequest http) {
+        abuse.check("register-ip:" + PublicBookingController.clientIp(http), 5, java.time.Duration.ofHours(1));
         return service.register(req);
     }
 
     @PostMapping("/api/auth/login")
-    public TokenResponse login(@Valid @RequestBody LoginRequest req) {
+    public TokenResponse login(@Valid @RequestBody LoginRequest req, HttpServletRequest http) {
+        abuse.check("login-ip:" + PublicBookingController.clientIp(http), 60, java.time.Duration.ofMinutes(10));
+        abuse.check("login-mail:" + req.email().trim().toLowerCase(), 10, java.time.Duration.ofMinutes(10));
         return service.login(req);
     }
 
