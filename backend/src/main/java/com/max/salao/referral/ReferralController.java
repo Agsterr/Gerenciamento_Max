@@ -3,6 +3,8 @@ package com.max.salao.referral;
 import com.max.salao.auth.AuthDtos.TokenResponse;
 import com.max.salao.booking.LookupRateLimiter;
 import com.max.salao.booking.PublicBookingController;
+import com.max.salao.shared.AbuseLimiter;
+import com.max.salao.shared.TurnstileVerifier;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,16 +39,24 @@ public class ReferralController {
 
     private final ReferralService service;
     private final LookupRateLimiter rateLimiter;
+    private final AbuseLimiter abuse;
+    private final TurnstileVerifier turnstile;
 
-    public ReferralController(ReferralService service, LookupRateLimiter rateLimiter) {
+    public ReferralController(ReferralService service, LookupRateLimiter rateLimiter, AbuseLimiter abuse,
+                              TurnstileVerifier turnstile) {
         this.service = service;
         this.rateLimiter = rateLimiter;
+        this.abuse = abuse;
+        this.turnstile = turnstile;
     }
 
     @PostMapping("/api/auth/register-representative")
     @ResponseStatus(HttpStatus.CREATED)
-    public TokenResponse register(@Valid @RequestBody RegisterRepresentative req, HttpServletRequest http) {
+    public TokenResponse register(@Valid @RequestBody RegisterRepresentative req, HttpServletRequest http,
+                                  @RequestHeader(value = "X-Turnstile-Token", required = false) String captcha) {
         rateLimiter.check("rep-register:" + PublicBookingController.clientIp(http));
+        abuse.check("rep-register-hora:" + PublicBookingController.clientIp(http), 5, java.time.Duration.ofHours(1));
+        turnstile.verify(captcha, PublicBookingController.clientIp(http));
         return service.register(req.name(), req.email(), req.password(), req.pixKey());
     }
 

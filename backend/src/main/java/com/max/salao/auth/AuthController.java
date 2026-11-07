@@ -9,6 +9,7 @@ import com.max.salao.auth.AuthDtos.TokenResponse;
 import com.max.salao.auth.AuthDtos.UserResponse;
 import com.max.salao.booking.LookupRateLimiter;
 import com.max.salao.shared.AbuseLimiter;
+import com.max.salao.shared.TurnstileVerifier;
 import com.max.salao.booking.PublicBookingController;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,21 +38,25 @@ public class AuthController {
     private final PasswordResetService passwordReset;
     private final LookupRateLimiter rateLimiter;
     private final AbuseLimiter abuse;
+    private final TurnstileVerifier turnstile;
 
     public AuthController(AuthService service, AccountDeletionService deletionService,
                           PasswordResetService passwordReset, LookupRateLimiter rateLimiter,
-                          AbuseLimiter abuse) {
+                          AbuseLimiter abuse, TurnstileVerifier turnstile) {
         this.service = service;
         this.deletionService = deletionService;
         this.passwordReset = passwordReset;
         this.rateLimiter = rateLimiter;
         this.abuse = abuse;
+        this.turnstile = turnstile;
     }
 
     @PostMapping("/api/auth/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public TokenResponse register(@Valid @RequestBody RegisterRequest req, HttpServletRequest http) {
+    public TokenResponse register(@Valid @RequestBody RegisterRequest req, HttpServletRequest http,
+                                  @RequestHeader(value = "X-Turnstile-Token", required = false) String captcha) {
         abuse.check("register-ip:" + PublicBookingController.clientIp(http), 5, java.time.Duration.ofHours(1));
+        turnstile.verify(captcha, PublicBookingController.clientIp(http));
         return service.register(req);
     }
 
