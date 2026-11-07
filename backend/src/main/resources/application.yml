@@ -67,6 +67,10 @@ app:
     base-url: ${ASAAS_BASE_URL:https://api.asaas.com/v3}
     price-cents: ${ASAAS_PRICE_CENTS:4990}
     site-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
+  # Captcha (Cloudflare Turnstile) nos cadastros de salão e de representante. Vazios = captcha desligado.
+  turnstile:
+    secret: ${TURNSTILE_SECRET:}
+    site-key: ${TURNSTILE_SITE_KEY:}
   # Representantes: comissão fixa por mensalidade paga dos salões que indicaram (centavos) e dias de espera
   # (prazo de estorno) até ficar disponível para repasse.
   referral:
