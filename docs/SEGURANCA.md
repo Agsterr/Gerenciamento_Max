@@ -8,7 +8,7 @@ O servidor só é acessado pelo túnel da Cloudflare, e ela já segura ataques d
 1. **Bot Fight Mode**: Segurança → Bots → *Bot Fight Mode* ligado.
 2. **Regra de limite de requisições** (o plano grátis tem 1 regra): Segurança → WAF → *Rate limiting rules*.
    - Quando a URL contém `/api/` e o método é `POST`,
-   - contar por IP, **100 requisições por 10 segundos**, ação **Bloquear** por 10 minutos.
+   - contar por IP, **100 requisições por 10 segundos**, ação **Bloquear** por 10 segundos (no plano grátis é a única duração permitida; planos pagos permitem mais).
    - Não aplique a `/api/asaas/webhook` (é o Asaas falando com o servidor).
 3. Em ataque forte, use **Modo "Estou sob ataque"** (Segurança → Visão geral). Ele pede uma verificação rápida a cada visitante.
 
