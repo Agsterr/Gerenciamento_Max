@@ -68,11 +68,42 @@ function Dashboard() {
   const [copied, setCopied] = useState(false);
   const [pix, setPix] = useState<string>();
   const [pixMsg, setPixMsg] = useState<string>();
+  const [copiedKey, setCopiedKey] = useState<string>();
 
   if (error) return <ErrorMessage message={error} />;
   if (!d) return <p className="text-center text-zinc-500">Carregando...</p>;
 
-  const share = `Conheça o Salão Max: agenda e agendamento online para salão de beleza. Teste grátis: ${d.link}`;
+  const share = `Conheça o Salão Max: agenda e agendamento online para salão de beleza. Veja como funciona e teste grátis: ${d.link}`;
+  const base = (() => {
+    try {
+      return new URL(d.link).origin;
+    } catch {
+      return "";
+    }
+  })();
+  const materials = [
+    {
+      key: "apresentacao",
+      title: "Apresentação do Salão Max (para donos de salão)",
+      text: "Explica como o aplicativo funciona, a versão web e o app, os preços e o teste grátis. O botão de assinar já leva o seu código.",
+      url: d.link,
+      msg: `Conheça o Salão Max: veja como funciona e teste grátis. ${d.link}`,
+    },
+    {
+      key: "cliente",
+      title: "Como o cliente do salão agenda",
+      text: "Passo a passo para quem vai agendar no salão. Serve para o dono mostrar aos clientes dele.",
+      url: `${d.link}#cliente`,
+      msg: `Veja como é fácil agendar seu horário no salão, em 1 minuto: ${d.link}#cliente`,
+    },
+    {
+      key: "cadastro",
+      title: "Cadastro direto (sem apresentação)",
+      text: "Leva direto para criar o salão, com o seu código. Use com quem já conhece o aplicativo.",
+      url: `${base}/cadastro?ref=${d.code}`,
+      msg: `Crie seu salão no Salão Max e teste grátis: ${base}/cadastro?ref=${d.code}`,
+    },
+  ];
   const pixValue = pix ?? d.pixKey ?? "";
 
   async function copy() {
@@ -82,6 +113,16 @@ function Dashboard() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       window.prompt("Copie o link:", d!.link);
+    }
+  }
+
+  async function copyLink(key: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(undefined), 2000);
+    } catch {
+      window.prompt("Copie o link:", url);
     }
   }
 
@@ -114,6 +155,36 @@ function Dashboard() {
           >
             Enviar pelo WhatsApp
           </a>
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="mb-1 font-extrabold text-brand-ink">Materiais para enviar</h2>
+        <p className="mb-3 text-sm text-zinc-600">
+          Seu link de indicação já abre uma apresentação do aplicativo antes do cadastro, e o seu código segue sozinho. Escolha o que mandar:
+        </p>
+        <div className="space-y-3">
+          {materials.map((m) => (
+            <div key={m.key} className="rounded-2xl border border-zinc-200 p-4">
+              <p className="font-bold text-brand-ink">{m.title}</p>
+              <p className="mt-1 text-sm text-zinc-600">{m.text}</p>
+              <p className="mt-2 break-all rounded-xl bg-zinc-50 px-3 py-2 text-sm font-semibold text-zinc-800">{m.url}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button onClick={() => copyLink(m.key, m.url)}>{copiedKey === m.key ? "Copiado!" : "Copiar link"}</Button>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(m.msg)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white"
+                >
+                  WhatsApp
+                </a>
+                <a href={m.url} target="_blank" rel="noreferrer" className="rounded-xl bg-zinc-100 px-4 py-2 font-bold text-zinc-800">
+                  Ver como fica
+                </a>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 
