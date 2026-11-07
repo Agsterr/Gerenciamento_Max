@@ -122,11 +122,11 @@ services:
       REFERRAL_COMMISSION_CENTS: ${REFERRAL_COMMISSION_CENTS:-1500}
       REFERRAL_HOLD_DAYS: ${REFERRAL_HOLD_DAYS:-7}
       PLAY_PRICE_CENTS: ${PLAY_PRICE_CENTS:-5890}
-      JAVA_TOOL_OPTIONS: -Xms96m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -Xss512k
+      JAVA_TOOL_OPTIONS: -Xms96m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=64m -XX:MaxDirectMemorySize=64m -Xss512k
     volumes:
       - apk_releases:/app/releases
       - salon_media:/app/media
-    mem_limit: 448m
+    mem_limit: 576m
 
   web:
     image: ${WEB_IMAGE:-ghcr.io/agsterr/salao-max-web:latest}
