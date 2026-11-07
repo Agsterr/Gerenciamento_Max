@@ -35,3 +35,56 @@ body {
 .shadow-glow {
   box-shadow: 0 10px 24px rgb(229 38 122 / 0.35);
 }
+
+/* Apresentação digital: entrada suave ao rolar e celulares flutuando */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
+}
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hero-in {
+  animation: hero-in 0.5s ease both;
+}
+@keyframes float-y {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
+}
+.float-slow {
+  animation: float-y 6s ease-in-out infinite;
+}
+.float-slow-2 {
+  animation: float-y 7s ease-in-out infinite 0.8s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .hero-in,
+  .float-slow,
+  .float-slow-2 {
+    animation: none;
+  }
+}
