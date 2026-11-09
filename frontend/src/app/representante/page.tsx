@@ -159,9 +159,17 @@ function Dashboard() {
         </div>
       </Card>
 
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Disponível para receber" value={formatCents(d.totals.availableCents)} hint="já passou do prazo de estorno" />
+        <Stat label="Em espera" value={formatCents(d.totals.releasingCents)} hint={`libera ${d.holdDays} dias após o pagamento`} />
+        <Stat label="Já recebido" value={formatCents(d.totals.paidCents)} />
+        <Stat label="Perdido por estorno" value={formatCents(d.totals.reversedCents)} />
+      </div>
+
       <Card>
-        <h2 className="mb-1 font-extrabold text-brand-ink">Materiais para enviar</h2>
-        <p className="mb-3 text-sm text-zinc-600">
+        <details>
+        <summary className="cursor-pointer font-extrabold text-brand-ink">Materiais para enviar</summary>
+        <p className="mb-3 mt-2 text-sm text-zinc-600">
           Seu link de indicação já abre uma apresentação do aplicativo antes do cadastro, e o seu código segue sozinho. Escolha o que mandar:
         </p>
         <div className="space-y-3">
@@ -187,14 +195,8 @@ function Dashboard() {
             </div>
           ))}
         </div>
+        </details>
       </Card>
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Disponível para receber" value={formatCents(d.totals.availableCents)} hint="já passou do prazo de estorno" />
-        <Stat label="Em espera" value={formatCents(d.totals.releasingCents)} hint={`libera ${d.holdDays} dias após o pagamento`} />
-        <Stat label="Já recebido" value={formatCents(d.totals.paidCents)} />
-        <Stat label="Perdido por estorno" value={formatCents(d.totals.reversedCents)} />
-      </div>
 
       <Card>
         <h2 className="mb-2 font-extrabold text-brand-ink">Como você recebe</h2>
@@ -203,7 +205,7 @@ function Dashboard() {
           se o salão apenas cancelar, o que já foi pago continua seu e só os meses seguintes deixam de contar.
         </p>
         <div className="flex flex-wrap items-end gap-2">
-          <Field label="Sua chave Pix" className="min-w-0 flex-1" value={pixValue} onChange={(e) => setPix(e.target.value)} />
+          <Field label="Sua chave Pix" placeholder="CPF, e-mail, telefone ou chave aleatória" className="min-w-0 flex-1" value={pixValue} onChange={(e) => setPix(e.target.value)} />
           <Button onClick={savePix}>Salvar</Button>
         </div>
         {pixMsg && <p className="mt-2 text-sm text-zinc-600">{pixMsg}</p>}
