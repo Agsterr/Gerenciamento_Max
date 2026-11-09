@@ -29,6 +29,10 @@ public class NotificationService {
     public record Inbox(long unread, List<NotificationResponse> items) {
     }
 
+    /** Uma página do histórico (com filtros) e quantos avisos ainda não foram vistos. */
+    public record History(List<NotificationResponse> items, int page, int size, long total, boolean hasMore, long unread) {
+    }
+
     private final NotificationRepository repository;
     private final Clock clock;
     private final com.max.salao.push.PushNotifier push;
@@ -111,5 +115,37 @@ public class NotificationService {
     @Transactional
     public void markAllRead(Long userId) {
         repository.markAllRead(userId, LocalDateTime.now(clock));
+    }
+
+    /**
+     * Histórico para a tela de avisos: filtro por situação (todos, não lidos, lidos) e por período (datas inclusive).
+     * Sem datas, traz tudo o que ainda não foi limpo.
+     */
+    @Transactional(readOnly = true)
+    public History history(Long userId, String status, java.time.LocalDate from, java.time.LocalDate to, Integer page, Integer size) {
+        String st = switch (status == null ? "all" : status) {
+            case "unread", "read" -> status;
+            default -> "all";
+        };
+        LocalDateTime start = from == null ? LocalDateTime.of(2000, 1, 1, 0, 0) : from.atStartOfDay();
+        LocalDateTime end = to == null ? LocalDateTime.of(2999, 1, 1, 0, 0) : to.plusDays(1).atStartOfDay();
+        var result = repository.history(userId, st, start, end, com.max.salao.shared.PageResponse.request(page, size));
+        return new History(result.getContent().stream().map(NotificationResponse::from).toList(), result.getNumber(),
+                result.getSize(), result.getTotalElements(), result.hasNext(), repository.countUnread(userId));
+    }
+
+    /** Apaga um aviso já lido. Falha se ainda não foi lido ou se não existe. */
+    @Transactional
+    public void deleteRead(Long userId, Long id) {
+        if (repository.deleteReadById(userId, id) == 0) {
+            throw new com.max.salao.shared.BusinessException("Só é possível apagar avisos que já foram lidos.");
+        }
+    }
+
+    /** Apaga os avisos lidos (todos, ou só os anteriores a uma data). Retorna quantos foram apagados. */
+    @Transactional
+    public int clearRead(Long userId, java.time.LocalDate before) {
+        LocalDateTime limit = before == null ? LocalDateTime.now(clock).plusDays(1) : before.atStartOfDay();
+        return repository.deleteReadBefore(userId, limit);
     }
 }

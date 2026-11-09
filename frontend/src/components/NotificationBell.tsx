@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
@@ -85,6 +86,13 @@ export function NotificationBell() {
                 </li>
               ))}
             </ul>
+            <Link
+              href="/painel/notificacoes"
+              onClick={() => setOpen(false)}
+              className="block border-t border-[#F1E3EB] px-4 py-3 text-center text-sm font-bold text-brand-rose hover:bg-[#FFF5F9]"
+            >
+              Ver todas, filtrar por dia e apagar
+            </Link>
           </div>
         </>
       )}

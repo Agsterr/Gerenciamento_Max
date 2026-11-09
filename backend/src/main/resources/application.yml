@@ -79,6 +79,10 @@ app:
     # preço da mensalidade na Play (mais alto que o do site por causa da taxa da loja); só informativo nos relatórios
     play-price-cents: ${PLAY_PRICE_CENTS:5890}
     site-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
+  # Sino de avisos: lidos há mais de keep-read-days dias e qualquer aviso com mais de keep-days dias são apagados à noite.
+  notifications:
+    keep-read-days: ${NOTIFICATIONS_KEEP_READ_DAYS:30}
+    keep-days: ${NOTIFICATIONS_KEEP_DAYS:90}
   # Push (Firebase Cloud Messaging) para o app do cliente: JSON da conta de serviço do Firebase.
   push:
     service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:}

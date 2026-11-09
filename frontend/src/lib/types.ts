@@ -572,3 +572,13 @@ export type PlatformRepresentative = {
   payingSalons: number;
   totals: RepTotals;
 };
+
+/** Uma página do histórico de avisos (com filtros) e quantos ainda não foram vistos. */
+export type NotificationHistory = {
+  items: Inbox["items"];
+  page: number;
+  size: number;
+  total: number;
+  hasMore: boolean;
+  unread: number;
+};
