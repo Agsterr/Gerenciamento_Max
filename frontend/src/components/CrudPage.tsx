@@ -153,18 +153,19 @@ export function CrudPage<T extends { id: number }>({
                     {c.label}
                   </th>
                 ))}
-                <th className="px-4 py-2" />
+                <th className="sticky right-0 bg-zinc-50 px-4 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {data?.map((row) => (
-                <tr key={row.id} className="hover:bg-zinc-50">
+                <tr key={row.id} className="bg-white hover:bg-zinc-50">
                   {columns.map((c) => (
                     <td key={c.label} className={`px-4 py-2 ${c.className ?? ""}`}>
                       {c.render(row)}
                     </td>
                   ))}
-                  <td className="whitespace-nowrap px-4 py-2 text-right">
+                  <td className="sticky right-0 whitespace-nowrap bg-inherit px-2 py-2 text-right shadow-[-10px_0_8px_-8px_rgba(0,0,0,0.12)]">
+                    <div className="flex flex-col items-end sm:flex-row sm:justify-end">
                     {rowActions?.(row, reload)}
                     {canEdit && (
                       <Button
@@ -184,6 +185,7 @@ export function CrudPage<T extends { id: number }>({
                         Excluir
                       </Button>
                     )}
+                                      </div>
                   </td>
                 </tr>
               ))}

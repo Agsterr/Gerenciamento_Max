@@ -17,7 +17,8 @@ const SALON_STATUS = {
 } as const;
 
 const COMMISSION_STATUS = {
-  PENDING: ["Em espera / a receber", "bg-amber-100 text-amber-800"],
+  PENDING: ["Em espera", "bg-amber-100 text-amber-800"],
+  AVAILABLE: ["Disponível", "bg-sky-100 text-sky-800"],
   PAID: ["Pago", "bg-emerald-100 text-emerald-800"],
   REVERSED: ["Estornado", "bg-rose-100 text-rose-800"],
 } as const;
@@ -188,7 +189,7 @@ function Dashboard() {
         </div>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Disponível para receber" value={formatCents(d.totals.availableCents)} hint="já passou do prazo de estorno" />
         <Stat label="Em espera" value={formatCents(d.totals.releasingCents)} hint={`libera ${d.holdDays} dias após o pagamento`} />
         <Stat label="Já recebido" value={formatCents(d.totals.paidCents)} />
@@ -242,7 +243,9 @@ function Dashboard() {
         ) : (
           <ul className="divide-y divide-zinc-100">
             {d.commissions.map((c) => {
-              const [label, cls] = COMMISSION_STATUS[c.status];
+              // pendente com o prazo de estorno vencido já está disponível para o repasse
+              const key = c.status === "PENDING" && new Date(c.availableAt) <= new Date() ? "AVAILABLE" : c.status;
+              const [label, cls] = COMMISSION_STATUS[key];
               return (
                 <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                   <div>
@@ -252,7 +255,7 @@ function Dashboard() {
                       {c.status === "PENDING" && ` · disponível em ${formatDate(c.availableAt)}`}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="ml-auto text-right">
                     <p className={`font-extrabold ${c.status === "REVERSED" ? "text-zinc-400 line-through" : ""}`}>{formatCents(c.amountCents)}</p>
                     <Badge className={cls}>{label}</Badge>
                   </div>

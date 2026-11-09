@@ -381,7 +381,7 @@ function RepresentativesTab() {
                     {r.salons} salão(ões) indicado(s) · {r.payingSalons} pagando · {r.totals.paidMonths} mensalidade(s) contadas
                   </p>
                 </div>
-                <div className="text-right text-sm">
+                <div className="text-left text-sm sm:text-right">
                   <p>
                     A pagar agora: <b className="text-lg">{formatCents(r.totals.availableCents)}</b>
                   </p>
