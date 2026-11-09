@@ -153,7 +153,7 @@ function PromotionsCard({ s }: { s: Summary }) {
         <Row label="Pacotes vendidos" value={`${p.kitsSold} (${formatMoney(p.kitsRevenue)})`} />
       </dl>
       {p.byPromotion.length > 0 && (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full whitespace-nowrap text-sm">
           <thead className="text-left text-zinc-500">
             <tr>
               <th className="py-1 font-medium">Promoção</th>
@@ -172,7 +172,7 @@ function PromotionsCard({ s }: { s: Summary }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </Card>
   );
@@ -280,7 +280,7 @@ function ProductsReport({ rows }: { rows: ProductReport[] }) {
       {rows.length === 0 ? (
         <Empty>Nenhum produto cadastrado.</Empty>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full whitespace-nowrap text-sm">
           <thead className="text-left text-zinc-500">
             <tr>
               <th className="py-1 font-medium">Produto</th>
@@ -331,7 +331,7 @@ function ProductsReport({ rows }: { rows: ProductReport[] }) {
               <td>{formatMoney(totals.stock)}</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       )}
     </Card>
   );
@@ -355,7 +355,7 @@ function RankingCard({ title, rows, showCommission }: { title: string; rows: Ran
       {rows.length === 0 ? (
         <Empty>Sem atendimentos no período.</Empty>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full whitespace-nowrap text-sm">
           <thead className="text-left text-zinc-500">
             <tr>
               <th className="py-1 font-medium">Nome</th>
@@ -376,7 +376,7 @@ function RankingCard({ title, rows, showCommission }: { title: string; rows: Ran
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </Card>
   );

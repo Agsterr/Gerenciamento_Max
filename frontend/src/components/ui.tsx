@@ -18,7 +18,7 @@ export function Button({ variant = "primary", size = "md", className = "", ...pr
   const sizing = size === "sm" ? "px-2.5 py-1 text-sm" : "px-4 py-2";
   return (
     <button
-      className={`rounded-xl font-bold transition disabled:cursor-not-allowed ${sizing} ${VARIANTS[variant]} ${className}`}
+      className={`whitespace-nowrap rounded-xl font-bold transition disabled:cursor-not-allowed ${sizing} ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );

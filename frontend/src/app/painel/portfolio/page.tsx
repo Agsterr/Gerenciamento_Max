@@ -122,7 +122,7 @@ export default function PortfolioPage() {
               <img src={p.thumbUrl} alt={p.caption ?? ""} className="aspect-square w-full rounded-xl object-cover" />
               <p className="mt-2 truncate text-sm font-bold">{p.caption || <span className="font-normal text-zinc-400">Sem legenda</span>}</p>
               <p className="truncate text-xs text-zinc-500">{[p.serviceName, p.professionalName].filter(Boolean).join(" · ") || "—"}</p>
-              <div className="mt-2 flex items-center justify-between gap-1">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-1">
                 <div className="flex gap-1">
                   <Button size="sm" variant="ghost" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Mover para antes">
                     ←
