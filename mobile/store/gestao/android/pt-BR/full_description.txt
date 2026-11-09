@@ -1,16 +1,19 @@
 O app completo para salões de beleza, barbearias, esmalterias e estúdios de estética. Organize a agenda, encante seus clientes e saiba exatamente quanto o seu salão lucra.
 
+📲 SEUS CLIENTES AGENDAM PELO APP "SALÃO MAX"
+O Salão Max Gestão é o app do dono e da equipe. Seus clientes usam o app gratuito "Salão Max: Agende seu horário" (também na Play Store) ou o link próprio do salão: escolhem serviço, profissional e horário livre, sem cadastro. O agendamento cai direto na sua agenda e você aceita ou recusa pelo celular.
+
 📅 AGENDA INTELIGENTE
 • Agenda do dia por profissional, com linha do tempo e status coloridos
-• Horários livres calculados automaticamente — sem encaixes duplicados
-• Agendamento manual em qualquer horário, com duração personalizada
-• Encaixe: marque mesmo fora do expediente quando precisar
+• Horários livres calculados automaticamente, sem encaixes duplicados
+• Agendamentos online aguardam o seu aceite; o cliente vê "Aguardando confirmação" e depois "Confirmado pelo salão"
+• Agendamento manual em qualquer horário, com duração personalizada e encaixe fora do expediente
 • Confirmar, iniciar, finalizar, cancelar e marcar falta em um toque
+• Avisos de novo agendamento, cancelamento, remarcação e confirmação do cliente
 
-📲 AGENDAMENTO ONLINE
-• Seu salão ganha um link próprio para compartilhar no Instagram e WhatsApp
-• Clientes agendam sozinhos pelo app Salão Max ou pelo navegador
-• Os agendamentos online caem direto na sua agenda
+🏷️ PACOTES E PROMOÇÕES
+• Crie pacotes de serviços e promoções com desconto em %
+• O cliente vê "de X por Y" e recebe o aviso no app dele
 
 👥 CLIENTES
 • Cadastro automático de quem agenda online
@@ -18,26 +21,27 @@ O app completo para salões de beleza, barbearias, esmalterias e estúdios de es
 • Observações (alergias, preferências) e WhatsApp com um toque
 
 💰 FINANCEIRO DE VERDADE
-• Lucro do período, receita, custos e ticket médio
+• Lucro do período, receita, custos e ticket médio, com períodos à sua escolha
+• Lucro separado de serviços e de produtos
+• Despesas fixas e variáveis do salão (aluguel, água, luz, internet...)
 • Comissão de cada profissional calculada automaticamente
-• Custo de material por serviço e margem de lucro
-• Despesas do salão (aluguel, energia, marketing...)
-• Ranking de profissionais e dos serviços que mais faturam
+• Painel de atendimentos por semana, mês e ano e relatório em PDF
 
 🏷️ PRECIFICAÇÃO INTELIGENTE
-• Preço mínimo e preço sugerido de cada serviço
-• Considera material, comissão, taxa do cartão e as despesas fixas do salão
+• Preço mínimo e sugerido de cada serviço, considerando material, comissão, taxa do cartão e despesas fixas
 • Descubra quais serviços dão prejuízo e simule novos preços
 
-⏱️ CONTROLE DE TEMPO
-• Compare o tempo previsto com o tempo real de cada atendimento
-
 📦 PRODUTOS E ESTOQUE
-• Entrada, venda e uso nos atendimentos
-• Alerta de estoque baixo
+• Preço pago, % de ganho e preço de venda calculado, com fotos
+• Entrada, venda e uso nos atendimentos; alerta de estoque baixo
+• Vitrine de produtos para os seus clientes
 
 👩‍💼 EQUIPE
-• Perfis de dono e funcionário — o financeiro fica só com o dono
+• Perfis de dono e funcionário: o financeiro fica só com o dono
+• Serviços e especialidades de cada profissional
+
+💳 ASSINATURA
+Teste grátis para conhecer. Depois, plano mensal de R$ 58,90 cobrado pela Google Play, com renovação automática. Cancele quando quiser nas assinaturas da Play Store.
 
 🔒 SEGURO
 • Dados de cada salão totalmente separados
