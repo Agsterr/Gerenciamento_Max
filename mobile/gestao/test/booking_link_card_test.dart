@@ -15,13 +15,20 @@ void main() {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(body: BookingLinkCard(link: 'https://salaomax.focodev.com.br/s/bella', compact: true)),
     ));
-    expect(find.text('Seu link de agendamento'), findsOneWidget);
-    expect(find.text('https://salaomax.focodev.com.br/s/bella'), findsOneWidget);
-    expect(find.text('WhatsApp'), findsOneWidget);
+    expect(find.text('Link de agendamento'), findsOneWidget);
+    expect(find.text('…/s/bella'), findsOneWidget);
+    expect(find.byTooltip('Enviar pelo WhatsApp'), findsOneWidget);
 
-    await tester.tap(find.text('Copiar'));
+    await tester.tap(find.byTooltip('Copiar link'));
     await tester.pump();
     expect(copied, 'https://salaomax.focodev.com.br/s/bella');
     expect(find.text('Link copiado!'), findsOneWidget);
+  });
+
+  testWidgets('versão completa (Ajustes) tem os botões com texto', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: SingleChildScrollView(child: BookingLinkCard(link: 'https://x.com/s/a')))));
+    expect(find.text('Seu link de agendamento'), findsOneWidget);
+    expect(find.text('Copiar'), findsOneWidget);
+    expect(find.text('WhatsApp'), findsOneWidget);
   });
 }
