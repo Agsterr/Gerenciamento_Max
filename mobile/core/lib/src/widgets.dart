@@ -529,7 +529,7 @@ Future<bool> confirmDialog(BuildContext context, String message, {String confirm
       actions: [
         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Voltar')),
         FilledButton(
-          style: danger ? FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error) : null,
+          style: danger ? FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error, foregroundColor: Colors.white) : null,
           onPressed: () => Navigator.pop(context, true),
           child: Text(confirm),
         ),

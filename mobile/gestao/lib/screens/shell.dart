@@ -54,10 +54,14 @@ class _ShellState extends State<Shell> {
     ];
     return Scaffold(
       body: IndexedStack(index: _tab, children: [for (final t in tabs) t.$2]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: [for (final t in tabs) t.$1],
+      // fonte grande do sistema quebrava "Cadastros" em duas linhas: a barra de baixo limita a ampliação
+      bottomNavigationBar: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.15,
+        child: NavigationBar(
+          selectedIndex: _tab,
+          onDestinationSelected: (i) => setState(() => _tab = i),
+          destinations: [for (final t in tabs) t.$1],
+        ),
       ),
     );
   }
@@ -150,7 +154,7 @@ class _PanelScreenState extends State<PanelScreen> {
             ]),
           ),
           Expanded(
-            child: TabBarView(children: [DashboardScreen(session: session), FinanceScreen(session: session)]),
+            child: TabBarView(children: [DashboardScreen(session: session), FinanceScreen(session: session, embedded: true)]),
           ),
         ]),
       ),

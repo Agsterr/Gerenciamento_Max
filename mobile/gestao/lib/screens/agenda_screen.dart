@@ -345,7 +345,9 @@ class _AgendaScreenState extends State<AgendaScreen> {
                                   : '${_pending.length} agendamentos aguardando sua confirmação',
                               style: Theme.of(context).textTheme.titleSmall?.copyWith(color: const Color(0xFF92400E)),
                             ),
-                            const Text('Toque para aceitar ou recusar.', style: TextStyle(color: Color(0xFFB45309), fontSize: 12)),
+                            // com fonte grande o subtítulo só aumenta a faixa; o chevron já mostra que dá para tocar
+                            if (MediaQuery.textScalerOf(context).scale(14) <= 17)
+                              const Text('Toque para aceitar ou recusar.', style: TextStyle(color: Color(0xFFB45309), fontSize: 12)),
                           ]),
                         ),
                         const Icon(Icons.chevron_right_rounded, color: Color(0xFFB45309)),
@@ -656,7 +658,7 @@ class _PlanBanner extends StatelessWidget {
             style: text.titleSmall?.copyWith(color: expired ? const Color(0xFF9F1239) : const Color(0xFF7C4A03)),
           ),
           const SizedBox(height: 2),
-          Text(
+          if (expired || MediaQuery.textScalerOf(context).scale(14) <= 17) Text(
             expired
                 ? 'Você ainda vê seus dados, mas não pode criar nem alterar nada, e o agendamento online está pausado.'
                 : '${plan.professionals.$1}/${plan.professionals.$2} profissionais · '
@@ -666,7 +668,7 @@ class _PlanBanner extends StatelessWidget {
           if (onSubscribe != null) ...[
             const SizedBox(height: 8),
             FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: Brand.rose),
+              style: FilledButton.styleFrom(backgroundColor: Brand.rose, foregroundColor: Colors.white),
               onPressed: onSubscribe,
               icon: const Icon(Icons.workspace_premium_outlined),
               label: Text(expired ? 'Assinar para continuar' : 'Assinar o plano completo'),
@@ -674,7 +676,7 @@ class _PlanBanner extends StatelessWidget {
           ] else if (hasContact) ...[
             const SizedBox(height: 8),
             FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: Brand.rose),
+              style: FilledButton.styleFrom(backgroundColor: Brand.rose, foregroundColor: Colors.white),
               onPressed: () => plan.contactWhatsapp.isNotEmpty
                   ? openWhatsApp(plan.contactWhatsapp, text: 'Olá! Quero ativar o plano do Salão Max.')
                   : openUrl(Uri.parse('mailto:${plan.contactEmail}?subject=Ativar%20plano%20Sal%C3%A3o%20Max')),

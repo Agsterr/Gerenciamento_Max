@@ -76,6 +76,11 @@ class AppTheme {
     return _build(scheme, const Color(0xFF120C22));
   }
 
+  /// Estilo de texto dos componentes (botões, chips, abas) com a fonte da marca. Sem isso, onde o Material troca o estilo
+  /// em vez de mesclar (botões, chips, barra de navegação), o texto cai na fonte padrão do sistema.
+  static TextStyle _brand(TextTheme text, {double? fontSize, FontWeight? fontWeight, Color? color}) =>
+      (text.labelLarge ?? const TextStyle()).copyWith(fontSize: fontSize, fontWeight: fontWeight, color: color);
+
   static ThemeData _build(ColorScheme scheme, Color background) {
     final base = ThemeData(useMaterial3: true, colorScheme: scheme, fontFamily: 'packages/salao_core/$fontFamily');
     final text = base.textTheme;
@@ -116,7 +121,7 @@ class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size(48, 52),
           shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+          textStyle: _brand(text, fontWeight: FontWeight.w700, fontSize: 16),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -124,17 +129,17 @@ class AppTheme {
           minimumSize: const Size(48, 52),
           shape: RoundedRectangleBorder(borderRadius: radius),
           side: BorderSide(color: scheme.outlineVariant, width: 1.5),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          textStyle: _brand(text, fontWeight: FontWeight.w700, fontSize: 15),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(textStyle: const TextStyle(fontWeight: FontWeight.w700)),
+        style: TextButton.styleFrom(textStyle: _brand(text, fontWeight: FontWeight.w700)),
       ),
       chipTheme: base.chipTheme.copyWith(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         side: BorderSide(color: scheme.outlineVariant),
         // cor explícita: sem ela o texto das etiquetas (ex.: categorias) ficava invisível em alguns celulares
-        labelStyle: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface),
+        labelStyle: _brand(text, fontWeight: FontWeight.w600, color: scheme.onSurface),
         backgroundColor: scheme.surface,
         selectedColor: scheme.primaryContainer,
         checkmarkColor: scheme.primary,
@@ -146,7 +151,8 @@ class AppTheme {
         elevation: 0,
         height: 68,
         labelTextStyle: WidgetStateProperty.resolveWith(
-          (states) => TextStyle(
+          (states) => _brand(
+            text,
             fontSize: 12,
             fontWeight: states.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w600,
             color: states.contains(WidgetState.selected) ? scheme.primary : scheme.onSurfaceVariant,

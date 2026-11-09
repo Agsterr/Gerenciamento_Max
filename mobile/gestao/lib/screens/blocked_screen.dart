@@ -41,7 +41,7 @@ class BlockedScreen extends StatelessWidget {
                       const SizedBox(height: 6),
                       OutlinedButton.icon(
                         icon: const Icon(Icons.mail_outline_rounded),
-                        label: Text(AppConfig.supportEmail),
+                        label: FittedBox(fit: BoxFit.scaleDown, child: Text(AppConfig.supportEmail, maxLines: 1)),
                         onPressed: () => openUrl(Uri(
                           scheme: 'mailto',
                           path: AppConfig.supportEmail,

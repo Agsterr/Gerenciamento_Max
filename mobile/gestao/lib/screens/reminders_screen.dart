@@ -114,7 +114,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
           ),
           if (!confirmed)
             FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: Brand.whatsapp),
+              style: FilledButton.styleFrom(backgroundColor: Brand.whatsapp, foregroundColor: Colors.white),
               onPressed: () => _send(i),
               icon: const Icon(Icons.chat_rounded, size: 18),
               label: Text(i.reminderSent ? 'Reenviar' : 'Enviar'),

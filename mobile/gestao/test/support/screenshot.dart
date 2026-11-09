@@ -29,6 +29,16 @@ Future<void> loadAppFonts() async {
   _fontsLoaded = true;
 }
 
+/// Deixa as respostas de rede (de verdade ou de mentira) chegarem e a tela redesenhar. Só `pumpAndSettle` não basta quando a
+/// requisição é real: o relógio de teste não anda enquanto a rede responde.
+Future<void> settleNetwork(WidgetTester tester, {int rounds = 12}) async {
+  for (var i = 0; i < rounds; i++) {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 150)));
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  await tester.pumpAndSettle();
+}
+
 /// Renderiza [home] com o tema do app e salva `SHOT_DIR/<name>.png`. [width] em dp (360 = celular pequeno);
 /// [textScale] simula a fonte grande do sistema; [dark] escolhe o tema.
 Future<String> shot(
@@ -60,8 +70,11 @@ Future<String> shot(
       home: home,
     ),
   ));
-  await tester.pumpAndSettle();
-  if (before != null) await before(tester);
+  await settleNetwork(tester);
+  if (before != null) {
+    await before(tester);
+    await settleNetwork(tester, rounds: 6);
+  }
   final dir = Platform.environment['SHOT_DIR'] ?? 'build/shots';
   Directory(dir).createSync(recursive: true);
   final path = '$dir/$name.png';
@@ -71,5 +84,8 @@ Future<String> shot(
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
     File(path).writeAsBytesSync(data!.buffer.asUint8List());
   });
+  // solta a tela e deixa passar o tempo: conexões de rede de verdade deixam timers de 15 s pendentes
+  await tester.pumpWidget(const SizedBox());
+  await tester.pump(const Duration(seconds: 30));
   return path;
 }

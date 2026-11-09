@@ -79,7 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Voltar')),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Excluir definitivamente'),
           ),
@@ -231,7 +231,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   tile(Icons.privacy_tip_outlined, 'Política de Privacidade', () => openUrl(AppConfig.privacyUrl)),
                   tile(Icons.description_outlined, 'Termos de Uso', () => openUrl(AppConfig.termsUrl)),
                   const AppVersionTile(app: 'gestao'),
-                  tile(Icons.logout_rounded, 'Sair', _session.logout, color: Brand.muted),
+                  tile(Icons.logout_rounded, 'Sair', _session.logout),
                   tile(Icons.delete_forever_outlined, 'Excluir conta', _deleteAccount, color: Theme.of(context).colorScheme.error),
                 ]),
               ),

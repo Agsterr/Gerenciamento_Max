@@ -234,7 +234,7 @@ class _Stat extends StatelessWidget {
                 Text(delta!.text, style: TextStyle(color: delta!.color, fontWeight: FontWeight.w800, fontSize: 12)),
               ],
             ]),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodySmall?.copyWith(color: Brand.muted)),
+            Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: text.bodySmall?.copyWith(color: Brand.muted)),
           ]),
         ),
       ]),

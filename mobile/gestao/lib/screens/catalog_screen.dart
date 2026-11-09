@@ -163,7 +163,7 @@ class CatalogScreen extends StatelessWidget {
               FieldSpec('name', 'Nome', required: true),
               FieldSpec('unit', 'Unidade (un, ml, g...)', required: true),
               FieldSpec('costPrice', r'Preço pago (custo unitário, R$)', kind: FieldKind.decimal, required: true),
-              FieldSpec('markupPercent', 'Quanto quero ganhar (% em cima do custo)', kind: FieldKind.decimal, nullable: true, hint: 'Ex.: 50'),
+              FieldSpec('markupPercent', 'Quero ganhar (%)', kind: FieldKind.decimal, nullable: true, hint: 'Ex.: 50 (% em cima do custo)'),
               FieldSpec('salePrice', r'Preço de venda (R$, 0 = uso interno)', kind: FieldKind.decimal, required: true),
               FieldSpec('minStock', 'Estoque mínimo (alerta)', kind: FieldKind.decimal, required: true),
               FieldSpec('active', 'Ativo', kind: FieldKind.toggle),

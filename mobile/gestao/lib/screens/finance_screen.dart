@@ -5,9 +5,12 @@ import '../session.dart';
 import 'pricing_screen.dart';
 
 class FinanceScreen extends StatefulWidget {
-  const FinanceScreen({super.key, required this.session});
+  const FinanceScreen({super.key, required this.session, this.embedded = false});
 
   final Session session;
+
+  /// Dentro do Painel (aba Financeiro): o título já está na tela de cima, então não repete.
+  final bool embedded;
 
   @override
   State<FinanceScreen> createState() => _FinanceScreenState();
@@ -187,8 +190,9 @@ class _FinanceScreenState extends State<FinanceScreen> {
             GradientHeader(
               gradient: Brand.nightGradient,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(child: Text('Financeiro e relatórios', style: text.headlineSmall?.copyWith(color: Colors.white))),
+                // com fonte grande o título e o período não cabem lado a lado: o período desce para a linha de baixo
+                Wrap(alignment: widget.embedded ? WrapAlignment.end : WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, runSpacing: 10, children: [
+                  if (!widget.embedded) Text('Financeiro e relatórios', style: text.headlineSmall?.copyWith(color: Colors.white)),
                   Material(
                     color: Colors.white.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(14),
@@ -210,8 +214,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
                 const SizedBox(height: 22),
                 Text('Lucro do período', style: text.bodyMedium?.copyWith(color: Colors.white70)),
                 const SizedBox(height: 2),
-                Text(s == null ? '—' : formatMoney(s.money('profit')),
-                    style: text.displaySmall?.copyWith(color: Colors.white, fontSize: 40)),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(s == null ? '—' : formatMoney(s.money('profit')),
+                      maxLines: 1, style: text.displaySmall?.copyWith(color: Colors.white, fontSize: 40)),
+                ),
                 const SizedBox(height: 16),
                 if (s != null) ...[
                   Row(children: [
@@ -287,20 +295,27 @@ class _FinanceScreenState extends State<FinanceScreen> {
                     ]),
                   ),
                   const SizedBox(height: 4),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 1.9,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    children: [
+                  // duas por linha, com a altura que o conteúdo pedir (rótulo em 2 linhas ou fonte grande não cortam)
+                  for (final pair in [
+                    [
                       _Stat(Icons.receipt_long_rounded, 'Ticket médio', formatMoney(s.money('averageTicket'))),
                       _Stat(Icons.event_available_rounded, 'Atendimentos', '${s.count('appointmentsDone')}'),
+                    ],
+                    [
                       _Stat(Icons.smartphone_rounded, 'Agendados online', '${s.count('onlineBookings')}'),
                       _Stat(Icons.timer_outlined, 'Tempo real médio', _minutes(s.minutes('averageRealMinutes'))),
                     ],
-                  ),
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: IntrinsicHeight(
+                        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          Expanded(child: pair[0]),
+                          const SizedBox(width: 12),
+                          Expanded(child: pair[1]),
+                        ]),
+                      ),
+                    ),
                   const SectionTitle('Receitas'),
                   SoftCard(
                     child: Column(children: [
@@ -441,17 +456,20 @@ class _Stat extends StatelessWidget {
   Widget build(BuildContext context) => SoftCard(
         padding: const EdgeInsets.all(14),
         child: Row(children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: const Color(0xFFFFEAF2), borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: Brand.rose, size: 20),
-          ),
-          const SizedBox(width: 10),
+          // com fonte grande o ícone tomava a largura do rótulo ("Atendim/entos"): some, e o texto ganha o cartão todo
+          if (MediaQuery.textScalerOf(context).scale(14) <= 17) ...[
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(color: const Color(0xFFFFEAF2), borderRadius: BorderRadius.circular(12)),
+              child: Icon(icon, color: Brand.rose, size: 20),
+            ),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
               FittedBox(child: Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800))),
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Brand.muted)),
+              Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Brand.muted)),
             ]),
           ),
         ]),
