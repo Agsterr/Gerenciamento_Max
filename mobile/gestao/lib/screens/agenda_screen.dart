@@ -277,7 +277,12 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${greeting()}, $firstName', style: text.bodyMedium?.copyWith(color: Colors.white70)),
-                      Text(formatWeekday(_day), style: text.titleLarge?.copyWith(color: Colors.white)),
+                      // uma linha só: com fonte grande no celular a data quebrava em 5 linhas ao lado dos botões
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(formatWeekday(_day), maxLines: 1, style: text.titleLarge?.copyWith(color: Colors.white)),
+                      ),
                     ]),
                   ),
                   _Bell(unread: _unread, onTap: _openNotifications),
