@@ -1,5 +1,6 @@
 import 'package:salao_core/salao_core.dart';
 
+import 'alert_log.dart';
 import 'booking_store.dart';
 import 'confirm_reminders.dart';
 
@@ -25,10 +26,14 @@ Future<void> checkBookingChanges(ApiClient api, BookingStore store) async {
         : b.status.isOpen && b.salonConfirmed && !before.endsWith('|true')
             ? 'O salão confirmou o seu horário'
             : 'O salão alterou o seu horário';
+    final title = '$what - ${saved.salonName}';
+    final body = '${b.serviceName} · ${formatShortDateTime(b.startAt)} com ${b.professionalName}';
+    await AlertLog.add(
+        key: 'booking:${saved.token}:${b.signature}', title: title, body: body, kind: 'booking', payload: '$confirmGroup|${saved.slug}/${saved.token}');
     await LocalReminders.instance.showNow(
       key: 'booking:${saved.token}:${b.signature}',
-      title: '$what - ${saved.salonName}',
-      body: '${b.serviceName} · ${formatShortDateTime(b.startAt)} com ${b.professionalName}',
+      title: title,
+      body: body,
       payload: '$confirmGroup|${saved.slug}/${saved.token}',
       channelId: 'horarios',
       channelName: 'Meus horários',

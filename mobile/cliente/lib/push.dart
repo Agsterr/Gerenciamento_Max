@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:salao_core/salao_core.dart';
 
+import 'alert_log.dart';
 import 'booking_store.dart';
 import 'confirm_reminders.dart';
 import 'promo_alerts.dart';
@@ -67,6 +68,13 @@ class Push {
     }
     final n = m.notification;
     if (n == null) return;
+    await AlertLog.add(
+      key: 'push:${m.messageId}',
+      title: n.title ?? 'Aviso do salão',
+      body: n.body ?? '',
+      kind: m.data['type'] == 'booking' ? 'booking' : 'promo',
+      payload: _payload(m) ?? '',
+    );
     await LocalReminders.instance.showNow(
       key: 'push:${m.messageId}',
       title: n.title ?? 'Promoção',
@@ -106,4 +114,15 @@ Future<void> _onBackground(RemoteMessage m) async {
   await ackPush(m.data['messageId'], store.pushToken);
   final key = Push._key(m);
   if (key != null) await store.markPromotionsSeen([key]);
+  // o Android mostrou a notificação sozinho; guarda no histórico do app
+  final n = m.notification;
+  if (n != null) {
+    await AlertLog.add(
+      key: 'push:${m.messageId}',
+      title: n.title ?? 'Aviso do salão',
+      body: n.body ?? '',
+      kind: m.data['type'] == 'booking' ? 'booking' : 'promo',
+      payload: Push._payload(m) ?? '',
+    );
+  }
 }

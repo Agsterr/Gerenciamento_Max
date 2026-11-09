@@ -1,5 +1,6 @@
 import 'package:salao_core/salao_core.dart';
 
+import 'alert_log.dart';
 import 'booking_store.dart';
 
 /// Grupo das notificações de promoção (payload "promo|slug/serviceId").
@@ -45,15 +46,14 @@ Future<List<SalonPromotion>> checkPromotions(ApiClient api, BookingStore store,
       .toList();
   if (fresh.isNotEmpty) {
     for (final p in fresh) {
-      await notifications.showNow(
-        key: 'promo:${p.key}',
-        title: 'Promoção no ${p.salon.name}',
-        body: p.offers.isEmpty
-            ? '${p.promotion.headline} · até ${formatDate(p.promotion.endsOn)}'
-            : '${p.offers.first.$1} de ${formatMoney(p.offers.first.$2)} por ${formatMoney(p.offers.first.$3)}'
-                '${p.offers.length > 1 ? ' e mais ${p.offers.length - 1}' : ''} · até ${formatDate(p.promotion.endsOn)}',
-        payload: '$promoGroup|${p.salon.slug}/${p.promotion.serviceIds.firstOrNull ?? ''}',
-      );
+      final title = 'Promoção no ${p.salon.name}';
+      final body = p.offers.isEmpty
+          ? '${p.promotion.headline} · até ${formatDate(p.promotion.endsOn)}'
+          : '${p.offers.first.$1} de ${formatMoney(p.offers.first.$2)} por ${formatMoney(p.offers.first.$3)}'
+              '${p.offers.length > 1 ? ' e mais ${p.offers.length - 1}' : ''} · até ${formatDate(p.promotion.endsOn)}';
+      final payload = '$promoGroup|${p.salon.slug}/${p.promotion.serviceIds.firstOrNull ?? ''}';
+      await AlertLog.add(key: 'promo:${p.key}', title: title, body: body, kind: 'promo', payload: payload);
+      await notifications.showNow(key: 'promo:${p.key}', title: title, body: body, payload: payload);
     }
     await store.markPromotionsSeen(fresh.map((p) => p.key));
   }

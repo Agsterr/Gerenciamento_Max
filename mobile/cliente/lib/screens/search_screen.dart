@@ -5,7 +5,9 @@ import 'package:salao_core/salao_core.dart';
 
 import '../booking_store.dart';
 import '../promo_alerts.dart';
+import '../alert_log.dart';
 import 'about_screen.dart';
+import 'alerts_screen.dart';
 import 'find_bookings_sheet.dart';
 import 'salon_screen.dart';
 
@@ -33,12 +35,23 @@ class _SearchScreenState extends State<SearchScreen> {
     super.initState();
     widget.store.addListener(_refresh);
     _loadPromos();
+    _loadUnreadAlerts();
+  }
+
+  /// Avisos ainda não vistos (bolinha no sino do topo).
+  int _unreadAlerts = 0;
+
+  Future<void> _loadUnreadAlerts() async {
+    await AlertLog.prune(); // lidos antigos saem sozinhos
+    final n = await AlertLog.unread();
+    if (mounted && n != _unreadAlerts) setState(() => _unreadAlerts = n);
   }
 
   /// Promoções dos salões que o cliente já usou (e o aviso das novas).
   Future<void> _loadPromos() async {
     if (widget.store.salons.isEmpty) return;
     final promos = await checkPromotions(widget.api, widget.store);
+    _loadUnreadAlerts();
     if (mounted) setState(() => _promos = promos);
   }
 
@@ -111,6 +124,22 @@ class _SearchScreenState extends State<SearchScreen> {
               const SizedBox(width: 10),
               Text('Salão Max', style: text.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
               const Spacer(),
+              IconButton(
+                tooltip: _unreadAlerts > 0 ? 'Avisos ($_unreadAlerts novos)' : 'Avisos',
+                color: Colors.white,
+                icon: Badge(
+                  backgroundColor: Colors.white,
+                  textColor: Brand.rose,
+                  isLabelVisible: _unreadAlerts > 0,
+                  label: Text(_unreadAlerts > 9 ? '9+' : '$_unreadAlerts'),
+                  child: const Icon(Icons.notifications_none_rounded),
+                ),
+                onPressed: () async {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => AlertsScreen(store: widget.store, api: widget.api)));
+                  _loadUnreadAlerts();
+                },
+              ),
               IconButton(
                 tooltip: 'Sobre e privacidade',
                 color: Colors.white,
