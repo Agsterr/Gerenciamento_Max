@@ -64,8 +64,8 @@ function reauthenticate(): Promise<boolean> {
 /** Link direto do APK mais recente (instalação fora da loja). */
 export const appDownloadUrl = (app: "gestao" | "cliente") => `${BASE_URL}/api/app/download/latest?app=${app}`;
 
-async function request<T>(method: string, path: string, body?: unknown, retried = false): Promise<T> {
-  const headers: Record<string, string> = {};
+async function request<T>(method: string, path: string, body?: unknown, retried = false, extra?: Record<string, string>): Promise<T> {
+  const headers: Record<string, string> = { ...extra };
   const token = tokenStore.get();
   if (token && !path.startsWith("/api/public")) headers.Authorization = `Bearer ${token}`;
   const isForm = body instanceof FormData;
@@ -80,7 +80,7 @@ async function request<T>(method: string, path: string, body?: unknown, retried 
   const problem = res.ok ? null : await res.json().catch(() => null);
   const blocked = res.status === 403 && problem?.code === ACCOUNT_BLOCKED;
   if (res.status === 401 && token && !retried && (await reauthenticate())) {
-    return request<T>(method, path, body, true);
+    return request<T>(method, path, body, true, extra);
   }
   if ((res.status === 401 || blocked) && token) {
     tokenStore.clear();
@@ -97,7 +97,7 @@ async function request<T>(method: string, path: string, body?: unknown, retried 
 
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
-  post: <T>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}),
+  post: <T>(path: string, body?: unknown, headers?: Record<string, string>) => request<T>("POST", path, body ?? {}, false, headers),
   put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),
   del: (path: string) => request<void>("DELETE", path),
   /** multipart/form-data (o navegador define o boundary). */

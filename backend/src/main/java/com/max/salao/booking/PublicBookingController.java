@@ -111,8 +111,11 @@ public class PublicBookingController {
 
     private final PublicBookingService service;
     private final LookupRateLimiter rateLimiter;
+    private final com.max.salao.shared.AbuseLimiter abuse;
 
-    public PublicBookingController(PublicBookingService service, LookupRateLimiter rateLimiter) {
+    public PublicBookingController(PublicBookingService service, LookupRateLimiter rateLimiter,
+                                   com.max.salao.shared.AbuseLimiter abuse) {
+        this.abuse = abuse;
         this.service = service;
         this.rateLimiter = rateLimiter;
     }
@@ -176,7 +179,9 @@ public class PublicBookingController {
 
     @PostMapping("/bookings")
     @ResponseStatus(HttpStatus.CREATED)
-    public BookingResponse book(@Valid @RequestBody BookingRequest req) {
+    public BookingResponse book(@Valid @RequestBody BookingRequest req, HttpServletRequest http) {
+        abuse.check("book-ip:" + clientIp(http), 60, java.time.Duration.ofMinutes(10));
+        abuse.check("book-tel:" + Customer.normalizePhone(req.phone()), 10, java.time.Duration.ofMinutes(10));
         return toResponse(service.book(req));
     }
 

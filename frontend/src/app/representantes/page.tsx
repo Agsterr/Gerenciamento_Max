@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Card, ErrorMessage, Field, NewPasswordFields } from "@/components/ui";
 import { api } from "@/lib/api";
+import { TurnstileWidget, useTurnstile } from "@/components/Turnstile";
 import { useAuth } from "@/lib/auth";
 import type { User } from "@/lib/types";
 
@@ -16,11 +17,14 @@ export default function RepresentativeSignUp() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const captcha = useTurnstile();
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     if (password !== confirm) return setError("As senhas não conferem.");
+    if (captcha.required && !captcha.token) return setError("Confirme que você não é um robô.");
     setBusy(true);
     setError(undefined);
     try {
@@ -29,11 +33,13 @@ export default function RepresentativeSignUp() {
         email: form.get("email"),
         password,
         pixKey: form.get("pixKey"),
-      });
+      }, captcha.headers);
       signIn(res.token, res.user);
       router.push("/representante");
     } catch (err) {
       setError((err as Error).message);
+      captcha.setToken(undefined);
+      setCaptchaKey((k) => k + 1);
     } finally {
       setBusy(false);
     }
@@ -59,6 +65,7 @@ export default function RepresentativeSignUp() {
           <Field label="E-mail" name="email" type="email" required autoComplete="email" />
           <Field label="Chave Pix para receber (pode preencher depois)" name="pixKey" />
           <NewPasswordFields value={password} onChange={setPassword} confirm={confirm} onConfirmChange={setConfirm} />
+          <TurnstileWidget siteKey={captcha.siteKey} onToken={captcha.setToken} resetKey={captchaKey} />
           <ErrorMessage message={error} />
           <Button className="w-full" disabled={busy}>
             {busy ? "Criando..." : "Criar meu link"}
