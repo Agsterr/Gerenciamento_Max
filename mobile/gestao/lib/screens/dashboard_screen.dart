@@ -148,13 +148,21 @@ class _Totals extends StatelessWidget {
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Atendimentos concluídos', style: text.bodyMedium?.copyWith(color: Colors.white70)),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text('Atendimentos concluídos', maxLines: 1, style: text.bodyMedium?.copyWith(color: Colors.white70)),
+              ),
               Text('${t.done}', style: text.displaySmall?.copyWith(color: Colors.white, fontSize: 44)),
               Text('de ${t.total} agendamentos${t.rework > 0 ? ' · ${t.rework} refação(ões)' : ''}',
                   style: text.bodySmall?.copyWith(color: Colors.white70)),
+              // com fonte grande o selo ao lado não cabe: a variação vai para baixo, em texto
+              if (MediaQuery.textScalerOf(context).scale(14) > 17)
+                if (_delta(t.done, p.done, true) case final d?)
+                  Text('${d.text} ${period.previousLabel}', style: TextStyle(color: d.color, fontWeight: FontWeight.w800, fontSize: 13)),
             ]),
           ),
-          if (_delta(t.done, p.done, true) case final d?)
+          if (_delta(t.done, p.done, true) case final d? when MediaQuery.textScalerOf(context).scale(14) <= 17)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(14)),
@@ -218,13 +226,16 @@ class _Stat extends StatelessWidget {
     return SoftCard(
       padding: const EdgeInsets.all(14),
       child: Row(children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(width: 10),
+        // com fonte grande o ícone tomava a largura do texto: some
+        if (MediaQuery.textScalerOf(context).scale(14) <= 17) ...[
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 10),
+        ],
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -234,7 +245,12 @@ class _Stat extends StatelessWidget {
                 Text(delta!.text, style: TextStyle(color: delta!.color, fontWeight: FontWeight.w800, fontSize: 12)),
               ],
             ]),
-            Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: text.bodySmall?.copyWith(color: Brand.muted)),
+            // uma linha que encolhe: nunca quebra no meio da palavra ("Atendido/s")
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(label, maxLines: 1, style: text.bodySmall?.copyWith(color: Brand.muted)),
+            ),
           ]),
         ),
       ]),

@@ -91,25 +91,26 @@ class BookingLinkCard extends StatelessWidget {
           child: Text(link, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
         ),
         const SizedBox(height: 12),
-        Row(children: [
-          Expanded(
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Brand.rose),
-              icon: const Icon(Icons.copy_rounded),
-              label: const Text('Copiar'),
-              onPressed: () => _copy(context),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: Brand.whatsapp, foregroundColor: Colors.white),
-              icon: const Icon(Icons.chat_rounded),
-              label: const Text('WhatsApp'),
-              onPressed: _whatsApp,
-            ),
-          ),
-        ]),
+        // lado a lado quando cabe; com fonte grande ou tela estreita os botões ficam um embaixo do outro
+        // (antes "WhatsApp" quebrava em "WhatsAp/p")
+        LayoutBuilder(builder: (context, c) {
+          final stacked = c.maxWidth < 300 || MediaQuery.textScalerOf(context).scale(14) > 17;
+          final copy = FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Brand.rose),
+            icon: const Icon(Icons.copy_rounded),
+            label: const Text('Copiar', maxLines: 1),
+            onPressed: () => _copy(context),
+          );
+          final whats = FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: Brand.whatsapp, foregroundColor: Colors.white),
+            icon: const Icon(Icons.chat_rounded),
+            label: const Text('WhatsApp', maxLines: 1),
+            onPressed: _whatsApp,
+          );
+          return stacked
+              ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [copy, const SizedBox(height: 10), whats])
+              : Row(children: [Expanded(child: copy), const SizedBox(width: 10), Expanded(child: whats)]);
+        }),
       ]),
     );
   }

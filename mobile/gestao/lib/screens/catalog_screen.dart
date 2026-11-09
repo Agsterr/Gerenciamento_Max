@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
+import '../widgets/fit_tab.dart';
 import '../widgets/form_sheet.dart';
 import '../widgets/service_photos.dart';
 
@@ -34,7 +35,7 @@ class CatalogScreen extends StatelessWidget {
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white70,
                   labelStyle: const TextStyle(fontWeight: FontWeight.w800),
-                  tabs: const [_TabLabel('Serviços'), _TabLabel('Equipe'), _TabLabel('Produtos')],
+                  tabs: const [FitTab('Serviços'), FitTab('Equipe'), FitTab('Produtos')],
                 ),
               ),
             ]),
@@ -279,19 +280,6 @@ class CatalogScreen extends StatelessWidget {
       if (context.mounted) showError(context, e);
     }
   }
-}
-
-/// Nome da aba que encolhe em vez de ser cortado quando a fonte do sistema é grande.
-class _TabLabel extends StatelessWidget implements PreferredSizeWidget {
-  const _TabLabel(this.label);
-
-  final String label;
-
-  @override
-  Size get preferredSize => const Size.fromHeight(46);
-
-  @override
-  Widget build(BuildContext context) => Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1)));
 }
 
 class _CrudList<T> extends StatefulWidget {

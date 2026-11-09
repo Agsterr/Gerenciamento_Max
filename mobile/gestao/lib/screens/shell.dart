@@ -7,6 +7,7 @@ import '../report_pdf.dart';
 import '../push.dart';
 import '../session.dart';
 import '../staff_reminders.dart';
+import '../widgets/fit_tab.dart';
 import 'agenda_screen.dart';
 import 'catalog_screen.dart';
 import 'customers_screen.dart';
@@ -148,7 +149,7 @@ class _PanelScreenState extends State<PanelScreen> {
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white70,
                   labelStyle: const TextStyle(fontWeight: FontWeight.w800),
-                  tabs: const [Tab(text: 'Atendimentos'), Tab(text: 'Financeiro')],
+                  tabs: const [FitTab('Atendimentos'), FitTab('Financeiro')],
                 ),
               ),
             ]),
