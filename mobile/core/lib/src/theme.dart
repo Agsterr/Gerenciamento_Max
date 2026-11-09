@@ -171,7 +171,7 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: Brand.ink,
         // cor explícita: no tema escuro o padrão era texto escuro sobre fundo escuro (avisos "apagados")
-        contentTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        contentTextStyle: text.bodyMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
         actionTextColor: Brand.pink,
         closeIconColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

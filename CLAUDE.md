@@ -14,3 +14,14 @@
 - `backend/` Spring Boot, `frontend/` Next.js (painel do salão e páginas públicas de agendamento `/s/<slug>`),
   `mobile/` apps Flutter (`gestao`, `cliente`, pacote comum `core`) — veja `mobile/README.md`.
 - Textos, commits e PRs em português.
+
+## Alterações visuais: ver antes de entregar
+- **Toda mudança de tela (app ou site) tem de ser vista renderizada antes de dizer que está pronta.** Teste que passa não prova
+  que ficou bonito nem legível. Gere a imagem, abra com a ferramenta de leitura de imagens e só então avalie.
+- App Flutter: `mobile/gestao/test/support/screenshot.dart` renderiza um widget/tela com as fontes e os ícones reais e salva um PNG
+  (veja os exemplos em `mobile/gestao/test/shots/`; rode com `SHOTS=1 flutter test test/shots`). Teste em tela pequena (360 dp) e com
+  fonte grande, que é onde costuma quebrar.
+- Site: capture com Playwright (Chromium já instalado), em largura de celular (390 px) e de computador.
+- Se o resultado estiver feio, melhore e confira de novo. Se uma biblioteca (animação, ícones, componentes) deixar a tela claramente
+  melhor, use-a. Diga na resposta o que foi visto e o que a imagem não consegue mostrar.
+

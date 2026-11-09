@@ -276,24 +276,28 @@ class _AgendaScreenState extends State<AgendaScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${greeting()}, $firstName', style: text.bodyMedium?.copyWith(color: Colors.white70)),
-                      // uma linha só: com fonte grande no celular a data quebrava em 5 linhas ao lado dos botões
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(formatWeekday(_day), maxLines: 1, style: text.titleLarge?.copyWith(color: Colors.white)),
-                      ),
-                    ]),
+                    child: Text('${greeting()}, $firstName',
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: text.bodyMedium?.copyWith(color: Colors.white70)),
                   ),
                   _Bell(unread: _unread, onTap: _openNotifications),
                   const SizedBox(width: 6),
                   _HeaderButton(icon: Icons.search_rounded, tooltip: 'Buscar agendamentos', onTap: _search),
                   const SizedBox(width: 6),
-                  _HeaderButton(icon: Icons.chevron_left_rounded, tooltip: 'Semana anterior', onTap: () => _go(-7)),
-                  const SizedBox(width: 6),
                   _HeaderButton(icon: Icons.calendar_month_rounded, tooltip: 'Escolher data', onTap: _pickDay),
-                  const SizedBox(width: 6),
+                ]),
+                const SizedBox(height: 10),
+                // a data ocupa a linha toda (legível mesmo com fonte grande); as setas trocam a semana
+                Row(children: [
+                  _HeaderButton(icon: Icons.chevron_left_rounded, tooltip: 'Semana anterior', onTap: () => _go(-7)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(formatWeekday(_day), maxLines: 1, style: text.titleLarge?.copyWith(color: Colors.white)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                   _HeaderButton(icon: Icons.chevron_right_rounded, tooltip: 'Próxima semana', onTap: () => _go(7)),
                 ]),
                 const SizedBox(height: 16),
@@ -548,8 +552,9 @@ class _TimelineItem extends StatelessWidget {
           width: 52,
           child: Column(children: [
             const SizedBox(height: 16),
-            Text(formatTime(a.startAt), style: text.titleSmall),
-            Text(formatTime(a.endAt), style: text.bodySmall?.copyWith(color: Brand.muted)),
+            // uma linha só e encolhe um pouco com fonte grande (antes "09:00" quebrava em "09:0 / 0")
+            FittedBox(fit: BoxFit.scaleDown, child: Text(formatTime(a.startAt), maxLines: 1, style: text.titleSmall)),
+            FittedBox(fit: BoxFit.scaleDown, child: Text(formatTime(a.endAt), maxLines: 1, style: text.bodySmall?.copyWith(color: Brand.muted))),
           ]),
         ),
         SizedBox(
@@ -648,7 +653,7 @@ class _PlanBanner extends StatelessWidget {
             expired
                 ? 'Seu período de teste terminou'
                 : 'Teste grátis: ${plan.daysLeft == 1 ? 'falta 1 dia' : 'faltam ${plan.daysLeft} dias'}',
-            style: text.titleSmall,
+            style: text.titleSmall?.copyWith(color: expired ? const Color(0xFF9F1239) : const Color(0xFF7C4A03)),
           ),
           const SizedBox(height: 2),
           Text(
@@ -656,7 +661,7 @@ class _PlanBanner extends StatelessWidget {
                 ? 'Você ainda vê seus dados, mas não pode criar nem alterar nada, e o agendamento online está pausado.'
                 : '${plan.professionals.$1}/${plan.professionals.$2} profissionais · '
                     '${plan.services.$1}/${plan.services.$2} serviços · ${plan.customers.$1}/${plan.customers.$2} clientes',
-            style: text.bodySmall,
+            style: text.bodySmall?.copyWith(color: expired ? const Color(0xFF9F1239) : const Color(0xFF92400E)),
           ),
           if (onSubscribe != null) ...[
             const SizedBox(height: 8),

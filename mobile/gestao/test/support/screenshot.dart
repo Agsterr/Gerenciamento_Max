@@ -1,0 +1,75 @@
+import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:salao_core/salao_core.dart';
+
+/// Captura de telas para conferir o visual de verdade (regra do CLAUDE.md: toda mudança visual é vista antes de entregar).
+/// Só roda com `SHOTS=1`; as imagens vão para `SHOT_DIR` (padrão `build/shots`).
+final shotsEnabled = Platform.environment['SHOTS'] == '1';
+
+bool _fontsLoaded = false;
+
+/// Fonte da marca e ícones do Material, para a imagem sair como no celular (sem quadradinhos).
+Future<void> loadAppFonts() async {
+  if (_fontsLoaded) return;
+  final brand = FontLoader('packages/salao_core/PlusJakartaSans');
+  for (final f in ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold']) {
+    final bytes = File('../core/fonts/PlusJakartaSans-$f.ttf').readAsBytesSync();
+    brand.addFont(Future.value(ByteData.view(bytes.buffer)));
+  }
+  await brand.load();
+  final flutterRoot = Platform.environment['FLUTTER_ROOT'] ?? '/opt/sdk/flutter';
+  final icons = FontLoader('MaterialIcons')
+    ..addFont(Future.value(ByteData.view(File('$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf').readAsBytesSync().buffer)));
+  await icons.load();
+  _fontsLoaded = true;
+}
+
+/// Renderiza [home] com o tema do app e salva `SHOT_DIR/<name>.png`. [width] em dp (360 = celular pequeno);
+/// [textScale] simula a fonte grande do sistema; [dark] escolhe o tema.
+Future<String> shot(
+  WidgetTester tester,
+  Widget home,
+  String name, {
+  double width = 390,
+  double height = 844,
+  double textScale = 1,
+  bool dark = true,
+  Future<void> Function(WidgetTester tester)? before,
+}) async {
+  await loadAppFonts();
+  tester.view.physicalSize = Size(width * 2, height * 2);
+  tester.view.devicePixelRatio = 2;
+  tester.platformDispatcher.textScaleFactorTestValue = textScale;
+  addTearDown(() {
+    tester.view.reset();
+    tester.platformDispatcher.clearAllTestValues();
+  });
+  final key = GlobalKey();
+  await tester.pumpWidget(RepaintBoundary(
+    key: key,
+    child: MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: dark ? ThemeMode.dark : ThemeMode.light,
+      home: home,
+    ),
+  ));
+  await tester.pumpAndSettle();
+  if (before != null) await before(tester);
+  final dir = Platform.environment['SHOT_DIR'] ?? 'build/shots';
+  Directory(dir).createSync(recursive: true);
+  final path = '$dir/$name.png';
+  await tester.runAsync(() async {
+    final boundary = key.currentContext!.findRenderObject() as RenderRepaintBoundary;
+    final image = await boundary.toImage(pixelRatio: 1);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    File(path).writeAsBytesSync(data!.buffer.asUint8List());
+  });
+  return path;
+}

@@ -242,7 +242,8 @@ class Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = textColor ?? Theme.of(context).colorScheme.onSurfaceVariant;
+    // o fundo padrão da etiqueta é claro nos dois temas: o texto padrão tem de ser escuro (no tema escuro ficava quase invisível)
+    final fg = textColor ?? Brand.muted;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(color: color ?? const Color(0xFFF6EEF3), borderRadius: BorderRadius.circular(999)),

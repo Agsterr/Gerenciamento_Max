@@ -34,7 +34,7 @@ class CatalogScreen extends StatelessWidget {
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white70,
                   labelStyle: const TextStyle(fontWeight: FontWeight.w800),
-                  tabs: const [Tab(text: 'Serviços'), Tab(text: 'Equipe'), Tab(text: 'Produtos')],
+                  tabs: const [_TabLabel('Serviços'), _TabLabel('Equipe'), _TabLabel('Produtos')],
                 ),
               ),
             ]),
@@ -279,6 +279,19 @@ class CatalogScreen extends StatelessWidget {
       if (context.mounted) showError(context, e);
     }
   }
+}
+
+/// Nome da aba que encolhe em vez de ser cortado quando a fonte do sistema é grande.
+class _TabLabel extends StatelessWidget implements PreferredSizeWidget {
+  const _TabLabel(this.label);
+
+  final String label;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(46);
+
+  @override
+  Widget build(BuildContext context) => Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1)));
 }
 
 class _CrudList<T> extends StatefulWidget {
@@ -545,18 +558,27 @@ class _ItemCard extends StatelessWidget {
         child: SoftCard(
           onTap: onTap,
           padding: const EdgeInsets.all(12),
-          child: Row(children: [
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             leading,
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(inactive ? '$title (inativo)' : title, style: Theme.of(context).textTheme.titleSmall),
+                // preço (ou botão) na linha do título: as etiquetas embaixo ganham a largura toda e não cortam mais
+                // com fonte grande no sistema não há largura para os dois lado a lado: o preço desce para a linha de baixo
+                if (MediaQuery.textScalerOf(context).scale(14) > 17) ...[
+                  Text(inactive ? '$title (inativo)' : title, style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 4),
+                  trailing,
+                ] else
+                  Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                    Expanded(child: Text(inactive ? '$title (inativo)' : title, style: Theme.of(context).textTheme.titleSmall)),
+                    const SizedBox(width: 8),
+                    trailing,
+                  ]),
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 6, children: pills),
               ]),
             ),
-            const SizedBox(width: 8),
-            trailing,
             ?menu,
           ]),
         ),
