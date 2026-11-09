@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
+import '../widgets/booking_link_card.dart';
 import '../staff_reminders.dart';
 import 'appointment_search_screen.dart';
 import 'appointment_sheets.dart';
@@ -349,6 +350,14 @@ class _AgendaScreenState extends State<AgendaScreen> {
                   ),
                 ),
               ),
+            // link para os clientes agendarem: bem à vista na Agenda (também fica em Ajustes)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: BookingLinkCard(
+                compact: true,
+                link: '${AppConfig.siteUrl}/s/${widget.session.user.salonSlug}',
+              ),
+            ),
             if (_plan != null && _plan!.status != 'ACTIVE') _PlanBanner(
               _plan!,
               onSubscribe: widget.session.user.isOwner && AppConfig.storeBuild && _plan!.billingAvailable

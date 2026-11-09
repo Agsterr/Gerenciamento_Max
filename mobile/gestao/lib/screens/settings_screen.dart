@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
+import '../widgets/booking_link_card.dart';
 import '../widgets/weekly_hours_editor.dart';
 import 'my_reminders_screen.dart';
 import 'portfolio_screen.dart';
@@ -145,55 +145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  gradient: Brand.gradient,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: Brand.rose.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 10))],
-                ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Row(children: [
-                    Icon(Icons.link_rounded, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text('Seu link de agendamento', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-                  ]),
-                  const SizedBox(height: 6),
-                  Text('Compartilhe no Instagram, WhatsApp e Google. Seus clientes agendam sozinhos.',
-                      style: text.bodySmall?.copyWith(color: Colors.white.withValues(alpha: 0.9))),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(12)),
-                    child: Text(_publicLink, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Brand.rose),
-                        icon: const Icon(Icons.copy_rounded),
-                        label: const Text('Copiar'),
-                        onPressed: () async {
-                          await Clipboard.setData(ClipboardData(text: _publicLink));
-                          if (context.mounted) showMessage(context, 'Link copiado!');
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(backgroundColor: Brand.whatsapp, foregroundColor: Colors.white),
-                        icon: const Icon(Icons.chat_rounded),
-                        label: const Text('WhatsApp'),
-                        onPressed: () => openUrl(Uri.parse(
-                            'https://wa.me/?text=${Uri.encodeComponent('Agende seu horário comigo: $_publicLink')}')),
-                      ),
-                    ),
-                  ]),
-                ]),
-              ),
+              BookingLinkCard(link: _publicLink),
               if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!)),
               if (owner && salon != null) ...[
                 const SectionTitle('Funcionamento'),
