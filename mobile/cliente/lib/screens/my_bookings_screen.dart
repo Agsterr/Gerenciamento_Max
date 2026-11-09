@@ -215,7 +215,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     child: TextField(
                       textInputAction: TextInputAction.search,
                       decoration: InputDecoration(
-                        labelText: 'Buscar por serviço, salão ou profissional',
+                        labelText: 'Buscar nos meus horários',
                         prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
                       ),
@@ -307,7 +307,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     style: text.bodySmall?.copyWith(color: Brand.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 4, children: [
-                  BookingStatusChip(b),
+                  BookingStatusChip(b, compact: true),
                   if (_changed(s))
                     Pill(
                       b.status == AppointmentStatus.canceled

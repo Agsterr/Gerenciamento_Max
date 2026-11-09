@@ -325,8 +325,9 @@ class PromoBanner extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 if (salonName != null) Text(salonName!, style: text.bodySmall?.copyWith(fontWeight: FontWeight.w800, color: Brand.muted)),
-                Text(p.headline, style: text.titleSmall),
-                if (p.description != null) Text(p.description!, style: text.bodySmall),
+                // o cartão é claro nos dois temas: texto escuro explícito (no tema escuro o padrão era texto claro, invisível)
+                Text(p.headline, style: text.titleSmall?.copyWith(color: Brand.ink)),
+                if (p.description != null) Text(p.description!, style: text.bodySmall?.copyWith(color: Brand.ink)),
                 for (final (name, from, to) in offers.take(4))
                   Text.rich(
                     TextSpan(children: [
@@ -335,9 +336,9 @@ class PromoBanner extends StatelessWidget {
                       const TextSpan(text: ' por '),
                       TextSpan(text: formatMoney(to), style: const TextStyle(fontWeight: FontWeight.w800, color: Brand.rose)),
                     ]),
-                    style: text.bodySmall,
+                    style: text.bodySmall?.copyWith(color: Brand.ink),
                   ),
-                if (offers.length > 4) Text('e mais ${offers.length - 4} serviço(s)', style: text.bodySmall),
+                if (offers.length > 4) Text('e mais ${offers.length - 4} serviço(s)', style: text.bodySmall?.copyWith(color: Brand.ink)),
                 Text(
                   'Para horários de ${formatDate(p.startsOn)} a ${formatDate(p.endsOn)}',
                   style: text.bodySmall?.copyWith(color: Brand.muted),

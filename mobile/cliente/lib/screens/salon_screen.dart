@@ -414,6 +414,12 @@ class _SalonScreenState extends State<SalonScreen> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(s.name, style: text.titleMedium),
+                  // com fonte grande o preço ao lado quebrava o nome ("Coloraçã/o"): desce para baixo do nome
+                  if (MediaQuery.textScalerOf(context).scale(14) > 17)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: _Price(price: s.price, promo: s.promoPriceOn(), full: s.kitFullPrice),
+                    ),
                   if (s.kitItems.isNotEmpty)
                     Text('Inclui ${s.kitItems.join(' + ')}', style: text.bodySmall?.copyWith(color: Brand.muted)),
                   const SizedBox(height: 4),
@@ -430,7 +436,7 @@ class _SalonScreenState extends State<SalonScreen> {
                   if (_photos.any((p) => p.serviceId == s.id)) _ServicePhotos(photos: [for (final p in _photos) if (p.serviceId == s.id) p]),
                 ]),
               ),
-              _Price(price: s.price, promo: s.promoPriceOn(), full: s.kitFullPrice),
+              if (MediaQuery.textScalerOf(context).scale(14) <= 17) _Price(price: s.price, promo: s.promoPriceOn(), full: s.kitFullPrice),
             ]),
           ),
         ),

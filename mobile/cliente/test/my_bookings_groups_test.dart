@@ -65,7 +65,7 @@ void main() {
     expect(find.text('Cancelados (2)'), findsOneWidget);
     // só 10 anteriores à vista; o resto vem sob demanda
     expect(find.text('Mostrar mais (2)'), findsOneWidget);
-    expect(find.text('Buscar por serviço, salão ou profissional'), findsOneWidget);
+    expect(find.text('Buscar nos meus horários'), findsOneWidget);
 
     await tester.ensureVisible(find.text('Mostrar mais (2)'));
     await tester.tap(find.text('Mostrar mais (2)'));

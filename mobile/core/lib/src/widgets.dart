@@ -246,12 +246,13 @@ class Pill extends StatelessWidget {
     final fg = textColor ?? Brand.muted;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: color ?? const Color(0xFFF6EEF3), borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(color: color ?? const Color(0xFFF6EEF3), borderRadius: BorderRadius.circular(14)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (icon != null) ...[Icon(icon, size: 14, color: fg), const SizedBox(width: 4)],
         Flexible(
+          // até 2 linhas: com fonte grande o texto quebra em vez de ser cortado com "..."
           child: Text(text,
-              maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+              maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
         ),
       ]),
     );
@@ -461,9 +462,12 @@ class StatusChip extends StatelessWidget {
 /// Situação do agendamento para o cliente: "Aguardando confirmação do salão" (amarelo),
 /// "Confirmado pelo salão" (verde) ou o estado final (cancelado, finalizado...).
 class BookingStatusChip extends StatelessWidget {
-  const BookingStatusChip(this.booking, {super.key});
+  const BookingStatusChip(this.booking, {super.key, this.compact = false});
 
   final Booking booking;
+
+  /// Nas listas: "Aguardando o salão" em vez de "Aguardando confirmação do salão" (não cabe na linha).
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -471,7 +475,7 @@ class BookingStatusChip extends StatelessWidget {
     if (!b.status.isOpen) return StatusChip(b.status);
     final salon = b.salonConfirmed
         ? Pill(b.customerStatusLabel, icon: Icons.verified_outlined, color: const Color(0xFFDCFCE7), textColor: const Color(0xFF15803D))
-        : Pill(b.customerStatusLabel, icon: Icons.hourglass_top_rounded, color: const Color(0xFFFFF4DB), textColor: const Color(0xFFB45309));
+        : Pill(compact ? 'Aguardando o salão' : b.customerStatusLabel, icon: Icons.hourglass_top_rounded, color: const Color(0xFFFFF4DB), textColor: const Color(0xFFB45309));
     if (!b.presenceConfirmed) return salon;
     // duas confirmações diferentes: a do salão (horário aceito) e a do próprio cliente (vai comparecer)
     return Wrap(spacing: 6, runSpacing: 4, children: [

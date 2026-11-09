@@ -115,7 +115,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 const SizedBox(height: 14),
                 Text(title, textAlign: TextAlign.center, style: text.headlineSmall?.copyWith(color: Colors.white)),
                 const SizedBox(height: 4),
-                Text(canceled ? 'Esperamos ver você em breve.' : 'Seu horário está reservado.',
+                Text(canceled ? 'Esperamos ver você em breve.' : b.waitingForSalon ? 'Assim que o salão aceitar, avisamos você.' : 'Seu horário está reservado.',
                     style: text.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.9))),
               ]),
             ),

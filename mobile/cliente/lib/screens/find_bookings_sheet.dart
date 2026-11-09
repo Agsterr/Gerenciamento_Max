@@ -160,7 +160,7 @@ class _FindBookingsSheetState extends State<_FindBookingsSheet> {
                         Text('${formatShortDateTime(b.startAt)} · ${b.professionalName}',
                             style: text.bodySmall?.copyWith(color: Brand.muted)),
                         const SizedBox(height: 6),
-                        BookingStatusChip(b),
+                        BookingStatusChip(b, compact: true),
                       ]),
                     ),
                   ),
