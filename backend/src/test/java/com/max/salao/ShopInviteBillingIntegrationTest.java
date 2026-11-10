@@ -253,6 +253,35 @@ class ShopInviteBillingIntegrationTest {
         assertThat(call(salon.token(), get("/api/shop/orders"), null, status().isOk())).hasSize(2);
     }
 
+    @Test
+    void vendorLinkedAfterTheSalonUsedTheAppForMoreThanAMonthSellsButEarnsNoCommission() throws Exception {
+        Rep rep = representative("Davi Vendas");
+        Salon old = salon(null);
+        jdbc.update("update salon set created_at = now() - interval '40 days' where id = ?", old.id());
+        long product = call(rep.token(), post("/api/representative/shop/products"), Map.of("name", "Escova", "costCents", 1000,
+                "suggestedCents", 1800, "active", true), status().isCreated()).get("id").asLong();
+
+        JsonNode inv = call(rep.token(), post("/api/representative/invites"), Map.of("salon", old.slug()), status().isCreated());
+        assertThat(inv.get("blockedByOther").asBoolean()).isTrue();
+        assertThat(inv.get("message").asText()).contains("mais de um mês").contains("não ganha a comissão");
+        assertThat(call(old.token(), post("/api/shop/invites/" + inv.get("id").asLong() + "/accept"), null, status().isOk())
+                .get("status").asText()).isEqualTo("WAITING");
+        // não vira o titular (sem os R$ 15), mas vende para ela
+        assertThat(referrerOf(old.id())).isNull();
+        assertThat(call(old.token(), get("/api/shop/catalog"), null, status().isOk()).get("vendors")).hasSize(1);
+        call(old.token(), post("/api/shop/orders"), orderOf(product), status().isCreated());
+        jdbc.update("update salon set plan = 'PAID', paid_until = ? where id = ?", java.sql.Date.valueOf(LocalDate.now().plusDays(10)), old.id());
+        referrals.recordPayment(salons.findById(old.id()).orElseThrow(), "ASAAS", "pay_" + UUID.randomUUID(), "ref", 4990, LocalDate.now().plusMonths(1), LocalDateTime.now());
+        assertThat(commissionReps(old.id())).isEmpty();
+        assertThat(call(rep.token(), get("/api/representative/invites"), null, status().isOk()).get(0).get("message").asText()).contains("mais de um mês");
+
+        // salão novo (menos de um mês) sem representante: aceitar vale na hora, com comissão
+        Salon fresh = salon(null);
+        long inv2 = call(rep.token(), post("/api/representative/invites"), Map.of("salon", fresh.slug()), status().isCreated()).get("id").asLong();
+        assertThat(call(fresh.token(), post("/api/shop/invites/" + inv2 + "/accept"), null, status().isOk()).get("status").asText()).isEqualTo("ACTIVE");
+        assertThat(referrerOf(fresh.id())).isEqualTo(rep.id());
+    }
+
     private Map<String, Object> orderOf(long productId) {
         return Map.of("items", List.of(Map.of("productId", productId, "quantity", 1)), "contactName", "Rita", "neighborhood", "Centro");
     }

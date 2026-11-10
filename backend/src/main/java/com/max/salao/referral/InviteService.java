@@ -31,10 +31,17 @@ public class InviteService {
 
     private final JdbcTemplate jdbc;
     private final Clock clock;
+    private final ReferralProperties props;
 
-    public InviteService(JdbcTemplate jdbc, Clock clock) {
+    public InviteService(JdbcTemplate jdbc, Clock clock, ReferralProperties props) {
         this.jdbc = jdbc;
         this.clock = clock;
+        this.props = props;
+    }
+
+    /** O salão já usa o app há mais de {@code lateLinkDays} dias: vendedor novo não ganha a comissão da mensalidade. */
+    private boolean late(java.sql.Timestamp salonCreatedAt) {
+        return salonCreatedAt != null && salonCreatedAt.toLocalDateTime().isBefore(LocalDateTime.now(clock).minusDays(props.lateLinkDays()));
     }
 
     /** Aceita o link da página de agendamento ({@code .../s/slug}), só o {@code slug} ou o e-mail do dono. */
@@ -63,22 +70,26 @@ public class InviteService {
 
     @Transactional(readOnly = true)
     public List<RepInvite> list(long repId) {
-        return jdbc.query("select i.id, i.status, i.created_at, s.name, s.referrer_id from representative_invite i join salon s on s.id = i.salon_id "
+        return jdbc.query("select i.id, i.status, i.created_at, s.name, s.referrer_id, s.created_at as salon_created from representative_invite i "
+                + "join salon s on s.id = i.salon_id "
                 + "where i.representative_id = ? and i.status <> 'CANCELED' order by i.created_at desc, i.id desc", (rs, n) -> {
             Long referrer = (Long) rs.getObject("referrer_id");
             boolean blocked = referrer != null && referrer != repId;
+            boolean late = referrer == null && late(rs.getTimestamp("salon_created"));
             String status = rs.getString("status");
-            return new RepInvite(rs.getLong("id"), rs.getString("name"), status, blocked && !status.equals("ACTIVE"),
-                    message(status, blocked), rs.getTimestamp("created_at").toLocalDateTime());
+            return new RepInvite(rs.getLong("id"), rs.getString("name"), status, (blocked || late) && !status.equals("ACTIVE"),
+                    message(status, blocked, late), rs.getTimestamp("created_at").toLocalDateTime());
         }, repId);
     }
 
-    private static String message(String status, boolean blocked) {
+    private static String message(String status, boolean blocked, boolean late) {
+        String lateText = "Esta cabeleireira já usa o app há mais de um mês: você pode vender seus produtos para ela, mas não ganha a comissão da mensalidade.";
         return switch (status) {
             case "PENDING" -> blocked
                     ? "Esta cabeleireira já foi indicada por outro fornecedor. Seu convite fica pendente e você não ganha comissão por ela."
-                    : "Aguardando a cabeleireira aceitar.";
-            case "WAITING" -> "Aceito pela cabeleireira: ela já pode comprar seus produtos. Você só passa a ganhar a comissão da mensalidade se ela parar de pagar e voltar a assinar.";
+                    : late ? lateText : "Aguardando a cabeleireira aceitar.";
+            case "WAITING" -> late && !blocked ? "Aceito. " + lateText
+                    : "Aceito pela cabeleireira: ela já pode comprar seus produtos. Você só passa a ganhar a comissão da mensalidade se ela parar de pagar e voltar a assinar.";
             case "ACTIVE" -> "Você é o representante dela.";
             case "DECLINED" -> "A cabeleireira recusou o convite.";
             case "REPLACED" -> "Outro fornecedor ficou com essa cabeleireira.";
@@ -117,11 +128,12 @@ public class InviteService {
         long repId = (Long) rows.get(0)[0];
         Long current = jdbc.queryForObject("select referrer_id from salon where id = ?", Long.class, salonId);
         Timestamp now = Timestamp.valueOf(LocalDateTime.now(clock));
-        if (current == null) {
+        boolean lateLink = late(jdbc.queryForObject("select created_at from salon where id = ?", Timestamp.class, salonId));
+        if (current == null && !lateLink) {
             jdbc.update("update salon set referrer_id = ? where id = ?", repId, salonId);
             jdbc.update("update representative_invite set status = 'ACTIVE', responded_at = ? where id = ?", now, inviteId);
         } else {
-            // outro representante é o titular: fica em espera, sem comissão
+            // outro representante é o titular (ou o salão já usa o app há mais de um mês): vende, mas fica sem a comissão
             jdbc.update("update representative_invite set status = 'WAITING', responded_at = ? where id = ?", now, inviteId);
         }
         return forSalonAny(salonId, inviteId);

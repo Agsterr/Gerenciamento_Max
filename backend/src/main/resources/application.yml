@@ -83,6 +83,8 @@ app:
     # preço da mensalidade na Play (mais alto que o do site por causa da taxa da loja); só informativo nos relatórios
     play-price-cents: ${PLAY_PRICE_CENTS:5890}
     site-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
+    # salão que já usa o app há mais de N dias e aceita um vendedor: ele vende, mas sem a comissão da mensalidade
+    late-link-days: ${REFERRAL_LATE_LINK_DAYS:30}
   # Sino de avisos: lidos há mais de keep-read-days dias e qualquer aviso com mais de keep-days dias são apagados à noite.
   notifications:
     keep-read-days: ${NOTIFICATIONS_KEEP_READ_DAYS:30}

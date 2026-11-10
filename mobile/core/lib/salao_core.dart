@@ -5,6 +5,7 @@ export 'src/api_client.dart';
 export 'src/config.dart';
 export 'src/format.dart';
 export 'src/gallery.dart';
+export 'src/local_cache.dart';
 export 'src/local_reminders.dart';
 export 'src/models.dart';
 export 'src/paged.dart';

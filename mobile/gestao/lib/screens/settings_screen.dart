@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
+import '../shop/purchases_screen.dart';
+import '../shop/shop_access.dart';
+import '../shop/shop_screen.dart';
 import '../widgets/booking_link_card.dart';
 import '../widgets/weekly_hours_editor.dart';
 import 'my_reminders_screen.dart';
@@ -25,12 +28,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   PlanInfo? _plan;
 
   Session get _session => widget.session;
+  late final ShopAccess _shop = ShopAccess(widget.session);
   String get _publicLink => '${AppConfig.siteUrl}/s/${_session.user.salonSlug}';
 
   @override
   void initState() {
     super.initState();
     _load();
+    // a loja só aparece para salões com vendedor (ou convite); quem veio direto da Play não vê nada disso
+    _shop.addListener(_shopChanged);
+    _shop.load();
   }
 
   Future<void> _load() async {
@@ -58,6 +65,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (mounted) showError(context, e);
     }
+  }
+
+  void _shopChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _shop.removeListener(_shopChanged);
+    _shop.dispose();
+    super.dispose();
   }
 
   void _open(Widget screen) => Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
@@ -101,7 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final text = Theme.of(context).textTheme;
     final user = _session.user;
 
-    Widget tile(IconData icon, String title, VoidCallback onTap, {Color? color}) => ListTile(
+    Widget tile(IconData icon, String title, VoidCallback onTap, {Color? color, String? subtitle, Widget? trailing}) => ListTile(
           leading: Container(
             width: 40,
             height: 40,
@@ -112,7 +130,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Icon(icon, color: color ?? Brand.rose, size: 20),
           ),
           title: Text(title, style: text.titleSmall?.copyWith(color: color)),
-          trailing: const Icon(Icons.chevron_right_rounded),
+          subtitle: subtitle == null ? null : Text(subtitle),
+          trailing: trailing ?? const Icon(Icons.chevron_right_rounded),
           onTap: onTap,
         );
 
@@ -146,6 +165,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               BookingLinkCard(link: _publicLink),
+              if (owner && _shop.visible) ...[
+                const SectionTitle('Loja dos vendedores'),
+                SoftCard(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Column(children: [
+                    tile(
+                      Icons.storefront_outlined,
+                      'Produtos dos vendedores',
+                      () async {
+                        await Navigator.push(context, MaterialPageRoute(builder: (_) => ShopScreen(session: _session, onChanged: _shop.refresh)));
+                        _shop.refresh();
+                      },
+                      subtitle: _shop.pendingInvites > 0
+                          ? (_shop.pendingInvites == 1 ? '1 convite esperando resposta' : '${_shop.pendingInvites} convites esperando resposta')
+                          : null,
+                      trailing: _shop.pendingInvites > 0
+                          ? Badge(label: Text('${_shop.pendingInvites}'), child: const Icon(Icons.chevron_right_rounded))
+                          : null,
+                    ),
+                    if (_shop.hasVendor)
+                      tile(Icons.receipt_long_outlined, 'Minhas compras', () => _open(PurchasesScreen(session: _session))),
+                  ]),
+                ),
+              ],
               const SectionTitle('Cor do aplicativo'),
               SoftCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
