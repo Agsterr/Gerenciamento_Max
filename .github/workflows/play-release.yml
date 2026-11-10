@@ -1,7 +1,8 @@
 name: Play Store
 
 # push na main mexendo em mobile/** → builda o .aab do canal "play" de cada app e envia para a faixa
-# do teste fechado (Alpha, com os testadores) da Google Play. Faixa: input manual > variável PLAY_TRACK > alpha.
+# do teste fechado (Alpha, com os testadores) da Google Play. Faixa: input manual > variável do app
+# (PLAY_TRACK_GESTAO / PLAY_TRACK_CLIENTE) > variável PLAY_TRACK > alpha. Para ir direto à produção, veja docs/PLAY_STORE.md.
 # Pré-requisitos (uma vez, no Play Console): ver docs/PLAY_STORE.md.
 on:
   push:
@@ -18,10 +19,10 @@ on:
         default: ambos
         options: [ambos, gestao, cliente]
       track:
-        description: "Faixa da Play"
+        description: "Faixa da Play (auto = variável do app/PLAY_TRACK, senão alpha)"
         type: choice
-        default: alpha
-        options: [internal, alpha, beta, production]
+        default: auto
+        options: [auto, internal, alpha, beta, production]
       status:
         description: "auto = variável PLAY_RELEASE_STATUS (padrão draft). draft até a 1ª aprovação, depois completed"
         type: choice
@@ -44,9 +45,6 @@ env:
   FIREBASE_APP_ID_CLIENTE: ${{ secrets.FIREBASE_APP_ID_CLIENTE }}
   FIREBASE_SENDER_ID: ${{ secrets.FIREBASE_SENDER_ID }}
   FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-  # Variável do repositório PLAY_RELEASE_STATUS: deixe "draft" até a 1ª versão ser aprovada, depois "completed".
-  RELEASE_STATUS: ${{ (github.event.inputs.status != '' && github.event.inputs.status != 'auto') && github.event.inputs.status || vars.PLAY_RELEASE_STATUS || 'draft' }}
-  TRACK: ${{ github.event.inputs.track || vars.PLAY_TRACK || 'alpha' }}
 
 jobs:
   release:
@@ -160,7 +158,31 @@ jobs:
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Enviar para a Play (${{ env.TRACK }})
+      # Faixa e situação de CADA app: o cliente e o salão podem estar em fases diferentes (um já aprovado para produção, o outro não).
+      # Ordem: escolha manual do disparo > variável do app > variável geral > padrão (alpha, rascunho).
+      - name: Faixa e situação deste app
+        if: steps.skip.outputs.skip != 'true'
+        id: lane
+        env:
+          INPUT_TRACK: ${{ github.event.inputs.track }}
+          INPUT_STATUS: ${{ github.event.inputs.status }}
+          APP_TRACK: ${{ matrix.app == 'gestao' && vars.PLAY_TRACK_GESTAO || vars.PLAY_TRACK_CLIENTE }}
+          APP_STATUS: ${{ matrix.app == 'gestao' && vars.PLAY_RELEASE_STATUS_GESTAO || vars.PLAY_RELEASE_STATUS_CLIENTE }}
+          ALL_TRACK: ${{ vars.PLAY_TRACK }}
+          ALL_STATUS: ${{ vars.PLAY_RELEASE_STATUS }}
+        run: |
+          set -euo pipefail
+          [ "${INPUT_TRACK:-}" = "auto" ] && INPUT_TRACK=""
+          TRACK="${INPUT_TRACK:-${APP_TRACK:-${ALL_TRACK:-alpha}}}"
+          STATUS="draft"
+          if [ -n "${INPUT_STATUS:-}" ] && [ "$INPUT_STATUS" != "auto" ]; then STATUS="$INPUT_STATUS"
+          elif [ -n "${APP_STATUS:-}" ]; then STATUS="$APP_STATUS"
+          elif [ -n "${ALL_STATUS:-}" ]; then STATUS="$ALL_STATUS"; fi
+          echo "track=$TRACK" >> "$GITHUB_OUTPUT"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "${{ matrix.app }}: faixa $TRACK, situação $STATUS"
+
+      - name: Enviar para a Play (${{ steps.lane.outputs.track }})
         if: steps.skip.outputs.skip != 'true' && steps.creds.outputs.ok == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
@@ -168,15 +190,15 @@ jobs:
           packageName: ${{ matrix.package }}
           releaseFiles: mobile/${{ matrix.app }}/build/app/outputs/bundle/playRelease/app-play-release.aab
           mappingFile: mobile/${{ matrix.app }}/build/app/outputs/mapping/playRelease/mapping.txt
-          track: ${{ env.TRACK }}
-          status: ${{ env.RELEASE_STATUS }}
+          track: ${{ steps.lane.outputs.track }}
+          status: ${{ steps.lane.outputs.status }}
           releaseName: ${{ steps.version.outputs.name }} (${{ steps.version.outputs.code }})
 
       - name: Resumo
         if: steps.skip.outputs.skip != 'true'
         run: |
           if [ "${{ steps.creds.outputs.ok }}" = "true" ]; then
-            echo "### ${{ matrix.app }} ${{ steps.version.outputs.name }}+${{ steps.version.outputs.code }} enviado para ${TRACK} (${RELEASE_STATUS})" >> "$GITHUB_STEP_SUMMARY"
+            echo "### ${{ matrix.app }} ${{ steps.version.outputs.name }}+${{ steps.version.outputs.code }} enviado para ${{ steps.lane.outputs.track }} (${{ steps.lane.outputs.status }})" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "### ${{ matrix.app }} ${{ steps.version.outputs.name }}+${{ steps.version.outputs.code }}: .aab nos artifacts (sem conta de serviço da Play)" >> "$GITHUB_STEP_SUMMARY"
           fi

@@ -30,6 +30,26 @@ O workflow **Play Store** (`.github/workflows/play-release.yml`) roda a cada pus
 Conta **pessoal** criada depois de nov/2023: a Play exige **teste fechado com 12 testadores por
 14 dias** antes de liberar a produção. Conta de **organização** não tem essa exigência.
 
+## Ir para a produção (em vez do teste fechado)
+
+Sem configurar nada, cada envio vai para o **teste fechado (alpha)** como **rascunho**. Quem decide a faixa e se o envio já
+é publicado são **variáveis do repositório** (GitHub → *Settings → Secrets and variables → Actions → Variables*), uma por app
+ou uma para os dois:
+
+| Variável | Valores | Para quê |
+|---|---|---|
+| `PLAY_TRACK_GESTAO`, `PLAY_TRACK_CLIENTE` | `alpha`, `beta`, `production`... | faixa de cada app (o salão e o cliente podem estar em fases diferentes) |
+| `PLAY_RELEASE_STATUS_GESTAO`, `PLAY_RELEASE_STATUS_CLIENTE` | `draft` ou `completed` | `draft` deixa o envio como rascunho para você publicar no console; `completed` publica sozinho |
+| `PLAY_TRACK`, `PLAY_RELEASE_STATUS` | idem | valem para os dois apps quando a variável do app não existe |
+
+Ordem: escolha manual no disparo (*Actions → Play Store → Run workflow*) > variável do app > variável geral > alpha/rascunho.
+
+**Produção de verdade:** crie `PLAY_TRACK_<APP>=production` e `PLAY_RELEASE_STATUS_<APP>=completed`. Atenção: a partir daí **todo push em
+`mobile/` publica para todos os usuários, sem teste antes**. A faixa de produção só aceita envio depois de o app ter a produção
+liberada no Play Console (conta pessoal: 12 testadores por 14 dias no teste fechado) e de a 1ª versão de produção ter sido
+enviada para análise. Para publicar só quando você quiser, deixe as variáveis em alpha e use *Run workflow* escolhendo
+`production` + `completed` (ou promova a versão do alpha para a produção no Play Console).
+
 ## Ficha da loja (manual, uma vez)
 
 Artes e textos em `mobile/store/`, checklist em `mobile/STORES.md`. Política de privacidade:
