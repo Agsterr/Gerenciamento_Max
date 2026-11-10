@@ -43,20 +43,25 @@ Future<bool> showFormSheet(
   void Function(String key, Map<String, TextEditingController> fields)? onChanged,
   /// Resumo ao vivo dos valores digitados (ex.: lucro por unidade).
   Widget Function(Map<String, String> values)? preview,
+  /// Conteúdo logo abaixo do título, com acesso aos campos de texto (ex.: importar contato da agenda do celular).
+  Widget Function(Map<String, TextEditingController> controllers)? aboveFields,
 }) async {
   final saved = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     builder: (_) => _FormSheet(
-        title: title, fields: fields, initial: initial, onSave: onSave, extra: extra, onChanged: onChanged, preview: preview),
+        title: title, fields: fields, initial: initial, onSave: onSave, extra: extra, onChanged: onChanged, preview: preview,
+        aboveFields: aboveFields),
   );
   return saved ?? false;
 }
 
 class _FormSheet extends StatefulWidget {
   const _FormSheet(
-      {required this.title, required this.fields, required this.initial, required this.onSave, this.extra, this.onChanged, this.preview});
+      {required this.title, required this.fields, required this.initial, required this.onSave, this.extra, this.onChanged, this.preview, this.aboveFields});
+
+  final Widget Function(Map<String, TextEditingController> controllers)? aboveFields;
 
   final Widget? extra;
   final void Function(String key, Map<String, TextEditingController> fields)? onChanged;
@@ -191,6 +196,7 @@ class _FormSheetState extends State<_FormSheet> {
             children: [
               Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 16),
+              if (widget.aboveFields != null) widget.aboveFields!(_text),
               for (final f in widget.fields) ...[
                 if (f.kind == FieldKind.toggle)
                   SwitchListTile(

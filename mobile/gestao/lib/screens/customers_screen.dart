@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
+import '../widgets/contact_picker_button.dart';
 import '../widgets/form_sheet.dart';
 
 class CustomersScreen extends StatefulWidget {
@@ -48,6 +49,8 @@ class _CustomersScreenState extends State<CustomersScreen> {
       title: c == null ? 'Novo cliente' : 'Editar cliente',
       fields: _fields,
       initial: {'name': c?.name, 'phone': c?.phone, 'email': c?.email, 'notes': c?.notes},
+      // cliente novo: dá para puxar nome e telefone da agenda do celular
+      aboveFields: c == null ? (controllers) => ContactPickerButton(controllers: controllers) : null,
       onSave: (v) => c == null ? _api.post('/api/customers', v) : _api.put('/api/customers/${c.id}', v),
     );
     if (saved) _list.refresh();
