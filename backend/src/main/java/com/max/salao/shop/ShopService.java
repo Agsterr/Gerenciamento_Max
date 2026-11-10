@@ -43,11 +43,14 @@ public class ShopService {
     public record ProductView(Long id, String name, String description, String kind, String category, int costCents,
                               int suggestedCents, Integer promoCents, LocalDate promoUntil, int priceCents,
                               int gainCents, boolean onPromo, boolean isNew, List<String> tags, String imageUrl,
-                              String thumbUrl, boolean active, boolean hidden, boolean showcase) {
+                              String thumbUrl, boolean active, boolean hidden, boolean showcase, Long vendorId) {
     }
 
-    public record Catalog(boolean available, boolean paused, String representativeName, List<ProductView> products,
-                          List<String> categories) {
+    /** Vendedor (representante) que o salão pode comprar: o titular e quem o salão aceitou convidar. */
+    public record Vendor(Long id, String name, boolean paused, List<ProductView> products, List<String> categories) {
+    }
+
+    public record Catalog(boolean available, List<Vendor> vendors) {
     }
 
     public record ItemRequest(Long productId, int quantity) {
@@ -66,7 +69,8 @@ public class ShopService {
     public record OrderView(Long id, String origin, String status, long totalCents, long paidCents, long balanceCents,
                             long gainCents, long commissionCents, boolean commissionSettled, long netCents, LocalDateTime createdAt, LocalDateTime updatedAt, Long salonId,
                             String salonName, String contactName, String phone, String address, String neighborhood,
-                            String city, String note, List<ItemView> items, List<PaymentView> payments) {
+                            String city, String note, List<ItemView> items, List<PaymentView> payments, Long vendorId,
+                            String vendorName) {
     }
 
     public record Delivery(String neighborhood, String city, int orders, long totalCents) {
@@ -78,14 +82,14 @@ public class ShopService {
 
     /** Produto na vitrine pública do salão: o preço é o sugerido (o que a cliente paga). */
     public record PublicShopProduct(Long id, String name, String description, String category, int priceCents,
-                                    List<String> tags, String imageUrl, String thumbUrl) {
+                                    List<String> tags, String imageUrl, String thumbUrl, Long vendorId, String vendorName) {
     }
 
     public record CustomerOrderRequest(List<ItemRequest> items, String name, String phone, String address,
                                        String neighborhood, String city, String note) {
     }
 
-    public record CustomerOrderReceipt(Long id, long totalCents, String representativeName) {
+    public record CustomerOrderReceipt(List<Long> ids, long totalCents, List<String> vendors) {
     }
 
     private final JdbcTemplate jdbc;
@@ -297,37 +301,54 @@ public class ShopService {
 
     // ---------------------------------------------------------------- salão
 
-    private Long referrerOf(long salonId) {
-        List<Long> l = jdbc.query("select referrer_id from salon where id = ?", (rs, i) -> (Long) rs.getObject(1), salonId);
-        return l.isEmpty() ? null : l.get(0);
+    /** Vendedores do salão: o titular (quem indicou) e os que o salão aceitou convidar, mesmo em espera. */
+    private List<Long> vendorsOf(long salonId) {
+        return jdbc.queryForList("select representative_id from ("
+                + " select referrer_id as representative_id, 0 as ord from salon where id = ? and referrer_id is not null"
+                + " union select representative_id, 1 as ord from representative_invite where salon_id = ? and status in ('ACTIVE','WAITING')"
+                + ") v group by representative_id order by min(ord), representative_id", Long.class, salonId, salonId);
+    }
+
+    private String vendorName(long repId) {
+        return firstName(jdbc.queryForObject("select u.name from representative r join app_user u on u.id = r.user_id where r.id = ?", String.class, repId));
     }
 
     @Transactional(readOnly = true)
     public Catalog catalog(long salonId) {
-        Long rep = referrerOf(salonId);
-        if (rep == null) {
-            return new Catalog(false, false, null, List.of(), List.of());
+        List<Long> vendors = vendorsOf(salonId);
+        List<Vendor> out = new ArrayList<>();
+        for (long rep : vendors) {
+            String name = vendorName(rep);
+            if (!billing.active(rep)) {
+                // a assinatura da loja do vendedor venceu: a vitrine dele pausa até ele renovar
+                out.add(new Vendor(rep, name, true, List.of(), List.of()));
+                continue;
+            }
+            List<ProductView> products = jdbc.query("select p.*, (h.product_id is not null) as hidden, (sc.product_id is not null) as showcase from shop_product p "
+                    + "left join shop_hidden h on h.product_id = p.id and h.salon_id = ? "
+                    + "left join shop_showcase sc on sc.product_id = p.id and sc.salon_id = ? "
+                    + "where p.representative_id = ? and p.active order by p.created_at desc, p.id desc",
+                    (rs, i) -> product(rs, true), salonId, salonId, rep);
+            List<String> categories = products.stream().map(ProductView::category).filter(c -> c != null && !c.isBlank())
+                    .distinct().sorted(String.CASE_INSENSITIVE_ORDER).toList();
+            out.add(new Vendor(rep, name, false, products, categories));
         }
-        String name = jdbc.queryForObject("select u.name from representative r join app_user u on u.id = r.user_id where r.id = ?", String.class, rep);
-        if (!billing.active(rep)) {
-            // a assinatura da loja do representante venceu: a vitrine pausa até ele renovar
-            return new Catalog(true, true, firstName(name), List.of(), List.of());
+        return new Catalog(!out.isEmpty(), out);
+    }
+
+    private boolean isVendorProduct(long salonId, long productId, boolean mustBeActive) {
+        List<Long> vendors = vendorsOf(salonId);
+        if (vendors.isEmpty()) {
+            return false;
         }
-        List<ProductView> products = jdbc.query("select p.*, (h.product_id is not null) as hidden, (sc.product_id is not null) as showcase from shop_product p "
-                + "left join shop_hidden h on h.product_id = p.id and h.salon_id = ? "
-                + "left join shop_showcase sc on sc.product_id = p.id and sc.salon_id = ? "
-                + "where p.representative_id = ? and p.active order by p.created_at desc, p.id desc",
-                (rs, i) -> product(rs, true), salonId, salonId, rep);
-        List<String> categories = products.stream().map(ProductView::category).filter(c -> c != null && !c.isBlank())
-                .distinct().sorted(String.CASE_INSENSITIVE_ORDER).toList();
-        return new Catalog(true, false, firstName(name), products, categories);
+        Long rep = jdbc.query("select representative_id from shop_product where id = ?" + (mustBeActive ? " and active" : ""),
+                rs -> rs.next() ? rs.getLong(1) : null, productId);
+        return rep != null && vendors.contains(rep);
     }
 
     @Transactional
     public void setVisible(long salonId, long productId, boolean visible) {
-        Long rep = referrerOf(salonId);
-        Integer ok = rep == null ? 0 : jdbc.queryForObject("select count(*) from shop_product where id = ? and representative_id = ?", Integer.class, productId, rep);
-        if (ok == null || ok == 0) {
+        if (!isVendorProduct(salonId, productId, false)) {
             throw new NotFoundException("Produto não encontrado");
         }
         if (visible) {
@@ -337,12 +358,10 @@ public class ShopService {
         }
     }
 
-    /** Marca (ou desmarca) um produto do representante para as clientes do salão verem na página de agendamento. */
+    /** Marca (ou desmarca) um produto de um vendedor para as clientes do salão verem na página de agendamento. */
     @Transactional
     public void setShowcase(long salonId, long productId, boolean on) {
-        Long rep = referrerOf(salonId);
-        Integer ok = rep == null ? 0 : jdbc.queryForObject("select count(*) from shop_product where id = ? and representative_id = ? and active", Integer.class, productId, rep);
-        if (ok == null || ok == 0) {
+        if (!isVendorProduct(salonId, productId, true)) {
             throw new NotFoundException("Produto não encontrado");
         }
         if (on) {
@@ -352,28 +371,31 @@ public class ShopService {
         }
     }
 
-    /** Vitrine pública: o que o salão marcou, ativo e que ele não ocultou. */
+    /** Vitrine pública: o que o salão marcou, ativo, não oculto e de vendedor com a loja em dia. */
     @Transactional(readOnly = true)
     public List<PublicShopProduct> publicShowcase(long salonId) {
-        Long rep = referrerOf(salonId);
-        if (rep == null || !billing.active(rep)) {
-            return List.of();
+        List<PublicShopProduct> out = new ArrayList<>();
+        for (long rep : vendorsOf(salonId)) {
+            if (!billing.active(rep)) {
+                continue;
+            }
+            String vendor = vendorName(rep);
+            out.addAll(jdbc.query("select p.* from shop_product p join shop_showcase sc on sc.product_id = p.id and sc.salon_id = ? "
+                    + "where p.representative_id = ? and p.active and p.suggested_cents > 0 "
+                    + "and not exists (select 1 from shop_hidden h where h.product_id = p.id and h.salon_id = ?) "
+                    + "order by p.created_at desc, p.id desc", (rs, i) -> {
+                ProductView p = product(rs, false);
+                return new PublicShopProduct(p.id(), p.name(), p.description(), p.category(), p.suggestedCents(),
+                        p.tags().stream().filter(t -> !t.equals("PROMOCAO")).toList(), p.imageUrl(), p.thumbUrl(), rep, vendor);
+            }, salonId, rep, salonId));
         }
-        return jdbc.query("select p.* from shop_product p join shop_showcase sc on sc.product_id = p.id and sc.salon_id = ? "
-                + "where p.representative_id = ? and p.active and p.suggested_cents > 0 "
-                + "and not exists (select 1 from shop_hidden h where h.product_id = p.id and h.salon_id = ?) "
-                + "order by p.created_at desc, p.id desc", (rs, i) -> {
-            ProductView p = product(rs, false);
-            return new PublicShopProduct(p.id(), p.name(), p.description(), p.category(), p.suggestedCents(),
-                    p.tags().stream().filter(t -> !t.equals("PROMOCAO")).toList(), p.imageUrl(), p.thumbUrl());
-        }, salonId, rep, salonId);
+        return out;
     }
 
-    /** Pedido de uma cliente do salão: vai direto para o representante; o salão ganha a comissão. */
+    /** Pedido de uma cliente do salão: um pedido por vendedor, direto para ele; o salão ganha a comissão de cada um. */
     @Transactional
     public CustomerOrderReceipt placeCustomerOrder(long salonId, CustomerOrderRequest r) {
-        Long rep = referrerOf(salonId);
-        if (rep == null) {
+        if (vendorsOf(salonId).isEmpty()) {
             throw new NotFoundException("Produto não encontrado");
         }
         if (r.items() == null || r.items().isEmpty()) {
@@ -393,55 +415,43 @@ public class ShopService {
             qty.merge(it.productId(), it.quantity(), Integer::sum);
         }
         Map<Long, PublicShopProduct> offered = publicShowcase(salonId).stream().collect(Collectors.toMap(PublicShopProduct::id, p -> p));
-        String salonName = jdbc.queryForObject("select name from salon where id = ?", String.class, salonId);
-        List<ItemView> items = new ArrayList<>();
-        long total = 0, commission = 0;
+        // separa por vendedor: cada vendedor recebe só o pedido dele
+        Map<Long, Map<Long, Integer>> byVendor = new LinkedHashMap<>();
         for (Map.Entry<Long, Integer> e : qty.entrySet()) {
             PublicShopProduct offer = offered.get(e.getKey());
             if (offer == null) {
                 throw new BusinessException("Um dos produtos não está mais disponível.");
             }
-            ProductView p = one(rep, e.getKey());
-            items.add(new ItemView(p.id(), p.name(), e.getValue(), p.suggestedCents(), p.suggestedCents()));
-            total += (long) p.suggestedCents() * e.getValue();
-            commission += (long) (p.suggestedCents() - p.priceCents()) * e.getValue();
+            byVendor.computeIfAbsent(offer.vendorId(), k -> new LinkedHashMap<>()).put(e.getKey(), e.getValue());
         }
-        GeneratedKeyHolder keys = new GeneratedKeyHolder();
-        long totalCents = total, commissionCents = commission;
-        jdbc.update(con -> {
-            var ps = con.prepareStatement("insert into shop_order (representative_id, salon_id, salon_name, contact_name, phone, "
-                    + "address, neighborhood, city, note, total_cents, origin, commission_cents) values (?,?,?,?,?,?,?,?,?,?,'CUSTOMER',?)",
-                    Statement.RETURN_GENERATED_KEYS);
-            ps.setLong(1, rep);
-            ps.setLong(2, salonId);
-            ps.setString(3, salonName);
-            ps.setString(4, name);
-            ps.setString(5, phone);
-            ps.setString(6, blank(r.address()));
-            ps.setString(7, neighborhood);
-            ps.setString(8, blank(r.city()));
-            ps.setString(9, blank(r.note()));
-            ps.setLong(10, totalCents);
-            ps.setLong(11, commissionCents);
-            return ps;
-        }, keys);
-        long orderId = ((Number) keys.getKeys().get("id")).longValue();
-        for (ItemView it : items) {
-            jdbc.update("insert into shop_order_item (order_id, product_id, name, quantity, unit_cents, suggested_cents) values (?,?,?,?,?,?)",
-                    orderId, it.productId(), it.name(), it.quantity(), it.unitCents(), it.suggestedCents());
+        String salonName = jdbc.queryForObject("select name from salon where id = ?", String.class, salonId);
+        List<Long> ids = new ArrayList<>();
+        List<String> vendors = new ArrayList<>();
+        long grand = 0;
+        for (Map.Entry<Long, Map<Long, Integer>> v : byVendor.entrySet()) {
+            long rep = v.getKey();
+            List<ItemView> items = new ArrayList<>();
+            long total = 0, commission = 0;
+            for (Map.Entry<Long, Integer> e : v.getValue().entrySet()) {
+                ProductView p = one(rep, e.getKey());
+                items.add(new ItemView(p.id(), p.name(), e.getValue(), p.suggestedCents(), p.suggestedCents()));
+                total += (long) p.suggestedCents() * e.getValue();
+                commission += (long) (p.suggestedCents() - p.priceCents()) * e.getValue();
+            }
+            ids.add(insertOrder(rep, salonId, salonName, name, phone, blank(r.address()), neighborhood, blank(r.city()), blank(r.note()),
+                    total, "CUSTOMER", commission, items));
+            vendors.add(vendorName(rep));
+            grand += total;
         }
-        String repName = jdbc.queryForObject("select u.name from representative r join app_user u on u.id = r.user_id where r.id = ?", String.class, rep);
-        return new CustomerOrderReceipt(orderId, totalCents, firstName(repName));
+        return new CustomerOrderReceipt(ids, grand, vendors);
     }
 
+    /** Pedido do salão: um pedido por vendedor, para os pedidos não se misturarem. */
     @Transactional
-    public OrderView placeOrder(long salonId, OrderRequest r) {
-        Long rep = referrerOf(salonId);
-        if (rep == null) {
-            throw new BusinessException("Seu salão não tem representante: a loja não está disponível.");
-        }
-        if (!billing.active(rep)) {
-            throw new BusinessException("A loja do seu representante está pausada no momento. Fale com ele.");
+    public List<OrderView> placeOrder(long salonId, OrderRequest r) {
+        List<Long> vendors = vendorsOf(salonId);
+        if (vendors.isEmpty()) {
+            throw new BusinessException("Seu salão não tem vendedor: a loja não está disponível.");
         }
         if (r.items() == null || r.items().isEmpty()) {
             throw new BusinessException("Escolha pelo menos um produto");
@@ -462,33 +472,52 @@ public class ShopService {
             qty.merge(it.productId(), it.quantity(), Integer::sum);
         }
         String salonName = jdbc.queryForObject("select name from salon where id = ?", String.class, salonId);
-        List<ItemView> items = new ArrayList<>();
-        long total = 0;
+        Map<Long, List<ItemView>> byVendor = new LinkedHashMap<>();
+        Map<Long, Long> totals = new LinkedHashMap<>();
         for (Map.Entry<Long, Integer> e : qty.entrySet()) {
-            List<ProductView> found = jdbc.query("select * from shop_product where id = ? and representative_id = ? and active",
-                    (rs, i) -> product(rs, false), e.getKey(), rep);
-            if (found.isEmpty()) {
+            List<ProductView> found = jdbc.query("select * from shop_product where id = ? and active",
+                    (rs, i) -> product(rs, false), e.getKey());
+            if (found.isEmpty() || !vendors.contains(found.get(0).vendorId())) {
                 throw new BusinessException("Um dos produtos não está mais disponível. Atualize a loja.");
             }
             ProductView p = found.get(0);
-            items.add(new ItemView(p.id(), p.name(), e.getValue(), p.priceCents(), p.suggestedCents()));
-            total += (long) p.priceCents() * e.getValue();
+            if (!billing.active(p.vendorId())) {
+                throw new BusinessException("A loja de " + vendorName(p.vendorId()) + " está pausada no momento. Fale com ele.");
+            }
+            byVendor.computeIfAbsent(p.vendorId(), k -> new ArrayList<>()).add(new ItemView(p.id(), p.name(), e.getValue(), p.priceCents(), p.suggestedCents()));
+            totals.merge(p.vendorId(), (long) p.priceCents() * e.getValue(), Long::sum);
         }
+        List<OrderView> out = new ArrayList<>();
+        for (Map.Entry<Long, List<ItemView>> v : byVendor.entrySet()) {
+            long id = insertOrder(v.getKey(), salonId, salonName, contact, blank(r.phone()), blank(r.address()), neighborhood, blank(r.city()),
+                    blank(r.note()), totals.get(v.getKey()), "SALON", 0, v.getValue());
+            out.add(ownSalonOrder(salonId, id));
+        }
+        // o endereço fica guardado no salão para o próximo pedido
+        jdbc.update("update salon set address = coalesce(?, address), neighborhood = ?, city = coalesce(?, city) where id = ?",
+                blank(r.address()), neighborhood, blank(r.city()), salonId);
+        return out;
+    }
+
+    private long insertOrder(long rep, long salonId, String salonName, String contact, String phone, String address, String neighborhood,
+                             String city, String note, long total, String origin, long commission, List<ItemView> items) {
         GeneratedKeyHolder keys = new GeneratedKeyHolder();
-        long totalCents = total;
         jdbc.update(con -> {
             var ps = con.prepareStatement("insert into shop_order (representative_id, salon_id, salon_name, contact_name, phone, "
-                    + "address, neighborhood, city, note, total_cents) values (?,?,?,?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+                    + "address, neighborhood, city, note, total_cents, origin, commission_cents) values (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    Statement.RETURN_GENERATED_KEYS);
             ps.setLong(1, rep);
             ps.setLong(2, salonId);
             ps.setString(3, salonName);
             ps.setString(4, contact);
-            ps.setString(5, blank(r.phone()));
-            ps.setString(6, blank(r.address()));
+            ps.setString(5, phone);
+            ps.setString(6, address);
             ps.setString(7, neighborhood);
-            ps.setString(8, blank(r.city()));
-            ps.setString(9, blank(r.note()));
-            ps.setLong(10, totalCents);
+            ps.setString(8, city);
+            ps.setString(9, note);
+            ps.setLong(10, total);
+            ps.setString(11, origin);
+            ps.setLong(12, commission);
             return ps;
         }, keys);
         long orderId = ((Number) keys.getKeys().get("id")).longValue();
@@ -496,10 +525,7 @@ public class ShopService {
             jdbc.update("insert into shop_order_item (order_id, product_id, name, quantity, unit_cents, suggested_cents) values (?,?,?,?,?,?)",
                     orderId, it.productId(), it.name(), it.quantity(), it.unitCents(), it.suggestedCents());
         }
-        // o endereço fica guardado no salão para o próximo pedido
-        jdbc.update("update salon set address = coalesce(?, address), neighborhood = ?, city = coalesce(?, city) where id = ?",
-                blank(r.address()), neighborhood, blank(r.city()), salonId);
-        return ownSalonOrder(salonId, orderId);
+        return orderId;
     }
 
     @Transactional(readOnly = true)
@@ -543,13 +569,23 @@ public class ShopService {
     @Transactional(readOnly = true)
     public Map<String, Object> salonBalance(long salonId) {
         long owed = 0, paid = 0;
+        Map<Long, long[]> byVendor = new LinkedHashMap<>();
+        Map<Long, String> names = new LinkedHashMap<>();
         for (OrderView o : salonOrders(salonId)) {
             if (!"CANCELED".equals(o.status())) {
                 owed += o.balanceCents();
                 paid += o.paidCents();
+                long[] v = byVendor.computeIfAbsent(o.vendorId(), k -> new long[2]);
+                v[0] += o.balanceCents();
+                v[1] += o.paidCents();
+                names.put(o.vendorId(), o.vendorName());
             }
         }
-        return Map.of("owedCents", owed, "paidCents", paid);
+        List<Map<String, Object>> vendors = new ArrayList<>();
+        for (Map.Entry<Long, long[]> e : byVendor.entrySet()) {
+            vendors.add(Map.of("vendorId", e.getKey(), "vendorName", names.get(e.getKey()), "owedCents", e.getValue()[0], "paidCents", e.getValue()[1]));
+        }
+        return Map.of("owedCents", owed, "paidCents", paid, "vendors", vendors);
     }
 
     private OrderView ownSalonOrder(long salonId, long orderId) {
@@ -563,7 +599,7 @@ public class ShopService {
     // ---------------------------------------------------------------- comum
 
     private List<OrderView> orders(String where, Object[] args) {
-        List<Map<String, Object>> rows = jdbc.queryForList("select o.* from shop_order o where " + where + " order by o.created_at desc, o.id desc", args);
+        List<Map<String, Object>> rows = jdbc.queryForList("select o.*, (select u.name from representative r join app_user u on u.id = r.user_id where r.id = o.representative_id) as vendor_name from shop_order o where " + where + " order by o.created_at desc, o.id desc", args);
         if (rows.isEmpty()) {
             return List.of();
         }
@@ -593,7 +629,7 @@ public class ShopService {
                     ((Timestamp) r.get("created_at")).toLocalDateTime(), ((Timestamp) r.get("updated_at")).toLocalDateTime(),
                     ((Number) r.get("salon_id")).longValue(), (String) r.get("salon_name"), (String) r.get("contact_name"),
                     (String) r.get("phone"), (String) r.get("address"), (String) r.get("neighborhood"), (String) r.get("city"),
-                    (String) r.get("note"), its, ps));
+                    (String) r.get("note"), its, ps, ((Number) r.get("representative_id")).longValue(), firstName((String) r.get("vendor_name"))));
         }
         return out;
     }
@@ -621,7 +657,7 @@ public class ShopService {
         return new ProductView(rs.getLong("id"), rs.getString("name"), rs.getString("description"), kind, rs.getString("category"),
                 cost, suggested, promo, until == null ? null : until.toLocalDate(), price, suggested - price, onPromo, isNew, tags,
                 rs.getString("image_url"), rs.getString("thumb_url"), rs.getBoolean("active"), withHidden && rs.getBoolean("hidden"),
-                withHidden && rs.getBoolean("showcase"));
+                withHidden && rs.getBoolean("showcase"), rs.getLong("representative_id"));
     }
 
     private LocalDateTime now() {

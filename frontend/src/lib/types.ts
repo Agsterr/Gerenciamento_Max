@@ -606,9 +606,12 @@ export type ShopProduct = {
   hidden: boolean;
   /** O salão marcou para as clientes dele verem na página de agendamento. */
   showcase: boolean;
+  vendorId: number;
 };
 
-export type ShopCatalog = { available: boolean; paused: boolean; representativeName: string | null; products: ShopProduct[]; categories: string[] };
+export type ShopVendor = { id: number; name: string; paused: boolean; products: ShopProduct[]; categories: string[] };
+
+export type ShopCatalog = { available: boolean; vendors: ShopVendor[] };
 
 export type ShopOrderStatus = "PENDING" | "PREPARING" | "SHIPPED" | "DELIVERED" | "CANCELED";
 
@@ -636,6 +639,8 @@ export type ShopOrder = {
   note: string | null;
   items: { productId: number | null; name: string; quantity: number; unitCents: number; suggestedCents: number }[];
   payments: { id: number; amountCents: number; method: string; note: string | null; createdAt: string }[];
+  vendorId: number;
+  vendorName: string;
 };
 
 export type ShopSummary = {
@@ -656,6 +661,8 @@ export type PublicShopProduct = {
   tags: string[];
   imageUrl: string | null;
   thumbUrl: string | null;
+  vendorId: number;
+  vendorName: string;
 };
 
 export type ShopPlan = {

@@ -143,8 +143,8 @@ class ShopInviteBillingIntegrationTest {
         assertThat(call(rep.token(), get("/api/representative/shop/products"), null, status().isOk())).hasSize(1);
         call(rep.token(), get("/api/representative/shop/orders"), null, status().isOk());
         JsonNode paused = call(salon.token(), get("/api/shop/catalog"), null, status().isOk());
-        assertThat(paused.get("paused").asBoolean()).isTrue();
-        assertThat(paused.get("products")).isEmpty();
+        assertThat(paused.at("/vendors/0/paused").asBoolean()).isTrue();
+        assertThat(paused.at("/vendors/0/products")).isEmpty();
         call(salon.token(), post("/api/shop/orders"), Map.of("items", List.of(Map.of("productId", productId, "quantity", 1)), "contactName", "Rita", "neighborhood", "Centro"), status().isUnprocessableEntity());
         assertThat(call(null, get("/api/public/salons/" + salon.slug() + "/shop-products"), null, status().isOk())).isEmpty();
 
@@ -164,7 +164,7 @@ class ShopInviteBillingIntegrationTest {
         JsonNode active = call(rep.token(), get("/api/representative/shop/plan"), null, status().isOk());
         assertThat(active.get("status").asText()).isEqualTo("ACTIVE");
         call(rep.token(), post("/api/representative/shop/products"), product, status().isCreated());
-        assertThat(call(salon.token(), get("/api/shop/catalog"), null, status().isOk()).get("paused").asBoolean()).isFalse();
+        assertThat(call(salon.token(), get("/api/shop/catalog"), null, status().isOk()).at("/vendors/0/paused").asBoolean()).isFalse();
         call(salon.token(), post("/api/shop/orders"), Map.of("items", List.of(Map.of("productId", productId, "quantity", 1)), "contactName", "Rita", "neighborhood", "Centro"), status().isCreated());
         // não é mensalidade de salão: não mexe em plano nem comissão
         assertThat(jdbc.queryForObject("select count(*) from subscription_payment where salon_name like ?", Integer.class, "%" + salon.slug() + "%")).isZero();
@@ -182,6 +182,79 @@ class ShopInviteBillingIntegrationTest {
         call(rep.token(), post("/api/representative/shop/plan/cancel"), null, status().isUnprocessableEntity());
         // papéis: o salão não acessa a assinatura do representante
         call(salon.token(), get("/api/representative/shop/plan"), null, status().isForbidden());
+    }
+
+    @Test
+    void salonBuysFromSeveralVendorsAndOrdersStaySeparatedByVendor() throws Exception {
+        Rep a = representative("Ana Fornecedora");
+        Rep b = representative("Beto Fornecedor");
+        Rep c = representative("Cida Fornecedora");
+        Salon salon = salon(a.code());
+        Map<String, Object> pa = Map.of("name", "Produto da Ana", "costCents", 1000, "suggestedCents", 2000, "active", true);
+        Map<String, Object> pb = Map.of("name", "Produto do Beto", "costCents", 3000, "suggestedCents", 5000, "active", true);
+        long idA = call(a.token(), post("/api/representative/shop/products"), pa, status().isCreated()).get("id").asLong();
+        long idB = call(b.token(), post("/api/representative/shop/products"), pb, status().isCreated()).get("id").asLong();
+        long idC = call(c.token(), post("/api/representative/shop/products"), pa, status().isCreated()).get("id").asLong();
+
+        // só o titular é vendedor; convite pendente (ainda não aceito) não dá acesso
+        long inviteB = call(b.token(), post("/api/representative/invites"), Map.of("salon", salon.slug()), status().isCreated()).get("id").asLong();
+        call(c.token(), post("/api/representative/invites"), Map.of("salon", salon.slug()), status().isCreated());
+        assertThat(call(salon.token(), get("/api/shop/catalog"), null, status().isOk()).get("vendors")).hasSize(1);
+        call(salon.token(), post("/api/shop/orders"), orderOf(idB), status().isUnprocessableEntity());
+        call(salon.token(), put("/api/shop/products/" + idB + "/showcase"), Map.of("on", true), status().isNotFound());
+
+        // aceitou o convite do Beto: ele passa a ser um vendedor do salão (mesmo em espera para a comissão)
+        call(salon.token(), post("/api/shop/invites/" + inviteB + "/accept"), null, status().isOk());
+        JsonNode catalog = call(salon.token(), get("/api/shop/catalog"), null, status().isOk());
+        assertThat(catalog.get("vendors")).hasSize(2);
+        assertThat(catalog.at("/vendors/0/name").asText()).isEqualTo("Ana");
+        assertThat(catalog.at("/vendors/1/name").asText()).isEqualTo("Beto");
+        assertThat(catalog.at("/vendors/0/products/0/vendorId").asLong()).isEqualTo(a.id());
+        assertThat(catalog.at("/vendors/1/products/0/vendorId").asLong()).isEqualTo(b.id());
+
+        // um carrinho com produtos dos dois vira dois pedidos, cada um só com os itens do seu vendedor
+        JsonNode orders = call(salon.token(), post("/api/shop/orders"), Map.of("items", List.of(Map.of("productId", idA, "quantity", 2),
+                Map.of("productId", idB, "quantity", 1)), "contactName", "Rita", "neighborhood", "Centro"), status().isCreated());
+        assertThat(orders).hasSize(2);
+        assertThat(orders.findValuesAsText("vendorName")).containsExactlyInAnyOrder("Ana", "Beto");
+        JsonNode ordersA = call(a.token(), get("/api/representative/shop/orders"), null, status().isOk());
+        JsonNode ordersB = call(b.token(), get("/api/representative/shop/orders"), null, status().isOk());
+        assertThat(ordersA).hasSize(1);
+        assertThat(ordersB).hasSize(1);
+        assertThat(ordersA.get(0).get("totalCents").asLong()).isEqualTo(2000);
+        assertThat(ordersA.get(0).get("items").findValuesAsText("name")).containsExactly("Produto da Ana");
+        assertThat(ordersB.get(0).get("totalCents").asLong()).isEqualTo(3000);
+        assertThat(ordersB.get(0).get("items").findValuesAsText("name")).containsExactly("Produto do Beto");
+        // produto de quem não é vendedor do salão não entra
+        call(salon.token(), post("/api/shop/orders"), orderOf(idC), status().isUnprocessableEntity());
+
+        // "minhas compras" traz o nome do vendedor em cada pedido e o que deve a cada um
+        JsonNode mine = call(salon.token(), get("/api/shop/orders"), null, status().isOk());
+        assertThat(mine).hasSize(2);
+        assertThat(mine.findValuesAsText("vendorName")).containsExactlyInAnyOrder("Ana", "Beto");
+        JsonNode balance = call(salon.token(), get("/api/shop/balance"), null, status().isOk());
+        assertThat(balance.get("owedCents").asLong()).isEqualTo(5000);
+        assertThat(balance.get("vendors")).hasSize(2);
+
+        // vitrine pública: produtos dos dois com o nome do vendedor; o pedido da cliente também se divide por vendedor
+        call(salon.token(), put("/api/shop/products/" + idA + "/showcase"), Map.of("on", true), status().isNoContent());
+        call(salon.token(), put("/api/shop/products/" + idB + "/showcase"), Map.of("on", true), status().isNoContent());
+        JsonNode shown = call(null, get("/api/public/salons/" + salon.slug() + "/shop-products"), null, status().isOk());
+        assertThat(shown).hasSize(2);
+        assertThat(shown.findValuesAsText("vendorName")).containsExactlyInAnyOrder("Ana", "Beto");
+        JsonNode receipt = call(null, post("/api/public/salons/" + salon.slug() + "/shop-orders"), Map.of("items", List.of(Map.of("productId", idA, "quantity", 1),
+                Map.of("productId", idB, "quantity", 1)), "name", "Ana Cliente", "phone", "11988887777", "neighborhood", "Vila Nova"), status().isCreated());
+        assertThat(receipt.get("ids")).hasSize(2);
+        assertThat(receipt.get("totalCents").asLong()).isEqualTo(2000 + 5000);
+        assertThat(call(a.token(), get("/api/representative/shop/orders"), null, status().isOk())).hasSize(2);
+        assertThat(call(b.token(), get("/api/representative/shop/orders"), null, status().isOk())).hasSize(2);
+        assertThat(call(salon.token(), get("/api/shop/customer-orders"), null, status().isOk())).hasSize(2);
+        // as compras do salão continuam só as dele
+        assertThat(call(salon.token(), get("/api/shop/orders"), null, status().isOk())).hasSize(2);
+    }
+
+    private Map<String, Object> orderOf(long productId) {
+        return Map.of("items", List.of(Map.of("productId", productId, "quantity", 1)), "contactName", "Rita", "neighborhood", "Centro");
     }
 
     private Long referrerOf(long salonId) {

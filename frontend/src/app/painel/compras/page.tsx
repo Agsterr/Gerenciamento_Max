@@ -14,7 +14,8 @@ const STEPS = ["PENDING", "PREPARING", "SHIPPED", "DELIVERED"] as const;
 export default function PurchasesPage() {
   const { data: orders, error, reload } = useApi<ShopOrder[]>("/api/shop/orders");
   const { data: sales } = useApi<ShopOrder[]>("/api/shop/customer-orders");
-  const { data: balance, reload: reloadBalance } = useApi<{ owedCents: number; paidCents: number }>("/api/shop/balance");
+  const { data: balance, reload: reloadBalance } = useApi<{ owedCents: number; paidCents: number; vendors: { vendorId: number; vendorName: string; owedCents: number; paidCents: number }[] }>("/api/shop/balance");
+  const [vendor, setVendor] = useState<number | null>(null);
   const [msg, setMsg] = useState<string>();
 
   async function act(fn: () => Promise<unknown>) {
@@ -41,17 +42,38 @@ export default function PurchasesPage() {
           <Stat label="Já pago" value={formatCents(balance.paidCents)} />
         </div>
       )}
+      {balance && balance.vendors.length > 1 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            onClick={() => setVendor(null)}
+            className={`rounded-xl px-3 py-1.5 text-sm font-extrabold ${vendor === null ? "bg-night text-white" : "bg-white text-brand-ink ring-1 ring-zinc-200"}`}
+          >
+            Todos os vendedores
+          </button>
+          {balance.vendors.map((v) => (
+            <button
+              key={v.vendorId}
+              onClick={() => setVendor(v.vendorId)}
+              className={`rounded-xl px-3 py-1.5 text-sm font-extrabold ${vendor === v.vendorId ? "bg-night text-white" : "bg-white text-brand-ink ring-1 ring-zinc-200"}`}
+            >
+              {v.vendorName} · deve {formatCents(v.owedCents)}
+            </button>
+          ))}
+        </div>
+      )}
       <ErrorMessage message={error ?? msg} />
       {orders && orders.length === 0 && <Empty>Você ainda não fez pedidos. Abra a loja e escolha o que precisa.</Empty>}
       <div className="space-y-3">
-        {orders?.map((o) => {
+        {orders?.filter((o) => vendor === null || o.vendorId === vendor).map((o) => {
           const [label, color] = SHOP_STATUS[o.status];
           const step = STEPS.indexOf(o.status as (typeof STEPS)[number]);
           return (
             <Card key={o.id}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-extrabold text-brand-ink">Pedido #{o.id}</p>
+                  <p className="font-extrabold text-brand-ink">
+                    Pedido #{o.id} · <span className="text-brand-rose">{o.vendorName}</span>
+                  </p>
                   <p className="text-sm text-zinc-500">{formatDateTime(o.createdAt)}</p>
                 </div>
                 <Badge className={color}>{label}</Badge>
@@ -131,6 +153,7 @@ export default function PurchasesPage() {
                       <p className="font-extrabold text-brand-ink">
                         {o.contactName} · {formatCents(o.totalCents)}
                       </p>
+                      <p className="text-xs font-bold uppercase tracking-wide text-brand-muted">Entrega: {o.vendorName}</p>
                       <p className="text-sm text-zinc-500">{formatDateTime(o.createdAt)}</p>
                     </div>
                     <Badge className={color}>{label}</Badge>

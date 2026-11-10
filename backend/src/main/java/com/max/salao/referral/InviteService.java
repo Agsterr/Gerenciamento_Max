@@ -78,7 +78,7 @@ public class InviteService {
             case "PENDING" -> blocked
                     ? "Esta cabeleireira já foi indicada por outro fornecedor. Seu convite fica pendente e você não ganha comissão por ela."
                     : "Aguardando a cabeleireira aceitar.";
-            case "WAITING" -> "Aceito pela cabeleireira. Você só passa a ganhar a comissão se ela parar de pagar e voltar a assinar.";
+            case "WAITING" -> "Aceito pela cabeleireira: ela já pode comprar seus produtos. Você só passa a ganhar a comissão da mensalidade se ela parar de pagar e voltar a assinar.";
             case "ACTIVE" -> "Você é o representante dela.";
             case "DECLINED" -> "A cabeleireira recusou o convite.";
             case "REPLACED" -> "Outro fornecedor ficou com essa cabeleireira.";

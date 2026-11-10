@@ -74,16 +74,16 @@ class ShopIntegrationTest {
         // o salão vê só os produtos ativos do representante dele; quem não tem representante não tem loja
         JsonNode catalog = call(salon.token(), get("/api/shop/catalog"), null, status().isOk());
         assertThat(catalog.get("available").asBoolean()).isTrue();
-        assertThat(catalog.get("representativeName").asText()).isEqualTo("Paulo");
-        assertThat(catalog.get("products")).hasSize(3);
-        assertThat(catalog.get("categories").toString()).contains("Cabelo", "Equipamentos");
+        assertThat(catalog.at("/vendors/0/name").asText()).isEqualTo("Paulo");
+        assertThat(catalog.at("/vendors/0/products")).hasSize(3);
+        assertThat(catalog.at("/vendors/0/categories").toString()).contains("Cabelo", "Equipamentos");
         assertThat(call(stranger.token(), get("/api/shop/catalog"), null, status().isOk()).get("available").asBoolean()).isFalse();
         call(stranger.token(), post("/api/shop/orders"), order(shampoo.get("id").asLong(), 1, "Centro"), status().isUnprocessableEntity());
 
         // escolher o que mostra na vitrine
         call(salon.token(), put("/api/shop/products/" + expired.get("id").asLong() + "/visible"), Map.of("visible", false), status().isNoContent());
         JsonNode hidden = call(salon.token(), get("/api/shop/catalog"), null, status().isOk());
-        assertThat(hidden.get("products").findValues("hidden").stream().filter(JsonNode::asBoolean).count()).isEqualTo(1);
+        assertThat(hidden.at("/vendors/0/products").findValues("hidden").stream().filter(JsonNode::asBoolean).count()).isEqualTo(1);
         call(stranger.token(), put("/api/shop/products/" + expired.get("id").asLong() + "/visible"), Map.of("visible", false), status().isNotFound());
 
         // pedido: preço da promoção, total e ganho do salão se vender pelo sugerido
@@ -93,7 +93,7 @@ class ShopIntegrationTest {
         JsonNode created = call(salon.token(), post("/api/shop/orders"), Map.of("items", List.of(
                 Map.of("productId", shampoo.get("id").asLong(), "quantity", 4), Map.of("productId", dryer.get("id").asLong(), "quantity", 1)),
                 "contactName", "Dona Rita", "phone", "11999990000", "address", "Rua A, 10", "neighborhood", "Jardim das Flores",
-                "city", "Santos", "note", "Entregar de manhã"), status().isCreated());
+                "city", "Santos", "note", "Entregar de manhã"), status().isCreated()).get(0);
         long orderId = created.get("id").asLong();
         assertThat(created.get("status").asText()).isEqualTo("PENDING");
         assertThat(created.get("totalCents").asLong()).isEqualTo(4 * 3000 + 18000);
@@ -188,9 +188,9 @@ class ShopIntegrationTest {
                 "phone", "11988887777", "neighborhood", "Vila Nova"), status().isUnprocessableEntity());
         call(null, post("/api/public/salons/" + stranger.slug() + "/shop-orders"), ok, status().isNotFound());
         JsonNode receipt = call(null, post(base + "/shop-orders"), ok, status().isCreated());
-        long orderId = receipt.get("id").asLong();
+        long orderId = receipt.at("/ids/0").asLong();
         assertThat(receipt.get("totalCents").asLong()).isEqualTo(2 * 4500 + 6000);
-        assertThat(receipt.get("representativeName").asText()).isEqualTo("Marcos");
+        assertThat(receipt.at("/vendors/0").asText()).isEqualTo("Marcos");
 
         // vai direto ao representante, com a comissão do salão (preço sugerido menos o valor do salão, com a promoção)
         JsonNode orders = call(rep.token(), get("/api/representative/shop/orders"), null, status().isOk());

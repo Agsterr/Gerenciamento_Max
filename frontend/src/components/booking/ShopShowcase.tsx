@@ -8,7 +8,7 @@ import { formatCents } from "@/lib/format";
 import type { PublicShopProduct } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
-type Receipt = { id: number; totalCents: number; representativeName: string };
+type Receipt = { ids: number[]; totalCents: number; vendors: string[] };
 
 /** Produtos que o salão escolheu mostrar (de um fornecedor): a cliente pede aqui e a entrega é feita pelo fornecedor. */
 export function ShopShowcase({ base }: { base: string }) {
@@ -31,8 +31,10 @@ export function ShopShowcase({ base }: { base: string }) {
         <div className="mb-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900 ring-1 ring-emerald-200">
           <p className="font-extrabold">Pedido enviado!</p>
           <p>
-            {receipt.representativeName ? `${receipt.representativeName}, o fornecedor,` : "O fornecedor"} vai falar com você pelo WhatsApp para combinar a
-            entrega e o pagamento ({formatCents(receipt.totalCents)}).
+            {receipt.vendors.length === 1
+              ? `${receipt.vendors[0]}, o fornecedor,`
+              : `Os fornecedores (${receipt.vendors.join(" e ")}) vão falar com você, cada um sobre o seu pedido,`}{" "}
+            pelo WhatsApp para combinar a entrega e o pagamento ({formatCents(receipt.totalCents)}).
           </p>
         </div>
       )}
@@ -52,6 +54,7 @@ export function ShopShowcase({ base }: { base: string }) {
             <div className="p-3">
               <p className="truncate text-sm font-bold">{p.name}</p>
               <p className="font-extrabold text-brand-rose">{formatCents(p.priceCents)}</p>
+              <p className="truncate text-xs text-brand-muted">Entrega: {p.vendorName}</p>
               <div className="mt-2 flex items-center gap-1">
                 <button aria-label="Menos" className="h-8 w-8 rounded-lg bg-zinc-100 font-bold" onClick={() => setQty(p.id, (cart[p.id] ?? 0) - 1)}>
                   −
@@ -117,10 +120,13 @@ function OrderForm({ base, lines, total, onCancel, onDone }: { base: string; lin
       <ul className="text-sm text-zinc-700">
         {lines.map(({ p, qty }) => (
           <li key={p.id}>
-            {qty} × {p.name}
+            {qty} × {p.name} <span className="text-xs text-brand-muted">({p.vendorName})</span>
           </li>
         ))}
       </ul>
+      {new Set(lines.map((l) => l.p.vendorId)).size > 1 && (
+        <p className="text-xs font-semibold text-brand-muted">Cada fornecedor recebe um pedido separado e entra em contato com você.</p>
+      )}
       <Field label="Seu nome" value={f.name} onChange={(e) => set("name", e.target.value)} required />
       <Field label="WhatsApp" inputMode="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} required />
       <Field label="Endereço de entrega" value={f.address} onChange={(e) => set("address", e.target.value)} placeholder="Rua, número" />

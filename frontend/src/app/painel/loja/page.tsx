@@ -19,18 +19,20 @@ export default function ShopPage() {
   const [showHidden, setShowHidden] = useState(false);
   const [cart, setCart] = useState<Record<number, number>>({});
   const [ordering, setOrdering] = useState(false);
-  const [done, setDone] = useState<ShopOrder>();
+  const [done, setDone] = useState<ShopOrder[]>();
+  const [vendorFilter, setVendorFilter] = useState<number | null>(null);
 
   const products = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return (catalog?.products ?? []).filter((p) => {
+    return (catalog?.vendors ?? []).flatMap((v) => v.products).filter((p) => {
+      if (vendorFilter != null && p.vendorId !== vendorFilter) return false;
       if (p.hidden && !showHidden) return false;
       if (t && !`${p.name} ${p.category ?? ""} ${p.description ?? ""}`.toLowerCase().includes(t)) return false;
       if (!filter) return true;
       if (filter.startsWith("cat:")) return p.category === filter.slice(4);
       return p.tags.includes(filter);
     });
-  }, [catalog, q, filter, showHidden]);
+  }, [catalog, q, filter, showHidden, vendorFilter]);
 
   if (error) return <ErrorMessage message={error} />;
   if (!catalog) return <p className="text-zinc-500">Carregando...</p>;
@@ -43,7 +45,10 @@ export default function ShopPage() {
       </>
     );
 
-  const lines = catalog.products.filter((p) => cart[p.id] > 0);
+  const vendors = catalog.vendors;
+  const allProducts = vendors.flatMap((v) => v.products);
+  const lines = allProducts.filter((p) => cart[p.id] > 0);
+  const vendorsInCart = new Set(lines.map((p) => p.vendorId)).size;
   const total = lines.reduce((s, p) => s + p.priceCents * cart[p.id], 0);
   const gain = lines.reduce((s, p) => s + (p.suggestedCents - p.priceCents) * cart[p.id], 0);
   const count = lines.reduce((s, p) => s + cart[p.id], 0);
@@ -54,8 +59,9 @@ export default function ShopPage() {
     ["NOVO", "Novos"],
     ["PROMOCAO", "Promoções"],
     ["EQUIPAMENTO", "Equipamentos"],
-    ...catalog.categories.map((c): [string, string] => ["cat:" + c, c]),
+    ...Array.from(new Set(vendors.filter((v) => vendorFilter == null || v.id === vendorFilter).flatMap((v) => v.categories))).map((c): [string, string] => ["cat:" + c, c]),
   ];
+  const vendorOf = (id: number) => vendors.find((v) => v.id === id);
 
   return (
     <>
@@ -65,17 +71,33 @@ export default function ShopPage() {
         </Link>
       </PageHeader>
       <p className="mb-4 text-zinc-600">
-        Produtos e equipamentos de <b>{catalog.representativeName}</b>. O <b>ganho</b> é o que sobra para você se vender pelo preço sugerido.
+        Produtos e equipamentos de {vendors.length === 1 ? <b>{vendors[0].name}</b> : "seus vendedores"}. O <b>ganho</b> é o que sobra para você se vender pelo preço sugerido.
+        {vendors.length > 1 && " Cada vendedor recebe um pedido separado."}
       </p>
       <Invites onChange={reload} />
-      {catalog.paused && (
-        <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
-          A loja de {catalog.representativeName} está pausada no momento. Fale com ele para voltar a fazer pedidos.
+      {vendors.filter((v) => v.paused).map((v) => (
+        <p key={v.id} className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+          A loja de {v.name} está pausada no momento. Fale com ele para voltar a fazer pedidos.
         </p>
+      ))}
+      {vendors.length > 1 && (
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+          {([[null, "Todos os vendedores"], ...vendors.map((v): [number, string] => [v.id, v.name])] as [number | null, string][]).map(([id, label]) => (
+            <button
+              key={String(id)}
+              onClick={() => setVendorFilter(id)}
+              className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-extrabold ${vendorFilter === id ? "bg-night text-white" : "bg-white text-brand-ink ring-1 ring-zinc-200"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       )}
       {done && (
         <Card className="mb-4 border border-emerald-200 bg-emerald-50">
-          <p className="font-extrabold text-emerald-900">Pedido #{done.id} enviado!</p>
+          <p className="font-extrabold text-emerald-900">
+            {done.length === 1 ? `Pedido #${done[0].id} enviado para ${done[0].vendorName}!` : `${done.length} pedidos enviados: ${done.map((o) => `#${o.id} (${o.vendorName})`).join(", ")}!`}
+          </p>
           <p className="text-sm text-emerald-900">
             Acompanhe em <Link href="/painel/compras" className="font-bold underline">Minhas compras</Link>. Quando chegar, confirme o recebimento por lá.
           </p>
@@ -111,6 +133,7 @@ export default function ShopPage() {
           <ProductCard
             key={p.id}
             p={p}
+            vendorName={vendors.length > 1 ? vendorOf(p.vendorId)?.name : undefined}
             qty={cart[p.id] ?? 0}
             onQty={(n) => setQty(p.id, n)}
             onVisible={async (v) => {
@@ -130,6 +153,7 @@ export default function ShopPage() {
           <div>
             <p className="font-extrabold">
               {count} {count === 1 ? "item" : "itens"} · {formatCents(total)}
+              {vendorsInCart > 1 && ` · ${vendorsInCart} pedidos (um por vendedor)`}
             </p>
             <p className="text-sm text-white/80">Se vender tudo pelo sugerido, você ganha {formatCents(gain)}.</p>
           </div>
@@ -139,6 +163,7 @@ export default function ShopPage() {
 
       {ordering && (
         <OrderModal
+          vendorName={(id) => vendorOf(id)?.name ?? ""}
           lines={lines.map((p) => ({ p, qty: cart[p.id] }))}
           total={total}
           onClose={() => setOrdering(false)}
@@ -154,7 +179,7 @@ export default function ShopPage() {
   );
 }
 
-function ProductCard({ p, qty, onQty, onVisible, onShowcase }: { p: ShopProduct; qty: number; onQty: (n: number) => void; onVisible: (v: boolean) => void; onShowcase: (on: boolean) => void }) {
+function ProductCard({ p, vendorName, qty, onQty, onVisible, onShowcase }: { p: ShopProduct; vendorName?: string; qty: number; onQty: (n: number) => void; onVisible: (v: boolean) => void; onShowcase: (on: boolean) => void }) {
   return (
     <Card className={p.hidden ? "opacity-60" : ""}>
       {p.thumbUrl ? (
@@ -162,6 +187,7 @@ function ProductCard({ p, qty, onQty, onVisible, onShowcase }: { p: ShopProduct;
       ) : (
         <div className="mb-3 flex h-40 w-full items-center justify-center rounded-xl bg-zinc-100 text-sm text-zinc-400">sem foto</div>
       )}
+      {vendorName && <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-brand-muted">Vendedor: {vendorName}</p>}
       <div className="mb-1 flex flex-wrap gap-1">
         {p.tags.map((t) => (
           <Badge key={t} className={SHOP_TAGS[t]?.[1] ?? "bg-zinc-100"}>
@@ -218,7 +244,7 @@ function ProductCard({ p, qty, onQty, onVisible, onShowcase }: { p: ShopProduct;
   );
 }
 
-function OrderModal({ lines, total, onClose, onDone }: { lines: { p: ShopProduct; qty: number }[]; total: number; onClose: () => void; onDone: (o: ShopOrder) => void }) {
+function OrderModal({ lines, total, vendorName, onClose, onDone }: { lines: { p: ShopProduct; qty: number }[]; total: number; vendorName: (id: number) => string; onClose: () => void; onDone: (o: ShopOrder[]) => void }) {
   const { data: addr } = useApi<Address>("/api/shop/address");
   const [f, setF] = useState({ contactName: "", phone: "", address: "", neighborhood: "", city: "", note: "" });
   const [error, setError] = useState<string>();
@@ -237,7 +263,7 @@ function OrderModal({ lines, total, onClose, onDone }: { lines: { p: ShopProduct
           setBusy(true);
           setError(undefined);
           try {
-            const o = await api.post<ShopOrder>("/api/shop/orders", { ...f, items: lines.map((l) => ({ productId: l.p.id, quantity: l.qty })) });
+            const o = await api.post<ShopOrder[]>("/api/shop/orders", { ...f, items: lines.map((l) => ({ productId: l.p.id, quantity: l.qty })) });
             onDone(o);
           } catch (err) {
             setError((err as Error).message);
@@ -246,20 +272,32 @@ function OrderModal({ lines, total, onClose, onDone }: { lines: { p: ShopProduct
           }
         }}
       >
-        <ul className="divide-y divide-zinc-100 text-sm">
-          {lines.map(({ p, qty }) => (
-            <li key={p.id} className="flex justify-between gap-3 py-1.5">
-              <span>
-                {qty} × {p.name}
-              </span>
-              <span className="shrink-0 font-semibold">{formatCents(p.priceCents * qty)}</span>
-            </li>
-          ))}
-          <li className="flex justify-between py-2 font-extrabold">
-            <span>Total</span>
-            <span>{formatCents(total)}</span>
-          </li>
-        </ul>
+        {Array.from(new Set(lines.map((l) => l.p.vendorId))).map((vid) => {
+          const mine = lines.filter((l) => l.p.vendorId === vid);
+          return (
+            <div key={vid} className="rounded-xl border border-zinc-200 p-3">
+              <p className="text-xs font-extrabold uppercase tracking-wide text-brand-muted">Pedido para {vendorName(vid)}</p>
+              <ul className="divide-y divide-zinc-100 text-sm">
+                {mine.map(({ p, qty }) => (
+                  <li key={p.id} className="flex justify-between gap-3 py-1.5">
+                    <span>
+                      {qty} × {p.name}
+                    </span>
+                    <span className="shrink-0 font-semibold">{formatCents(p.priceCents * qty)}</span>
+                  </li>
+                ))}
+                <li className="flex justify-between py-1.5 font-extrabold">
+                  <span>Subtotal</span>
+                  <span>{formatCents(mine.reduce((t, l) => t + l.p.priceCents * l.qty, 0))}</span>
+                </li>
+              </ul>
+            </div>
+          );
+        })}
+        <p className="flex justify-between font-extrabold">
+          <span>Total</span>
+          <span>{formatCents(total)}</span>
+        </p>
         <p className="text-sm font-bold text-brand-ink">Entrega</p>
         <Field label="Quem recebe" value={f.contactName} onChange={(e) => set("contactName", e.target.value)} required />
         <Field label="WhatsApp" inputMode="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
@@ -306,9 +344,9 @@ function Invites({ onChange }: { onChange: () => void }) {
           <p className="font-extrabold text-brand-ink">{i.representativeName} convidou você para a loja dele</p>
           <p className="text-sm text-zinc-700">
             {i.status === "WAITING"
-              ? "Você aceitou. Ele só passa a ser o seu representante se o seu plano vencer e você voltar a assinar."
+              ? "Você aceitou: já pode comprar os produtos dele. A comissão da sua mensalidade só passa para ele se o seu plano vencer e você voltar a assinar."
               : i.replacesCurrent
-                ? "Você já tem um representante. Se aceitar, o novo só passa a ser o seu se o seu plano vencer e você voltar a assinar."
+                ? "Você já tem um vendedor. Aceitando, você passa a comprar também dos produtos dele, com os pedidos separados por vendedor. A comissão da sua mensalidade só passa para ele se o seu plano vencer e você voltar a assinar."
                 : "Aceitando, ele passa a ser o seu representante e você vê os produtos dele aqui."}
           </p>
           {i.status === "PENDING" && (

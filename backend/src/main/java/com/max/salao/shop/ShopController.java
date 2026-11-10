@@ -150,7 +150,7 @@ public class ShopController {
 
     @PostMapping("/api/shop/orders")
     @ResponseStatus(HttpStatus.CREATED)
-    public ShopService.OrderView order(@RequestBody ShopService.OrderRequest req) {
+    public List<ShopService.OrderView> order(@RequestBody ShopService.OrderRequest req) {
         return shop.placeOrder(TenantContext.get(), req);
     }
 
