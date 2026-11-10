@@ -631,7 +631,7 @@ class _TimelineItem extends StatelessWidget {
 
 /// Teste grátis (dias e limites) ou teste vencido, com atalho para assinar.
 class PlanBanner extends StatelessWidget {
-  const PlanBanner(this.plan, {this.onSubscribe});
+  const PlanBanner(this.plan, {super.key, this.onSubscribe});
 
   final PlanInfo plan;
   final VoidCallback? onSubscribe;
