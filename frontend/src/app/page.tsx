@@ -12,7 +12,10 @@ const FEATURES = [
   { icon: "clock", title: "Seu horário, do seu jeito", text: "Horário de cada dia da semana, pausas como o almoço e fuso do seu estado." },
   { icon: "chart", title: "Lucro de verdade", text: "Receita, custos, comissões e despesas, com ajuda para calcular o preço certo de cada serviço." },
   { icon: "box", title: "Produtos e estoque", text: "Venda e uso nos atendimentos, com alerta de estoque baixo." },
-  { icon: "users", title: "Equipe e clientes", text: "Perfis de dono e funcionário, histórico e anotações de cada cliente. Entre uma vez e fique conectado." },
+  { icon: "users", title: "Equipe e clientes", text: "Perfis de dono e funcionário, histórico e anotações de cada cliente. Importe o contato direto da agenda do celular." },
+  { icon: "sparkles", title: "Avisos no celular", text: "Novo agendamento, cancelamento e lembrete chegam como notificação. Histórico com filtro por dia e mês, e limpeza automática." },
+  { icon: "shield", title: "Pague como preferir", text: "Assine pelo site com Pix, boleto ou cartão, ou pela Google Play. Cancele quando quiser." },
+  { icon: "palette", title: "Indique e ganhe", text: "Seja representante: R$ 15,00 por mês por salão indicado que pagar a mensalidade." },
 ];
 
 const STEPS = [
@@ -35,6 +38,9 @@ export default function Home() {
               Salão Max
             </Link>
             <nav className="flex items-center gap-2 text-sm font-semibold">
+              <Link href="/representantes" className="hidden rounded-xl px-3 py-2 text-white/80 hover:text-white sm:block">
+                Seja representante
+              </Link>
               <Link href="/login" className="rounded-xl px-3 py-2 text-white/80 hover:text-white">
                 Entrar
               </Link>
@@ -161,6 +167,7 @@ export default function Home() {
       <footer className="border-t border-black/5 py-8 text-center text-sm text-brand-muted">
         <div className="flex flex-wrap justify-center gap-5">
           <Link href="/baixar">Baixar os apps</Link>
+          <Link href="/representantes">Seja representante</Link>
           <Link href="/privacidade">Privacidade</Link>
           <Link href="/termos">Termos de uso</Link>
           <Link href="/excluir-conta">Excluir conta</Link>

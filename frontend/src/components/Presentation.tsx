@@ -242,7 +242,8 @@ const FEATURES = [
   { icon: "chart", title: "Lucro de verdade", text: "Receita, custos, comissões e despesas, com ajuda para calcular o preço certo de cada serviço." },
   { icon: "box", title: "Produtos e estoque", text: "Venda e uso nos atendimentos, com alerta de estoque baixo." },
   { icon: "palette", title: "Portfólio de fotos", text: "Mostre seus trabalhos por serviço, na página de agendamento do seu salão." },
-  { icon: "users", title: "Equipe e clientes", text: "Perfis de dono e funcionário, histórico e anotações de cada cliente. O financeiro fica só com o dono." },
+  { icon: "users", title: "Equipe e clientes", text: "Perfis de dono e funcionário, histórico e anotações de cada cliente. No app, importe o contato da agenda do celular. O financeiro fica só com o dono." },
+  { icon: "sparkles", title: "Avisos e histórico", text: "Notificações de agendamentos no celular e no site, com filtro por dia e mês e limpeza automática das antigas." },
   { icon: "clock", title: "Seu horário, do seu jeito", text: "Horário de cada dia da semana, pausas como o almoço e fuso do seu estado." },
   { icon: "shield", title: "Dados protegidos", text: "Os dados de cada salão ficam separados, com conexão criptografada. Exclua sua conta quando quiser." },
 ];
