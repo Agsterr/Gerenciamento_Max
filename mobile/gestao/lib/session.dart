@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -30,7 +32,48 @@ class Session extends ChangeNotifier {
       onUnauthorized: signOut,
       onAccountBlocked: _blocked,
       reauthenticate: _reauthenticate,
-      httpClient: _httpClient);
+      // dados guardados no celular por usuário: telas na hora e funcionando sem internet
+      cache: ApiCache(scope: () => _subject(_token)),
+      httpClient: _httpClient)
+    ..optimistic = _optimistic;
+
+  /// Ação feita sem internet num horário: a agenda guardada já mostra o novo status até a fila ser enviada.
+  static Future<void> _optimistic(ApiCache cache, QueuedRequest q) async {
+    final m = RegExp(r'^/api/appointments/(\d+)/([a-z-]+)$').firstMatch(q.path);
+    if (m == null || q.method != 'POST') return;
+    final id = int.parse(m.group(1)!);
+    final action = m.group(2)!;
+    final status = const {'confirm': null, 'start': 'IN_PROGRESS', 'finish': 'DONE', 'cancel': 'CANCELED', 'no-show': 'NO_SHOW'}[action];
+    dynamic apply(dynamic data) {
+      if (data is! List) return data;
+      return [
+        for (final e in data)
+          if (e is Map && e['id'] == id)
+            {
+              ...e,
+              'status': ?status,
+              if (action == 'confirm') 'customerConfirmedAt': DateTime.now().toIso8601String(),
+              if (action == 'accept') 'pendingAcceptance': false,
+            }
+          else
+            e,
+      ];
+    }
+
+    await cache.patchAll('/api/appointments', apply);
+  }
+
+  /// Usuário do token (campo "sub" do JWT), para separar o que fica guardado no celular.
+  static String? _subject(String? token) {
+    if (token == null) return null;
+    try {
+      final part = token.split('.')[1];
+      final json = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(part)))) as Map<String, dynamic>;
+      return json['sub']?.toString();
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<bool>? _relogin;
 
@@ -123,6 +166,7 @@ class Session extends ChangeNotifier {
   Future<String?> get pushToken => _storage.read(key: _pushKey);
 
   Future<void> signOut() async {
+    await api.cache?.clear(); // dados guardados deste usuário saem do celular
     _token = null;
     _user = null;
     blockedReason = null;

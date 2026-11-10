@@ -8,6 +8,7 @@ import '../push.dart';
 import '../session.dart';
 import '../staff_reminders.dart';
 import '../widgets/fit_tab.dart';
+import '../widgets/offline_banner.dart';
 import 'agenda_screen.dart';
 import 'catalog_screen.dart';
 import 'customers_screen.dart';
@@ -24,16 +25,39 @@ class Shell extends StatefulWidget {
   State<Shell> createState() => _ShellState();
 }
 
-class _ShellState extends State<Shell> {
+class _ShellState extends State<Shell> with WidgetsBindingObserver {
   int _tab = 0;
+
+  /// Abas já abertas: as outras só são montadas (e só buscam dados) quando a pessoa toca nelas.
+  final Set<int> _opened = {0};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final api = widget.session.api;
+    // alterações feitas sem internet: avisa e envia sozinho quando conectar
+    api.onQueued = () {
+      if (mounted) showMessage(context, 'Sem internet: guardado no celular. Enviamos quando conectar.');
+    };
+    api.resume();
     // lembretes de atendimento do usuário agendados no celular (atualiza a cada abertura)
     syncStaffReminders(widget.session.api);
     // avisos na hora pelo servidor (Firebase), quando o build tem a configuração
     Push.start(widget.session);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.session.api.onQueued = null;
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // voltou para o app: envia o que ficou guardado e atualiza
+    if (state == AppLifecycleState.resumed) widget.session.api.sync();
   }
 
   @override
@@ -54,13 +78,29 @@ class _ShellState extends State<Shell> {
           SettingsScreen(session: s)),
     ];
     return Scaffold(
-      body: IndexedStack(index: _tab, children: [for (final t in tabs) t.$2]),
+      body: ValueListenableBuilder<ApiStatus>(
+        valueListenable: s.api.status,
+        builder: (context, status, child) {
+          // com a faixa aparecendo, ela já ocupa a área da barra de status: a tela de baixo não recua de novo
+          final banner = OfflineBanner.visibleFor(status);
+          return Column(children: [
+            OfflineBanner(api: s.api),
+            Expanded(child: banner ? MediaQuery.removePadding(context: context, removeTop: true, child: child!) : child!),
+          ]);
+        },
+        child: IndexedStack(index: _tab, children: [
+          for (var i = 0; i < tabs.length; i++) _opened.contains(i) ? tabs[i].$2 : const SizedBox.shrink(),
+        ]),
+      ),
       // fonte grande do sistema quebrava "Cadastros" em duas linhas: a barra de baixo limita a ampliação
       bottomNavigationBar: MediaQuery.withClampedTextScaling(
         maxScaleFactor: 1.15,
         child: NavigationBar(
           selectedIndex: _tab,
-          onDestinationSelected: (i) => setState(() => _tab = i),
+          onDestinationSelected: (i) => setState(() {
+            _tab = i;
+            _opened.add(i);
+          }),
           destinations: [for (final t in tabs) t.$1],
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:salao_core/salao_core.dart';
 import '../session.dart';
 import '../widgets/contact_picker_button.dart';
 import '../widgets/form_sheet.dart';
+import '../widgets/api_refresh.dart';
 
 class CustomersScreen extends StatefulWidget {
   const CustomersScreen({super.key, required this.session});
@@ -14,7 +15,7 @@ class CustomersScreen extends StatefulWidget {
   State<CustomersScreen> createState() => _CustomersScreenState();
 }
 
-class _CustomersScreenState extends State<CustomersScreen> {
+class _CustomersScreenState extends State<CustomersScreen> with ApiRefresh {
   late final PagedController<Customer> _list =
       PagedController(api: _api, path: '/api/customers', parse: Customer.fromJson)..addListener(_changed);
 
@@ -35,6 +36,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
   void initState() {
     super.initState();
     _list.refresh();
+    listenApi(_api, ['/api/customers'], _list.refresh);
   }
 
   @override
@@ -51,7 +53,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
       initial: {'name': c?.name, 'phone': c?.phone, 'email': c?.email, 'notes': c?.notes},
       // cliente novo: dá para puxar nome e telefone da agenda do celular
       aboveFields: c == null ? (controllers) => ContactPickerButton(controllers: controllers) : null,
-      onSave: (v) => c == null ? _api.post('/api/customers', v) : _api.put('/api/customers/${c.id}', v),
+      onSave: (v) => c == null ? _api.post('/api/customers', v, true) : _api.put('/api/customers/${c.id}', v, queue: true),
     );
     if (saved) _list.refresh();
   }

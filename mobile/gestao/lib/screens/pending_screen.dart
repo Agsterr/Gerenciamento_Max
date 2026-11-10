@@ -24,7 +24,7 @@ class _PendingAcceptanceScreenState extends State<PendingAcceptanceScreen> {
     }
     setState(() => _busy.add(a.id));
     try {
-      await widget.api.post('/api/appointments/${a.id}/$action');
+      await widget.api.post('/api/appointments/${a.id}/$action', null, true);
       if (!mounted) return;
       setState(() => _items.removeWhere((x) => x.id == a.id));
       showMessage(context, action == 'accept' ? 'Horário confirmado para ${a.customer.name}.' : 'Horário cancelado.');
@@ -40,7 +40,7 @@ class _PendingAcceptanceScreenState extends State<PendingAcceptanceScreen> {
       if (!mounted) return;
       setState(() => _busy.add(a.id));
       try {
-        await widget.api.post('/api/appointments/${a.id}/accept');
+        await widget.api.post('/api/appointments/${a.id}/accept', null, true);
         if (mounted) setState(() => _items.removeWhere((x) => x.id == a.id));
       } catch (e) {
         if (mounted) showError(context, e);

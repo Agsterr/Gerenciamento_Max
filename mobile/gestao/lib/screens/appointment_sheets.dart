@@ -59,7 +59,7 @@ class _NotesSheetState extends State<_NotesSheet> {
   Future<void> _save() async {
     setState(() => _busy = true);
     try {
-      await widget.api.put('/api/appointments/${widget.appointment.id}/service-notes', {'serviceNotes': _text.text});
+      await widget.api.put('/api/appointments/${widget.appointment.id}/service-notes', {'serviceNotes': _text.text}, queue: true);
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) showError(context, e);

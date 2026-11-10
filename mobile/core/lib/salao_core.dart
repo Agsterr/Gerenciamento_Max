@@ -1,6 +1,7 @@
 /// Código compartilhado pelos apps do Salão Max.
 library;
 
+export 'src/api_cache.dart';
 export 'src/api_client.dart';
 export 'src/config.dart';
 export 'src/format.dart';

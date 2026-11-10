@@ -3,6 +3,7 @@ import 'package:salao_core/salao_core.dart';
 
 import '../session.dart';
 import 'pricing_screen.dart';
+import '../widgets/api_refresh.dart';
 
 class FinanceScreen extends StatefulWidget {
   const FinanceScreen({super.key, required this.session, this.embedded = false});
@@ -16,7 +17,7 @@ class FinanceScreen extends StatefulWidget {
   State<FinanceScreen> createState() => _FinanceScreenState();
 }
 
-class _FinanceScreenState extends State<FinanceScreen> {
+class _FinanceScreenState extends State<FinanceScreen> with ApiRefresh {
   static const _fixed = ['Aluguel', 'Água', 'Luz', 'Internet e telefone', 'Salários', 'Contador', 'Sistemas e assinaturas'];
   static const _variable = [
     'Produtos e materiais',
@@ -42,6 +43,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
   void initState() {
     super.initState();
     _load();
+    listenApi(_api, ['/api/reports', '/api/expenses'], _load);
   }
 
   Future<void> _load() async {
@@ -141,7 +143,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
         'category': category,
         'amount': double.tryParse(amount.text.replaceAll(',', '.')) ?? 0,
         'date': isoDate(date),
-      });
+      }, true);
       _load();
     } catch (e) {
       if (mounted) showError(context, e);
@@ -166,7 +168,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
   Future<void> _deleteExpense(Expense e) async {
     if (!await confirmDialog(context, 'Excluir "${e.description}"?', confirm: 'Excluir', danger: true)) return;
     try {
-      await _api.delete('/api/expenses/${e.id}');
+      await _api.delete('/api/expenses/${e.id}', queue: true);
       _load();
     } catch (err) {
       if (mounted) showError(context, err);

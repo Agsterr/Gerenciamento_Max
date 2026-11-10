@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:salao_core/salao_core.dart';
+import '../widgets/api_refresh.dart';
 
 /// Avisos do salão: o que os clientes fizeram (agendar, cancelar, remarcar, confirmar) e os lembretes.
 class NotificationsScreen extends StatefulWidget {
@@ -15,7 +16,7 @@ enum _Status { all, unread, read }
 
 enum _Period { all, today, week, month, custom }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class _NotificationsScreenState extends State<NotificationsScreen> with ApiRefresh {
   static const _pageSize = 20;
 
   final List<AppNotification> _items = [];
@@ -34,6 +35,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     _load(reset: true);
+    listenApi(widget.api, ['/api/notifications'], () => _load(reset: true));
   }
 
   @override
@@ -124,7 +126,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAllRead() async {
     try {
-      await widget.api.post('/api/notifications/read');
+      await widget.api.post('/api/notifications/read', null, true);
       _anyUnreadSeen = false;
       await _load(reset: true);
     } catch (e) {

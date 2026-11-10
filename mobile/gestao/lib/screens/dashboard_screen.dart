@@ -4,6 +4,7 @@ import 'package:salao_core/salao_core.dart';
 
 import '../dashboard_period.dart';
 import '../session.dart';
+import '../widgets/api_refresh.dart';
 
 /// Painel de atendimentos: quantos foram concluídos, cancelados, faltas, refações e clientes,
 /// por semana, mês, ano ou datas escolhidas, com gráfico e comparação com o período anterior.
@@ -16,7 +17,7 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAliveClientMixin {
+class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAliveClientMixin, ApiRefresh {
   Period _period = Period.of(PeriodKind.month, DateTime.now());
   AttendanceDashboard? _data;
   String? _error;
@@ -28,6 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
   void initState() {
     super.initState();
     _load();
+    listenApi(widget.session.api, ['/api/reports'], _load);
   }
 
   Future<void> _load() async {

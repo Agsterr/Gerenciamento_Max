@@ -14,6 +14,7 @@ import '../background.dart' show markNotified;
 import 'notifications_screen.dart';
 import 'pending_screen.dart';
 import 'subscribe_screen.dart';
+import '../widgets/api_refresh.dart';
 
 class AgendaScreen extends StatefulWidget {
   const AgendaScreen({super.key, required this.session});
@@ -24,7 +25,7 @@ class AgendaScreen extends StatefulWidget {
   State<AgendaScreen> createState() => _AgendaScreenState();
 }
 
-class _AgendaScreenState extends State<AgendaScreen> {
+class _AgendaScreenState extends State<AgendaScreen> with ApiRefresh {
   DateTime _day = dateOnly(DateTime.now());
   List<Appointment>? _items;
   String? _error;
@@ -62,6 +63,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
   void initState() {
     super.initState();
     _load();
+    listenApi(_api, ['/api/appointments', '/api/notifications'], _load);
     // confere avisos novos (agendamento/cancelamento/remarcação online) enquanto o app está aberto
     _poll = Timer.periodic(const Duration(minutes: 1), (_) => _loadUnread());
   }
@@ -188,7 +190,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
     }
     if (action == 'cancel' && !await confirmDialog(context, 'Cancelar o horário de ${a.customer.name}?', danger: true)) return;
     try {
-      await _api.post('/api/appointments/${a.id}/$action');
+      await _api.post('/api/appointments/${a.id}/$action', null, true);
       _load();
     } catch (e) {
       if (mounted) showError(context, e);

@@ -4,6 +4,9 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import 'package:flutter/foundation.dart';
+
+import 'api_cache.dart';
 import 'config.dart';
 
 class ApiException implements Exception {
@@ -31,6 +34,20 @@ class AccountBlockedException extends ApiException {
 }
 
 /// Cliente HTTP mínimo para a API. Converte erros (ProblemDetail) em [ApiException].
+/// Conexão e fila de envio do app.
+@immutable
+class ApiStatus {
+  const ApiStatus({this.online = true, this.pending = 0, this.failures = const []});
+
+  final bool online;
+
+  /// Alterações feitas sem internet esperando para ir ao servidor.
+  final int pending;
+
+  /// Alterações que o servidor recusou ao sincronizar (mensagens para mostrar).
+  final List<String> failures;
+}
+
 class ApiClient {
   ApiClient(
       {String? baseUrl,
@@ -38,9 +55,31 @@ class ApiClient {
       this.onUnauthorized,
       this.onAccountBlocked,
       this.reauthenticate,
+      this.cache,
       http.Client? httpClient})
       : baseUrl = baseUrl ?? AppConfig.apiUrl,
         _http = httpClient ?? http.Client();
+
+  /// Dados guardados no celular (app do salão): abre as telas na hora, funciona sem internet e guarda alterações
+  /// feitas sem internet para enviar depois. Nulo = sem cache (comportamento antigo).
+  final ApiCache? cache;
+
+  /// Situação da conexão e da fila de envio, para a faixa "sem internet" das telas.
+  final ValueNotifier<ApiStatus> status = ValueNotifier(const ApiStatus());
+
+  /// Avisa quando dados de um caminho chegaram do servidor diferentes do que estava na tela ('*' = tudo mudou).
+  Stream<String> get refreshed => _refreshed.stream;
+  final StreamController<String> _refreshed = StreamController<String>.broadcast();
+
+  /// Chamado quando uma alteração foi guardada para enviar depois (sem internet).
+  void Function()? onQueued;
+
+  /// Aplica nos dados guardados o efeito de uma alteração feita sem internet (ex.: horário confirmado), para a
+  /// tela já mostrar o resultado antes de enviar.
+  Future<void> Function(ApiCache cache, QueuedRequest request)? optimistic;
+
+  Timer? _retry;
+  bool _syncing = false;
 
   /// Chamado (antes de lançar [AccountBlockedException]) quando a API diz que a conta está bloqueada —
   /// em qualquer requisição, inclusive no login. Recebe o motivo.
@@ -61,13 +100,153 @@ class ApiClient {
 
   static const _timeout = Duration(seconds: 20);
 
-  Future<dynamic> get(String path) => _send('GET', path);
+  Future<dynamic> get(String path) {
+    final c = cache;
+    if (c == null || c.scope() == null) return _send('GET', path);
+    return _cachedGet(c, path);
+  }
 
-  Future<dynamic> post(String path, [Object? body]) => _send('POST', path, body ?? const {});
+  /// [queue]: sem internet, guarda a alteração e envia quando conectar (devolve null). Só para ações que não
+  /// precisam da resposta do servidor (ex.: confirmar um horário).
+  Future<dynamic> post(String path, [Object? body, bool queue = false]) => _write('POST', path, body ?? const {}, queue);
 
-  Future<dynamic> put(String path, Object body) => _send('PUT', path, body);
+  Future<dynamic> put(String path, Object body, {bool queue = false}) => _write('PUT', path, body, queue);
 
-  Future<dynamic> delete(String path) => _send('DELETE', path);
+  Future<dynamic> delete(String path, {bool queue = false}) => _write('DELETE', path, null, queue);
+
+  Future<dynamic> _cachedGet(ApiCache c, String path) async {
+    final cached = await c.read(path);
+    if (cached != null && DateTime.now().difference(cached.at) < c.freshFor) return cached.data;
+    final network = _send('GET', path).then((data) async {
+      await c.write(path, data);
+      return data;
+    });
+    if (cached == null) return network;
+    final done = Completer<dynamic>();
+    network.then((data) {
+      if (!done.isCompleted) {
+        done.complete(data);
+      } else if (jsonEncode(data) != jsonEncode(cached.data)) {
+        _refreshed.add(path); // a tela mostrou o guardado: chegou coisa nova
+      }
+    }, onError: (Object e) {
+      if (done.isCompleted) return;
+      // sem internet: segue com o que está guardado
+      if (e is ApiException && e.status == 0) {
+        done.complete(cached.data);
+      } else {
+        done.completeError(e);
+      }
+    });
+    Timer(c.fallbackAfter, () {
+      if (!done.isCompleted) done.complete(cached.data);
+    });
+    return done.future;
+  }
+
+  Future<dynamic> _write(String method, String path, Object? body, bool queue) async {
+    try {
+      return await _send(method, path, body);
+    } on ApiException catch (e) {
+      final c = cache;
+      if (!queue || e.status != 0 || c == null || c.scope() == null) rethrow;
+      final request = QueuedRequest(method: method, path: path, body: body, at: DateTime.now());
+      final list = [...await c.outbox(), request];
+      await c.saveOutbox(list);
+      try {
+        await optimistic?.call(c, request);
+      } catch (_) {}
+      _update(pending: list.length);
+      _scheduleRetry();
+      onQueued?.call();
+      return null;
+    }
+  }
+
+  /// Envia o que ficou guardado sem internet, na ordem. Chamado sozinho quando a conexão volta; pode ser chamado
+  /// ao abrir o app.
+  Future<void> sync() async {
+    final c = cache;
+    if (c == null || c.scope() == null || _syncing) return;
+    _syncing = true;
+    try {
+      var list = await c.outbox();
+      if (list.isEmpty) {
+        // fila vazia, mas estava sem internet: testa a conexão com algo leve
+        if (!status.value.online) await _send('GET', '/api/me');
+        return;
+      }
+      final failures = <String>[...status.value.failures];
+      var sent = 0;
+      while (list.isNotEmpty) {
+        final q = list.first;
+        try {
+          await _send(q.method, q.path, q.body);
+        } on ApiException catch (e) {
+          if (e.status == 0) break; // ainda sem internet: tenta depois
+          failures.add(e.message); // o servidor recusou (ex.: horário já cancelado): não adianta repetir
+        } catch (e) {
+          failures.add('Não foi possível enviar uma alteração.'); // resposta estranha: não trava a fila
+        }
+        list = list.sublist(1);
+        await c.saveOutbox(list);
+        sent++;
+      }
+      _update(pending: list.length, failures: failures);
+      if (sent > 0) {
+        c.markStale();
+        _refreshed.add('*');
+      }
+    } catch (_) {
+      // sem internet ainda
+    } finally {
+      _syncing = false;
+      if (status.value.pending > 0 || !status.value.online) _scheduleRetry();
+    }
+  }
+
+  /// Carrega a fila guardada (ao abrir o app) e tenta enviar.
+  Future<void> resume() async {
+    final c = cache;
+    if (c == null || c.scope() == null) return;
+    _update(pending: (await c.outbox()).length);
+    await sync();
+  }
+
+  void clearFailures() => _update(failures: const []);
+
+  void _scheduleRetry() {
+    _retry ??= Timer.periodic(const Duration(seconds: 20), (t) {
+      if (status.value.online && status.value.pending == 0) {
+        t.cancel();
+        _retry = null;
+        return;
+      }
+      sync();
+    });
+  }
+
+  void _update({bool? online, int? pending, List<String>? failures}) {
+    final v = status.value;
+    final next = ApiStatus(online: online ?? v.online, pending: pending ?? v.pending, failures: failures ?? v.failures);
+    if (next.online != v.online || next.pending != v.pending || next.failures.length != v.failures.length) status.value = next;
+  }
+
+  void _connected(bool ok) {
+    final was = status.value.online;
+    _update(online: ok);
+    if (!ok) {
+      if (cache != null) _scheduleRetry();
+    } else if (!was) {
+      // voltou a internet: envia a fila e avisa as telas para atualizarem
+      if (status.value.pending > 0) {
+        Future.microtask(sync);
+      } else {
+        cache?.markStale();
+        _refreshed.add('*');
+      }
+    }
+  }
 
   /// Envio de arquivo (multipart/form-data), ex.: fotos do portfólio.
   Future<dynamic> upload(String path,
@@ -103,12 +282,16 @@ class ApiClient {
     try {
       res = await http.Response.fromStream(await _http.send(request).timeout(timeout));
     } on TimeoutException {
+      _connected(false);
       throw ApiException(0, 'O servidor demorou para responder. Tente novamente.');
     } on SocketException {
+      _connected(false);
       throw ApiException(0, 'Sem conexão com a internet.');
     } on http.ClientException {
+      _connected(false);
       throw ApiException(0, 'Não foi possível conectar ao servidor.');
     }
+    _connected(true);
 
     final text = utf8.decode(res.bodyBytes);
     if (res.statusCode >= 200 && res.statusCode < 300) {

@@ -41,7 +41,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
   Future<void> _send(ReminderItem item) async {
     await openUrl(Uri.parse(item.whatsappUrl));
     try {
-      await widget.api.post('/api/reminders/${item.appointmentId}/sent');
+      await widget.api.post('/api/reminders/${item.appointmentId}/sent', null, true);
       await _load();
     } catch (e) {
       if (mounted) showError(context, e);

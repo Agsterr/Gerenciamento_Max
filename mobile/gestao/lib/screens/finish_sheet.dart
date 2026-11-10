@@ -78,7 +78,7 @@ class _FinishSheetState extends State<_FinishSheet> {
         'serviceNotes': _notes.text,
         'usedProducts': _items(false),
         'soldProducts': _items(true),
-      });
+      }, true);
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) showError(context, e);

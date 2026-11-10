@@ -5,6 +5,7 @@ import '../session.dart';
 import '../widgets/fit_tab.dart';
 import '../widgets/form_sheet.dart';
 import '../widgets/service_photos.dart';
+import '../widgets/api_refresh.dart';
 
 /// Serviços, profissionais e produtos/estoque.
 class CatalogScreen extends StatelessWidget {
@@ -274,7 +275,7 @@ class CatalogScreen extends StatelessWidget {
         'type': type,
         'quantity': double.tryParse(qty.text.replaceAll(',', '.')) ?? 0,
         'unitValue': double.tryParse(value.text.replaceAll(',', '.')),
-      });
+      }, true);
       reload();
     } catch (e) {
       if (context.mounted) showError(context, e);
@@ -338,7 +339,7 @@ class _CrudList<T> extends StatefulWidget {
   State<_CrudList<T>> createState() => _CrudListState<T>();
 }
 
-class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClientMixin {
+class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClientMixin, ApiRefresh {
   List<T>? _items;
   String? _error;
 
@@ -358,6 +359,7 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
   void initState() {
     super.initState();
     _load();
+    listenApi(widget.api, [widget.path], _load);
   }
 
   @override
