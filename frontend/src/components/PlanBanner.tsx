@@ -20,7 +20,10 @@ const limitText = (p: PlanInfo) =>
 /** Aviso no topo do painel: dias de teste que faltam, limites usados ou teste vencido. */
 export function PlanBanner() {
   const { data: plan } = useApi<PlanInfo>("/api/salon/plan");
-  if (!plan || plan.status === "ACTIVE") return null;
+  if (!plan) return null;
+  const paid = plan.plan === "PAID";
+  const ending = plan.status === "ACTIVE" && paid && plan.daysLeft !== null && plan.daysLeft <= 3;
+  if (plan.status === "ACTIVE" && !ending) return null;
   const link = subscribeLink(plan);
   const expired = plan.status === "EXPIRED";
 
@@ -31,9 +34,16 @@ export function PlanBanner() {
       }`}
     >
       <div className="min-w-0 flex-1">
-        {expired ? (
+        {ending ? (
           <>
-            <p className="font-extrabold">Seu período de teste terminou</p>
+            <p className="font-extrabold">
+              {plan.daysLeft === 0 ? "Seu plano vence hoje" : plan.daysLeft === 1 ? "Seu plano vence amanhã" : `Seu plano vence em ${plan.daysLeft} dias`}
+            </p>
+            <p>Renove para não perder o acesso: depois da data você só consulta os dados.</p>
+          </>
+        ) : expired ? (
+          <>
+            <p className="font-extrabold">{paid ? "Seu plano venceu" : "Seu período de teste terminou"}</p>
             <p>Você ainda vê todos os seus dados, mas não pode criar nem alterar nada, e o agendamento online está pausado.</p>
           </>
         ) : (
@@ -47,7 +57,7 @@ export function PlanBanner() {
       </div>
       {plan.webBillingAvailable ? (
         <Link href="/painel/assinatura" className="bg-brand shrink-0 rounded-xl px-4 py-2 font-extrabold text-white shadow-glow">
-          {expired ? "Ativar meu plano" : "Quero assinar"}
+          {ending ? "Renovar meu plano" : expired ? "Ativar meu plano" : "Quero assinar"}
         </Link>
       ) : link && (
         <a
@@ -56,7 +66,7 @@ export function PlanBanner() {
           rel="noreferrer"
           className="bg-brand shrink-0 rounded-xl px-4 py-2 font-extrabold text-white shadow-glow"
         >
-          {expired ? "Ativar meu plano" : "Quero assinar"}
+          {ending ? "Renovar meu plano" : expired ? "Ativar meu plano" : "Quero assinar"}
         </a>
       )}
     </div>

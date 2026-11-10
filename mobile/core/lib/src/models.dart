@@ -864,6 +864,7 @@ class Inbox {
 class PlanInfo {
   const PlanInfo({
     required this.status,
+    this.paid = false,
     this.daysLeft,
     required this.professionals,
     required this.services,
@@ -880,6 +881,7 @@ class PlanInfo {
     (int, int) usage(Object? u) => ((u as Map)['used'] as int, u['max'] as int);
     return PlanInfo(
       status: j['status'] as String,
+      paid: j['plan'] == 'PAID',
       daysLeft: j['daysLeft'] as int?,
       professionals: usage(j['professionals']),
       services: usage(j['services']),
@@ -895,6 +897,9 @@ class PlanInfo {
 
   /// TRIAL, ACTIVE ou EXPIRED.
   final String status;
+
+  /// O salão já tem (ou teve) plano pago, não é só teste grátis.
+  final bool paid;
   final int? daysLeft;
 
   /// (usados, máximo) no teste grátis.
@@ -916,6 +921,9 @@ class PlanInfo {
 
   bool get expired => status == 'EXPIRED';
   bool get trial => status == 'TRIAL';
+
+  /// Plano pago que vence em até 3 dias: hora de avisar.
+  bool get endingSoon => status == 'ACTIVE' && paid && daysLeft != null && daysLeft! <= 3;
 }
 
 // ---------- Lembretes ----------

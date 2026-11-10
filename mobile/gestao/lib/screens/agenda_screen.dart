@@ -364,7 +364,7 @@ class _AgendaScreenState extends State<AgendaScreen> {
                 link: '${AppConfig.siteUrl}/s/${widget.session.user.salonSlug}',
               ),
             ),
-            if (_plan != null && _plan!.status != 'ACTIVE') _PlanBanner(
+            if (_plan != null && (_plan!.status != 'ACTIVE' || _plan!.endingSoon)) PlanBanner(
               _plan!,
               onSubscribe: widget.session.user.isOwner && AppConfig.storeBuild && _plan!.billingAvailable
                   ? () async {
@@ -630,8 +630,8 @@ class _TimelineItem extends StatelessWidget {
 }
 
 /// Teste grátis (dias e limites) ou teste vencido, com atalho para assinar.
-class _PlanBanner extends StatelessWidget {
-  const _PlanBanner(this.plan, {this.onSubscribe});
+class PlanBanner extends StatelessWidget {
+  const PlanBanner(this.plan, {this.onSubscribe});
 
   final PlanInfo plan;
   final VoidCallback? onSubscribe;
@@ -639,6 +639,7 @@ class _PlanBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final expired = plan.expired;
+    final ending = plan.endingSoon;
     final text = Theme.of(context).textTheme;
     // Versão das lojas: sem atalho para assinar por fora (regra de pagamentos da Play/App Store).
     final hasContact = !AppConfig.storeBuild && (plan.contactWhatsapp.isNotEmpty || plan.contactEmail.isNotEmpty);
@@ -652,14 +653,22 @@ class _PlanBanner extends StatelessWidget {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(
-            expired
-                ? 'Seu período de teste terminou'
+            ending
+                ? (plan.daysLeft == 0
+                    ? 'Seu plano vence hoje'
+                    : plan.daysLeft == 1 ? 'Seu plano vence amanhã' : 'Seu plano vence em ${plan.daysLeft} dias')
+                : expired
+                ? (plan.paid ? 'Seu plano venceu' : 'Seu período de teste terminou')
                 : 'Teste grátis: ${plan.daysLeft == 1 ? 'falta 1 dia' : 'faltam ${plan.daysLeft} dias'}',
             style: text.titleSmall?.copyWith(color: expired ? const Color(0xFF9F1239) : const Color(0xFF7C4A03)),
           ),
           const SizedBox(height: 2),
-          if (expired || MediaQuery.textScalerOf(context).scale(14) <= 17) Text(
-            expired
+          if (expired || ending || MediaQuery.textScalerOf(context).scale(14) <= 17) Text(
+            ending
+                ? (plan.managedByPlay
+                    ? 'Se a assinatura da Google Play renovar, o plano continua sozinho. Se você cancelou, ele termina nessa data.'
+                    : 'Renove para não perder o acesso: depois da data você só consulta os dados.')
+                : expired
                 ? 'Você ainda vê seus dados, mas não pode criar nem alterar nada, e o agendamento online está pausado.'
                 : '${plan.professionals.$1}/${plan.professionals.$2} profissionais · '
                     '${plan.services.$1}/${plan.services.$2} serviços · ${plan.customers.$1}/${plan.customers.$2} clientes',
@@ -671,7 +680,7 @@ class _PlanBanner extends StatelessWidget {
               style: FilledButton.styleFrom(backgroundColor: Brand.rose, foregroundColor: Colors.white),
               onPressed: onSubscribe,
               icon: const Icon(Icons.workspace_premium_outlined),
-              label: Text(expired ? 'Assinar para continuar' : 'Assinar o plano completo'),
+              label: Text(ending ? 'Ver meu plano' : expired ? 'Assinar para continuar' : 'Assinar o plano completo'),
             ),
           ] else if (hasContact) ...[
             const SizedBox(height: 8),
@@ -681,7 +690,7 @@ class _PlanBanner extends StatelessWidget {
                   ? openWhatsApp(plan.contactWhatsapp, text: 'Olá! Quero ativar o plano do Salão Max.')
                   : openUrl(Uri.parse('mailto:${plan.contactEmail}?subject=Ativar%20plano%20Sal%C3%A3o%20Max')),
               icon: const Icon(Icons.workspace_premium_outlined),
-              label: Text(expired ? 'Ativar meu plano' : 'Quero assinar'),
+              label: Text(ending ? 'Renovar meu plano' : expired ? 'Ativar meu plano' : 'Quero assinar'),
             ),
           ],
         ]),
