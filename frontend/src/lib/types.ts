@@ -608,7 +608,7 @@ export type ShopProduct = {
   showcase: boolean;
 };
 
-export type ShopCatalog = { available: boolean; representativeName: string | null; products: ShopProduct[]; categories: string[] };
+export type ShopCatalog = { available: boolean; paused: boolean; representativeName: string | null; products: ShopProduct[]; categories: string[] };
 
 export type ShopOrderStatus = "PENDING" | "PREPARING" | "SHIPPED" | "DELIVERED" | "CANCELED";
 
@@ -657,3 +657,17 @@ export type PublicShopProduct = {
   imageUrl: string | null;
   thumbUrl: string | null;
 };
+
+export type ShopPlan = {
+  status: "TRIAL" | "ACTIVE" | "EXPIRED";
+  trialEndsAt: string | null;
+  paidUntil: string | null;
+  daysLeft: number | null;
+  priceCents: number;
+  billingAvailable: boolean;
+  hasSubscription: boolean;
+};
+
+export type RepInvite = { id: number; salonName: string; status: string; blockedByOther: boolean; message: string; createdAt: string };
+
+export type SalonInvite = { id: number; representativeName: string; status: string; replacesCurrent: boolean; createdAt: string };

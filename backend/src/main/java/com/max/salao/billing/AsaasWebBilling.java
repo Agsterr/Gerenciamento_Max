@@ -75,6 +75,34 @@ class AsaasWebBilling implements WebBilling {
     }
 
     @Override
+    public Subscribed subscribeCustom(String customerId, String name, String email, String cpfCnpj, int priceCents, String description,
+                                      String reference) {
+        String customer = customerId != null ? customerId : createCustomer(name, email, cpfCnpj, reference);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("customer", customer);
+        body.put("billingType", "UNDEFINED");
+        body.put("value", BigDecimal.valueOf(priceCents, 2));
+        body.put("nextDueDate", LocalDate.now(clock).plusDays(1).toString());
+        body.put("cycle", "MONTHLY");
+        body.put("description", description);
+        body.put("externalReference", reference);
+        JsonNode subscription = call("POST", "/subscriptions", body);
+        String subscriptionId = subscription.path("id").asText("");
+        if (subscriptionId.isBlank()) {
+            log.warn("Asaas não devolveu o id da assinatura: {}", subscription);
+            throw new BusinessException("Não foi possível abrir o pagamento agora. Tente de novo em instantes.");
+        }
+        for (int attempt = 0; attempt < 6; attempt++) {
+            Optional<String> url = firstPaymentUrl(subscriptionId, false);
+            if (url.isPresent()) {
+                return new Subscribed(customer, subscriptionId, url.get());
+            }
+            sleep(400);
+        }
+        throw new BusinessException("O pagamento ainda está sendo preparado. Tente de novo em instantes.");
+    }
+
+    @Override
     public Optional<String> openPaymentUrl(String subscriptionId) {
         try {
             return firstPaymentUrl(subscriptionId, true);
@@ -89,6 +117,11 @@ class AsaasWebBilling implements WebBilling {
     }
 
     private String createCustomer(Salon salon, String ownerName, String ownerEmail, String cpfCnpj) {
+        return createCustomer(ownerName == null || ownerName.isBlank() ? salon.getName() : ownerName, ownerEmail, cpfCnpj,
+                "salon:" + salon.getId());
+    }
+
+    private String createCustomer(String name, String email, String cpfCnpj, String reference) {
         String document = cpfCnpj == null ? "" : cpfCnpj.replaceAll("\\D", "");
         if (document.isEmpty() && props.baseUrl().contains("sandbox")) {
             document = SANDBOX_CPF;
@@ -97,10 +130,10 @@ class AsaasWebBilling implements WebBilling {
             throw new BusinessException("Informe o CPF ou CNPJ do titular da assinatura.");
         }
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("name", ownerName == null || ownerName.isBlank() ? salon.getName() : ownerName);
-        body.put("email", ownerEmail);
+        body.put("name", name);
+        body.put("email", email);
         body.put("cpfCnpj", document);
-        body.put("externalReference", "salon:" + salon.getId());
+        body.put("externalReference", reference);
         JsonNode customer = call("POST", "/customers", body);
         String id = customer.path("id").asText("");
         if (id.isBlank()) {

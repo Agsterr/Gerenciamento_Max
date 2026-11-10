@@ -67,6 +67,10 @@ app:
     base-url: ${ASAAS_BASE_URL:https://api.asaas.com/v3}
     price-cents: ${ASAAS_PRICE_CENTS:4990}
     site-url: ${APP_PUBLIC_URL:https://salaomax.focodev.com.br}
+  # Loja do representante: mensalidade (Asaas) e dias de teste grátis.
+  shop:
+    price-cents: ${SHOP_PRICE_CENTS:4990}
+    trial-days: ${SHOP_TRIAL_DAYS:7}
   # Captcha (Cloudflare Turnstile) nos cadastros de salão e de representante. Vazios = captcha desligado.
   turnstile:
     secret: ${TURNSTILE_SECRET:}

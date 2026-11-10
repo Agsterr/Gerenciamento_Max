@@ -71,9 +71,10 @@ public class ReferralService {
     private final PlanService plans;
     private final ReferralProperties props;
     private final Clock clock;
+    private final InviteService invites;
 
     public ReferralService(JdbcTemplate jdbc, AppUserRepository users, SalonRepository salons, PasswordEncoder passwordEncoder,
-                           JwtService jwt, PlanService plans, ReferralProperties props, Clock clock) {
+                           JwtService jwt, PlanService plans, ReferralProperties props, Clock clock, InviteService invites) {
         this.jdbc = jdbc;
         this.users = users;
         this.salons = salons;
@@ -82,6 +83,7 @@ public class ReferralService {
         this.plans = plans;
         this.props = props;
         this.clock = clock;
+        this.invites = invites;
     }
 
     // ---- Cadastro e código ----
@@ -165,6 +167,13 @@ public class ReferralService {
                 .stream().findFirst().orElse(null);
         if (paymentId == null) {
             return false;
+        }
+        // o salão tinha parado de pagar e voltou: o convite aceito de outro representante passa a valer (e ganha esta comissão)
+        if (salon.getId() != null && plans.status(salon) == PlanStatus.EXPIRED) {
+            Long claimed = invites.claimWaiting(salon.getId());
+            if (claimed != null) {
+                salon.setReferrerId(claimed);
+            }
         }
         if (salon.getReferrerId() != null) {
             jdbc.update("""

@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.max.salao.referral.ReferralService;
 import com.max.salao.salon.Salon;
 import com.max.salao.salon.SalonRepository;
+import com.max.salao.shop.ShopBillingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -39,15 +40,17 @@ public class AsaasWebhookService {
     private final SalonRepository salons;
     private final ReferralService referrals;
     private final BillingService billing;
+    private final ShopBillingService shopBilling;
     private final Clock clock;
 
     public AsaasWebhookService(AsaasProperties props, ObjectMapper json, SalonRepository salons, ReferralService referrals,
-                               BillingService billing, Clock clock) {
+                               BillingService billing, ShopBillingService shopBilling, Clock clock) {
         this.props = props;
         this.json = json;
         this.salons = salons;
         this.referrals = referrals;
         this.billing = billing;
+        this.shopBilling = shopBilling;
         this.clock = clock;
     }
 
@@ -87,6 +90,15 @@ public class AsaasWebhookService {
         }
         Optional<Salon> found = salonOf(payment);
         if (found.isEmpty()) {
+            // pagamento da loja do representante (referência rep:ID)
+            LocalDate dueRep = date(payment.path("dueDate").asText(null));
+            LocalDate paidRep = firstDate(payment.path("paymentDate"), payment.path("confirmedDate"), payment.path("clientPaymentDate"));
+            LocalDate todayRep = LocalDate.now(clock);
+            LocalDate startRep = dueRep == null ? (paidRep == null ? todayRep : paidRep) : paidRep != null && paidRep.isAfter(dueRep) ? paidRep : dueRep;
+            if (shopBilling.handlePaid(payment, value.movePointRight(2).setScale(0, RoundingMode.HALF_UP).intValue(), startRep.plusMonths(1),
+                    LocalDateTime.now(clock))) {
+                return;
+            }
             log.error("Pagamento do Asaas {} sem salão correspondente (assinatura {}, cliente {}, referência {})", id,
                     payment.path("subscription").asText(), payment.path("customer").asText(),
                     payment.path("externalReference").asText());
@@ -110,6 +122,9 @@ public class AsaasWebhookService {
 
     private void reversed(JsonNode payment) {
         String id = payment.path("id").asText("");
+        if (shopBilling.handleReversed(id)) {
+            return;
+        }
         referrals.refund(PROVIDER, List.of(id)).ifPresent(r -> billing.revokeAccess(r.salonId(), r.periodEnd()));
     }
 

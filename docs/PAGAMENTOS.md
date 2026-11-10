@@ -63,3 +63,20 @@ não há desconto automático do próximo repasse (faça o acerto à mão).
 O valor se muda no Play Console (plano base da assinatura `salao_max_mensal`), não no código. `PLAY_PRICE_CENTS` (padrão
 5890) é só o valor de referência guardado no registro de pagamentos; mantenha igual ao do Play Console. O preço do site
 (`ASAAS_PRICE_CENTS`, padrão 4990) vai no link de pagamento criado no Asaas.
+
+## Loja do representante (R$ 49,90/mês pelo Asaas)
+
+- O representante tem **7 dias de teste** a partir da primeira vez que abre a loja (`SHOP_TRIAL_DAYS`) e depois paga
+  `SHOP_PRICE_CENTS` (padrão 4990) por mês, pela mesma conta do Asaas dos salões (`ASAAS_API_KEY`, webhook `/api/asaas/webhook`).
+- A cobrança leva `externalReference = rep:<id do representante>`; o webhook separa pagamento de salão (`salon:<id>`) do da loja.
+- Sem assinatura (teste vencido): ele não cadastra produtos nem recebe pedidos novos e a vitrine dos salões pausa; pedidos,
+  baixas e comissões antigos continuam visíveis. Estorno tira o acesso pago do período, como no plano do salão.
+- O programa de indicação (R$ 15 por mensalidade de salão) continua gratuito e independente da loja.
+
+## Convites entre representantes e salões
+
+- O representante convida um salão que já existe (link `/s/slug` ou e-mail do dono); o salão aceita ou recusa.
+- Salão sem representante: aceitar vale na hora. Salão que já tem outro representante: o convite fica **pendente** com aviso
+  ("já foi indicada por outro fornecedor") e, ao aceitar, **em espera**, sem comissão.
+- Se o plano do salão venceu e ele volta a pagar, o convite aceito mais recente passa a ser o titular e ganha a comissão desse
+  pagamento em diante (`InviteService.claimWaiting`, chamado em `ReferralService.recordPayment`).

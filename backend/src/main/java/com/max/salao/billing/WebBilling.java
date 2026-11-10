@@ -15,6 +15,14 @@ public interface WebBilling {
      */
     Subscribed subscribe(Salon salon, String ownerName, String ownerEmail, String cpfCnpj);
 
+    /**
+     * Assinatura mensal de outro tipo de cliente (ex.: representante pela loja): cria o cliente se {@code customerId} for
+     * nulo e devolve a página da primeira cobrança.
+     *
+     * @param reference referência para achar de volta nos avisos (ex.: {@code rep:12})
+     */
+    Subscribed subscribeCustom(String customerId, String name, String email, String cpfCnpj, int priceCents, String description, String reference);
+
     /** Página da cobrança ainda em aberto (pendente/vencida) da assinatura, para reaproveitar; vazio se não há. */
     Optional<String> openPaymentUrl(String subscriptionId);
 

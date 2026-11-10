@@ -39,11 +39,19 @@ public class ShopController {
     public record ShowcaseRequest(boolean on) {
     }
 
+    public record CheckoutRequest(@jakarta.validation.constraints.Size(max = 30) String cpfCnpj) {
+    }
+
+    public record UrlResponse(String url) {
+    }
+
     private final ShopService shop;
+    private final ShopBillingService billing;
     private final AbuseLimiter abuse;
 
-    public ShopController(ShopService shop, AbuseLimiter abuse) {
+    public ShopController(ShopService shop, ShopBillingService billing, AbuseLimiter abuse) {
         this.shop = shop;
+        this.billing = billing;
         this.abuse = abuse;
     }
 
@@ -104,6 +112,22 @@ public class ShopController {
     @PostMapping("/api/representative/shop/orders/{id}/commission")
     public ShopService.OrderView commission(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
         return shop.settleCommission(rep(jwt), id);
+    }
+
+    /** Assinatura da loja (R$ 49,90/mês pelo Asaas, com teste grátis). Abrir esta tela inicia o teste. */
+    @GetMapping("/api/representative/shop/plan")
+    public ShopBillingService.Plan plan(@AuthenticationPrincipal Jwt jwt) {
+        return billing.plan(rep(jwt));
+    }
+
+    @PostMapping("/api/representative/shop/plan/checkout")
+    public UrlResponse checkout(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) CheckoutRequest req) {
+        return new UrlResponse(billing.checkout(rep(jwt), req == null ? null : req.cpfCnpj()));
+    }
+
+    @PostMapping("/api/representative/shop/plan/cancel")
+    public ShopBillingService.Plan cancelPlan(@AuthenticationPrincipal Jwt jwt) {
+        return billing.cancel(rep(jwt));
     }
 
     // ---- salão (dono)

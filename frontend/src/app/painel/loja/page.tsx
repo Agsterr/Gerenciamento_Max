@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, Empty, ErrorMessage, Field, Modal, PageHeader } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatCents, SHOP_TAGS } from "@/lib/format";
-import type { ShopCatalog, ShopOrder, ShopProduct } from "@/lib/types";
+import type { SalonInvite, ShopCatalog, ShopOrder, ShopProduct } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 type Address = { salonName: string; phone: string | null; address: string | null; neighborhood: string | null; city: string | null };
@@ -38,6 +38,7 @@ export default function ShopPage() {
     return (
       <>
         <PageHeader title="Loja do representante" />
+        <Invites onChange={reload} />
         <Empty>A loja aparece para salões que se cadastraram pelo link de um representante.</Empty>
       </>
     );
@@ -66,6 +67,12 @@ export default function ShopPage() {
       <p className="mb-4 text-zinc-600">
         Produtos e equipamentos de <b>{catalog.representativeName}</b>. O <b>ganho</b> é o que sobra para você se vender pelo preço sugerido.
       </p>
+      <Invites onChange={reload} />
+      {catalog.paused && (
+        <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+          A loja de {catalog.representativeName} está pausada no momento. Fale com ele para voltar a fazer pedidos.
+        </p>
+      )}
       {done && (
         <Card className="mb-4 border border-emerald-200 bg-emerald-50">
           <p className="font-extrabold text-emerald-900">Pedido #{done.id} enviado!</p>
@@ -274,5 +281,49 @@ function OrderModal({ lines, total, onClose, onDone }: { lines: { p: ShopProduct
         </div>
       </form>
     </Modal>
+  );
+}
+
+/** Convites de representantes para este salão. Aceitar um convite quando já há representante não troca a comissão na hora. */
+function Invites({ onChange }: { onChange: () => void }) {
+  const { data: invites, reload } = useApi<SalonInvite[]>("/api/shop/invites");
+  const [error, setError] = useState<string>();
+  if (!invites || invites.length === 0) return null;
+  async function act(fn: () => Promise<unknown>) {
+    setError(undefined);
+    try {
+      await fn();
+      reload();
+      onChange();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  return (
+    <div className="mb-4 space-y-2">
+      {invites.map((i) => (
+        <Card key={i.id} className="border border-sky-200 bg-sky-50">
+          <p className="font-extrabold text-brand-ink">{i.representativeName} convidou você para a loja dele</p>
+          <p className="text-sm text-zinc-700">
+            {i.status === "WAITING"
+              ? "Você aceitou. Ele só passa a ser o seu representante se o seu plano vencer e você voltar a assinar."
+              : i.replacesCurrent
+                ? "Você já tem um representante. Se aceitar, o novo só passa a ser o seu se o seu plano vencer e você voltar a assinar."
+                : "Aceitando, ele passa a ser o seu representante e você vê os produtos dele aqui."}
+          </p>
+          {i.status === "PENDING" && (
+            <div className="mt-2 flex gap-2">
+              <Button size="sm" onClick={() => act(() => api.post(`/api/shop/invites/${i.id}/accept`))}>
+                Aceitar
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => act(() => api.post(`/api/shop/invites/${i.id}/decline`))}>
+                Recusar
+              </Button>
+            </div>
+          )}
+          <ErrorMessage message={error} />
+        </Card>
+      ))}
+    </div>
   );
 }

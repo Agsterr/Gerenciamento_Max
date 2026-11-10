@@ -7,8 +7,8 @@ import { useEffect, useState } from "react";
 import { Badge, Button, Card, Empty, ErrorMessage, Field, Modal, Select, Stat } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatCents, formatDateTime, parseCents, SHOP_STATUS, SHOP_TAGS, whatsappLink } from "@/lib/format";
-import type { ShopOrder, ShopProduct, ShopSummary } from "@/lib/types";
+import { formatCents, formatDate, formatDateTime, parseCents, SHOP_STATUS, SHOP_TAGS, whatsappLink } from "@/lib/format";
+import type { ShopOrder, ShopPlan, ShopProduct, ShopSummary } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 /** Loja do representante: produtos e equipamentos que ele oferece aos salões indicados e os pedidos deles. */
@@ -48,6 +48,7 @@ export default function RepShopPage() {
       </header>
       <main className="mx-auto w-full max-w-4xl space-y-5 p-4 md:p-8">
         <h1 className="text-2xl font-extrabold text-brand-ink">Minha loja</h1>
+        <PlanCard />
         <div className="flex gap-2">
           {(
             [
@@ -471,5 +472,95 @@ function ProductModal({ product, onClose, onSaved }: { product?: ShopProduct; on
         </div>
       </form>
     </Modal>
+  );
+}
+
+/** Assinatura da loja: teste grátis, vencida (pausa a vitrine) ou ativa. Pagamento pelo Asaas (Pix, boleto ou cartão). */
+function PlanCard() {
+  const { data: plan, error, reload } = useApi<ShopPlan>("/api/representative/shop/plan");
+  const [cpf, setCpf] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string>();
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("assinatura") === "ok") {
+      const t = setTimeout(reload, 3000);
+      return () => clearTimeout(t);
+    }
+  }, [reload]);
+  if (error) return <ErrorMessage message={error} />;
+  if (!plan) return null;
+  const price = formatCents(plan.priceCents);
+
+  async function subscribe() {
+    setBusy(true);
+    setMsg(undefined);
+    try {
+      const res = await api.post<{ url: string }>("/api/representative/shop/plan/checkout", { cpfCnpj: cpf });
+      window.location.href = res.url;
+    } catch (e) {
+      setMsg((e as Error).message);
+      setBusy(false);
+    }
+  }
+
+  async function cancel() {
+    if (!confirm("Cancelar a cobrança mensal da loja? Você continua com a loja até o fim do período já pago.")) return;
+    setBusy(true);
+    try {
+      await api.post("/api/representative/shop/plan/cancel");
+      reload();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (plan.status === "ACTIVE")
+    return (
+      <Card className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-zinc-700">
+          <b className="text-emerald-700">Loja ativa</b> até {plan.paidUntil ? formatDate(plan.paidUntil) : "—"} · {price}/mês
+        </p>
+        {plan.hasSubscription && (
+          <Button size="sm" variant="secondary" disabled={busy} onClick={cancel}>
+            Cancelar cobrança mensal
+          </Button>
+        )}
+        <ErrorMessage message={msg} />
+      </Card>
+    );
+
+  const expired = plan.status === "EXPIRED";
+  return (
+    <div className={`rounded-2xl px-4 py-3 text-sm ring-1 ${expired ? "bg-rose-50 text-rose-900 ring-rose-200" : "bg-amber-50 text-amber-900 ring-amber-200"}`}>
+      <p className="font-extrabold">
+        {expired ? "Sua assinatura da loja venceu" : `Teste grátis: ${plan.daysLeft === 1 ? "falta 1 dia" : `faltam ${plan.daysLeft} dias`}`}
+      </p>
+      <p>
+        {expired
+          ? "Os salões não veem seus produtos nem fazem pedidos novos até você assinar. Pedidos e comissões antigos continuam aqui."
+          : `Depois do teste, a loja custa ${price} por mês (Pix, boleto ou cartão).`}
+      </p>
+      {plan.billingAvailable ? (
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <label className="block text-sm">
+            <span className="mb-1 block font-semibold">CPF ou CNPJ do titular</span>
+            <input
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+              inputMode="numeric"
+              className="w-56 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-brand-rose"
+            />
+          </label>
+          <Button disabled={busy} onClick={subscribe}>
+            {busy ? "Abrindo..." : `Assinar por ${price}/mês`}
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-2 font-semibold">O pagamento pelo site ainda não está disponível. Fale com o suporte.</p>
+      )}
+      <ErrorMessage message={msg} />
+    </div>
   );
 }

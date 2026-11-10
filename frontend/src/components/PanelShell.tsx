@@ -7,7 +7,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { PlanBanner } from "@/components/PlanBanner";
 import { InstallAppLink } from "@/components/InstallApp";
 import { useAuth } from "@/lib/auth";
-import type { ShopCatalog } from "@/lib/types";
+import type { SalonInvite, ShopCatalog } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 const NAV = [
@@ -36,6 +36,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { data: shop } = useApi<ShopCatalog>(user?.role === "OWNER" ? "/api/shop/catalog" : null);
+  const { data: invites } = useApi<SalonInvite[]>(user?.role === "OWNER" ? "/api/shop/invites" : null);
 
   useEffect(() => {
     if (ready && !user) router.replace("/login");
@@ -45,7 +46,9 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
 
   if (!user || user.role === "PLATFORM_ADMIN" || user.role === "REPRESENTATIVE") return <p className="p-8 text-center text-zinc-500">Carregando...</p>;
 
-  const items = [...NAV, ...(shop?.available ? SHOP_NAV : [])].filter((n) => !n.ownerOnly || user.role === "OWNER");
+  // a loja aparece para quem tem representante (ou um convite esperando resposta); "Minhas compras" só com representante
+  const shopItems = shop?.available ? SHOP_NAV : invites && invites.length > 0 ? SHOP_NAV.slice(0, 1) : [];
+  const items = [...NAV, ...shopItems].filter((n) => !n.ownerOnly || user.role === "OWNER");
 
   return (
     <div className="min-h-screen md:flex">

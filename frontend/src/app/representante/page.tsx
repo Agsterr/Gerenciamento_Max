@@ -7,7 +7,7 @@ import { Badge, Button, Card, Empty, ErrorMessage, Field, Stat } from "@/compone
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatCents, formatDate } from "@/lib/format";
-import type { RepDashboard } from "@/lib/types";
+import type { RepDashboard, RepInvite } from "@/lib/types";
 import { useApi } from "@/lib/useApi";
 
 const SALON_STATUS = {
@@ -169,6 +169,8 @@ function Dashboard() {
         </Link>
       </Card>
 
+      <Invites />
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Disponível para receber" value={formatCents(d.totals.availableCents)} hint="já passou do prazo de estorno" />
         <Stat label="Em espera" value={formatCents(d.totals.releasingCents)} hint={`libera ${d.holdDays} dias após o pagamento`} />
@@ -278,5 +280,83 @@ function Dashboard() {
         )}
       </Card>
     </>
+  );
+}
+
+const INVITE_STYLE: Record<string, [string, string]> = {
+  PENDING: ["Pendente", "bg-amber-100 text-amber-800"],
+  WAITING: ["Em espera", "bg-sky-100 text-sky-800"],
+  ACTIVE: ["Sua cabeleireira", "bg-emerald-100 text-emerald-800"],
+  DECLINED: ["Recusado", "bg-zinc-200 text-zinc-700"],
+  REPLACED: ["Encerrado", "bg-zinc-200 text-zinc-700"],
+};
+
+/** Convite para uma cabeleireira que já usa o app. Se ela já foi indicada por outro fornecedor, fica pendente e sem comissão. */
+function Invites() {
+  const { data: invites, error, reload } = useApi<RepInvite[]>("/api/representative/invites");
+  const [target, setTarget] = useState("");
+  const [msg, setMsg] = useState<string>();
+  const [busy, setBusy] = useState(false);
+
+  async function send() {
+    setBusy(true);
+    setMsg(undefined);
+    try {
+      await api.post("/api/representative/invites", { salon: target });
+      setTarget("");
+      reload();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <p className="font-extrabold text-brand-ink">Convidar uma cabeleireira que já usa o app</p>
+      <p className="mb-3 text-sm text-zinc-600">
+        Informe o link de agendamento dela (salaomax.../s/nome) ou o e-mail do dono. Ela aceita no painel dela. Se ela já foi indicada por outro fornecedor, o convite
+        fica pendente e você só ganha comissão se ela parar de pagar e voltar a assinar.
+      </p>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-0 flex-1">
+          <Field label="Link do salão ou e-mail do dono" value={target} onChange={(e) => setTarget(e.target.value)} />
+        </div>
+        <Button disabled={busy || !target.trim()} onClick={send}>
+          Enviar convite
+        </Button>
+      </div>
+      <ErrorMessage message={error ?? msg} />
+      {invites && invites.length > 0 && (
+        <ul className="mt-4 space-y-2">
+          {invites.map((i) => {
+            const [label, color] = INVITE_STYLE[i.status] ?? [i.status, "bg-zinc-100"];
+            return (
+              <li key={i.id} className="rounded-xl border border-zinc-200 p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-bold">{i.salonName}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge className={color}>{label}</Badge>
+                    {(i.status === "PENDING" || i.status === "WAITING") && (
+                      <button
+                        className="text-xs font-semibold text-zinc-500 hover:text-brand-rose"
+                        onClick={async () => {
+                          await api.del(`/api/representative/invites/${i.id}`);
+                          reload();
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className={`mt-1 ${i.blockedByOther ? "font-semibold text-amber-800" : "text-zinc-600"}`}>{i.message}</p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
   );
 }

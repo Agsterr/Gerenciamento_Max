@@ -46,7 +46,7 @@ public class ShopService {
                               String thumbUrl, boolean active, boolean hidden, boolean showcase) {
     }
 
-    public record Catalog(boolean available, String representativeName, List<ProductView> products,
+    public record Catalog(boolean available, boolean paused, String representativeName, List<ProductView> products,
                           List<String> categories) {
     }
 
@@ -90,11 +90,13 @@ public class ShopService {
 
     private final JdbcTemplate jdbc;
     private final ShopPhotos photos;
+    private final ShopBillingService billing;
     private final Clock clock;
 
-    public ShopService(JdbcTemplate jdbc, ShopPhotos photos, Clock clock) {
+    public ShopService(JdbcTemplate jdbc, ShopPhotos photos, ShopBillingService billing, Clock clock) {
         this.jdbc = jdbc;
         this.photos = photos;
+        this.billing = billing;
         this.clock = clock;
     }
 
@@ -116,6 +118,7 @@ public class ShopService {
 
     @Transactional
     public ProductView saveProduct(long repId, Long id, ProductRequest r) {
+        billing.requireActive(repId);
         String name = r.name() == null ? "" : r.name().trim();
         if (name.isEmpty()) {
             throw new BusinessException("Informe o nome do produto");
@@ -172,6 +175,7 @@ public class ShopService {
     }
 
     public ProductView uploadPhoto(long repId, long id, MultipartFile file) {
+        billing.requireActive(repId);
         one(repId, id);
         ShopPhotos.Stored s = photos.store(file, repId);
         jdbc.update("update shop_product set image_url = ?, thumb_url = ? where id = ?", s.imageUrl(), s.thumbUrl(), id);
@@ -302,9 +306,13 @@ public class ShopService {
     public Catalog catalog(long salonId) {
         Long rep = referrerOf(salonId);
         if (rep == null) {
-            return new Catalog(false, null, List.of(), List.of());
+            return new Catalog(false, false, null, List.of(), List.of());
         }
         String name = jdbc.queryForObject("select u.name from representative r join app_user u on u.id = r.user_id where r.id = ?", String.class, rep);
+        if (!billing.active(rep)) {
+            // a assinatura da loja do representante venceu: a vitrine pausa até ele renovar
+            return new Catalog(true, true, firstName(name), List.of(), List.of());
+        }
         List<ProductView> products = jdbc.query("select p.*, (h.product_id is not null) as hidden, (sc.product_id is not null) as showcase from shop_product p "
                 + "left join shop_hidden h on h.product_id = p.id and h.salon_id = ? "
                 + "left join shop_showcase sc on sc.product_id = p.id and sc.salon_id = ? "
@@ -312,7 +320,7 @@ public class ShopService {
                 (rs, i) -> product(rs, true), salonId, salonId, rep);
         List<String> categories = products.stream().map(ProductView::category).filter(c -> c != null && !c.isBlank())
                 .distinct().sorted(String.CASE_INSENSITIVE_ORDER).toList();
-        return new Catalog(true, firstName(name), products, categories);
+        return new Catalog(true, false, firstName(name), products, categories);
     }
 
     @Transactional
@@ -348,7 +356,7 @@ public class ShopService {
     @Transactional(readOnly = true)
     public List<PublicShopProduct> publicShowcase(long salonId) {
         Long rep = referrerOf(salonId);
-        if (rep == null) {
+        if (rep == null || !billing.active(rep)) {
             return List.of();
         }
         return jdbc.query("select p.* from shop_product p join shop_showcase sc on sc.product_id = p.id and sc.salon_id = ? "
@@ -431,6 +439,9 @@ public class ShopService {
         Long rep = referrerOf(salonId);
         if (rep == null) {
             throw new BusinessException("Seu salão não tem representante: a loja não está disponível.");
+        }
+        if (!billing.active(rep)) {
+            throw new BusinessException("A loja do seu representante está pausada no momento. Fale com ele.");
         }
         if (r.items() == null || r.items().isEmpty()) {
             throw new BusinessException("Escolha pelo menos um produto");
