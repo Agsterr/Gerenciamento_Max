@@ -7,6 +7,8 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { PlanBanner } from "@/components/PlanBanner";
 import { InstallAppLink } from "@/components/InstallApp";
 import { useAuth } from "@/lib/auth";
+import type { ShopCatalog } from "@/lib/types";
+import { useApi } from "@/lib/useApi";
 
 const NAV = [
   { href: "/painel", label: "Agenda", ownerOnly: false },
@@ -23,10 +25,17 @@ const NAV = [
   { href: "/painel/configuracoes", label: "Configurações", ownerOnly: true },
 ];
 
+/** Só aparece para salões indicados por um representante (que tem loja). */
+const SHOP_NAV = [
+  { href: "/painel/loja", label: "Loja do representante", ownerOnly: true },
+  { href: "/painel/compras", label: "Minhas compras", ownerOnly: true },
+];
+
 export function PanelShell({ children }: { children: React.ReactNode }) {
   const { user, ready, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const { data: shop } = useApi<ShopCatalog>(user?.role === "OWNER" ? "/api/shop/catalog" : null);
 
   useEffect(() => {
     if (ready && !user) router.replace("/login");
@@ -36,7 +45,7 @@ export function PanelShell({ children }: { children: React.ReactNode }) {
 
   if (!user || user.role === "PLATFORM_ADMIN" || user.role === "REPRESENTATIVE") return <p className="p-8 text-center text-zinc-500">Carregando...</p>;
 
-  const items = NAV.filter((n) => !n.ownerOnly || user.role === "OWNER");
+  const items = [...NAV, ...(shop?.available ? SHOP_NAV : [])].filter((n) => !n.ownerOnly || user.role === "OWNER");
 
   return (
     <div className="min-h-screen md:flex">

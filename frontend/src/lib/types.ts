@@ -582,3 +582,59 @@ export type NotificationHistory = {
   hasMore: boolean;
   unread: number;
 };
+
+// ---- Loja do representante
+
+export type ShopProduct = {
+  id: number;
+  name: string;
+  description: string | null;
+  kind: "PRODUCT" | "EQUIPMENT";
+  category: string | null;
+  costCents: number;
+  suggestedCents: number;
+  promoCents: number | null;
+  promoUntil: string | null;
+  priceCents: number;
+  gainCents: number;
+  onPromo: boolean;
+  isNew: boolean;
+  tags: string[];
+  imageUrl: string | null;
+  thumbUrl: string | null;
+  active: boolean;
+  hidden: boolean;
+};
+
+export type ShopCatalog = { available: boolean; representativeName: string | null; products: ShopProduct[]; categories: string[] };
+
+export type ShopOrderStatus = "PENDING" | "PREPARING" | "SHIPPED" | "DELIVERED" | "CANCELED";
+
+export type ShopOrder = {
+  id: number;
+  status: ShopOrderStatus;
+  totalCents: number;
+  paidCents: number;
+  balanceCents: number;
+  gainCents: number;
+  createdAt: string;
+  updatedAt: string;
+  salonId: number;
+  salonName: string;
+  contactName: string;
+  phone: string | null;
+  address: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  note: string | null;
+  items: { productId: number | null; name: string; quantity: number; unitCents: number; suggestedCents: number }[];
+  payments: { id: number; amountCents: number; method: string; note: string | null; createdAt: string }[];
+};
+
+export type ShopSummary = {
+  toReceiveCents: number;
+  receivedCents: number;
+  openOrders: number;
+  pendingOrders: number;
+  deliveries: { neighborhood: string; city: string; orders: number; totalCents: number }[];
+};

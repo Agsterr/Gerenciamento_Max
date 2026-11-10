@@ -117,3 +117,24 @@ export function promoPriceOn(s: Promo, day?: string | null): number | null {
   const d = day ?? new Date().toLocaleDateString("sv-SE");
   return d >= s.promoStartsOn && d <= s.promoEndsOn ? s.promoPrice : null;
 }
+
+/** Situação de um pedido da loja do representante: rótulo e cor. */
+export const SHOP_STATUS: Record<string, [string, string]> = {
+  PENDING: ["Pendente", "bg-amber-100 text-amber-800"],
+  PREPARING: ["Em preparação", "bg-sky-100 text-sky-800"],
+  SHIPPED: ["Enviado", "bg-violet-100 text-violet-800"],
+  DELIVERED: ["Entregue", "bg-emerald-100 text-emerald-800"],
+  CANCELED: ["Cancelado", "bg-zinc-200 text-zinc-700"],
+};
+
+export const SHOP_TAGS: Record<string, [string, string]> = {
+  PROMOCAO: ["Promoção", "bg-rose-100 text-rose-800"],
+  NOVO: ["Novo", "bg-emerald-100 text-emerald-800"],
+  EQUIPAMENTO: ["Equipamento", "bg-indigo-100 text-indigo-800"],
+};
+
+/** "R$ 12,50" digitado → centavos (aceita vírgula ou ponto). */
+export function parseCents(text: string): number {
+  const n = Number(text.replace(/[^\d,.-]/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
+  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+}

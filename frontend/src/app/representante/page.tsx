@@ -159,6 +159,16 @@ function Dashboard() {
         </div>
       </Card>
 
+      <Card className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="font-extrabold text-brand-ink">Minha loja</p>
+          <p className="text-sm text-zinc-600">Cadastre produtos e equipamentos e receba os pedidos dos salões que você indicou.</p>
+        </div>
+        <Link href="/representante/loja" className="bg-brand shadow-glow rounded-xl px-4 py-2 font-bold text-white">
+          Abrir a loja
+        </Link>
+      </Card>
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Disponível para receber" value={formatCents(d.totals.availableCents)} hint="já passou do prazo de estorno" />
         <Stat label="Em espera" value={formatCents(d.totals.releasingCents)} hint={`libera ${d.holdDays} dias após o pagamento`} />

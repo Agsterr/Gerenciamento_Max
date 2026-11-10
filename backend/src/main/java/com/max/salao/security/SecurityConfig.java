@@ -51,7 +51,7 @@ public class SecurityConfig {
                         // Gestão financeira e cadastros estruturais: só o dono
                         .requestMatchers("/api/reports/**", "/api/expenses/**", "/api/users/**", "/api/pricing/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/salon").hasRole("OWNER")
-                        .requestMatchers("/api/billing/**").hasRole("OWNER")
+                        .requestMatchers("/api/billing/**", "/api/shop/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.POST, "/api/professionals/**", "/api/services/**", "/api/promotions/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, "/api/professionals/**", "/api/services/**", "/api/promotions/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.DELETE, "/api/promotions/**", "/api/services/**", "/api/products/**").hasRole("OWNER")
