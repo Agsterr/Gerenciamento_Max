@@ -230,7 +230,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text(n.title, style: text.titleSmall)),
-              if (!n.read) Container(width: 10, height: 10, decoration: const BoxDecoration(color: Brand.rose, shape: BoxShape.circle)),
+              if (!n.read) Container(width: 10, height: 10, decoration: BoxDecoration(color: Brand.rose, shape: BoxShape.circle)),
             ]),
             const SizedBox(height: 2),
             Text(n.message, style: text.bodyMedium),

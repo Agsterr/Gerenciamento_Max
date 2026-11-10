@@ -61,11 +61,24 @@ class AboutScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: SoftCard(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Cor do aplicativo', style: text.titleSmall),
+                    const SizedBox(height: 4),
+                    Text('Escolha a cor que combina com você. Muda o app todo e o ícone.',
+                        style: text.bodySmall?.copyWith(color: Brand.muted)),
+                    const SizedBox(height: 14),
+                    const ThemePicker(),
+                  ]),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: SoftCard(
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: ListenableBuilder(
                     listenable: store,
                     builder: (context, _) => SwitchListTile(
-                      secondary: const Icon(Icons.notifications_active_outlined, color: Brand.rose),
+                      secondary: Icon(Icons.notifications_active_outlined, color: Brand.rose),
                       title: Text('Avisos de promoção', style: text.titleSmall),
                       subtitle: const Text('Notificação quando um salão que você usa lança promoção'),
                       value: !store.promoAlertsOff,

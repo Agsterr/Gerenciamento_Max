@@ -210,12 +210,12 @@ _Delta? _delta(int now, int before, bool goodWhenUp) {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat(this.icon, this.label, this.value, {this.color = Brand.rose, this.hint, this.delta, this.suffix = ''});
+  const _Stat(this.icon, this.label, this.value, {this.color, this.hint, this.delta, this.suffix = ''});
 
   final IconData icon;
   final String label;
   final int value;
-  final Color color;
+  final Color? color;
   final String? hint;
   final _Delta? delta;
   final String suffix;
@@ -223,6 +223,7 @@ class _Stat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final color = this.color ?? Brand.rose;
     return SoftCard(
       padding: const EdgeInsets.all(14),
       child: Row(children: [

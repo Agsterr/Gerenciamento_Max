@@ -120,7 +120,7 @@ class _SubscribeScreenState extends State<SubscribeScreen> {
       body: SafeArea(
         child: ListView(padding: const EdgeInsets.all(20), children: [
           if (_done) ...[
-            const Icon(Icons.check_circle_rounded, size: 72, color: Brand.rose),
+            Icon(Icons.check_circle_rounded, size: 72, color: Brand.rose),
             const SizedBox(height: 12),
             Text('Assinatura ativa!', textAlign: TextAlign.center, style: text.headlineSmall),
             const SizedBox(height: 8),
@@ -168,7 +168,7 @@ class _Benefit extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Icon(Icons.check_rounded, color: Brand.rose, size: 20),
+          Icon(Icons.check_rounded, color: Brand.rose, size: 20),
           const SizedBox(width: 8),
           Expanded(child: Text(label)),
         ]),

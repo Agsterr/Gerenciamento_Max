@@ -6,17 +6,17 @@ import 'theme.dart';
 
 /// Cabeçalho com gradiente e cantos arredondados, usado no topo das telas principais.
 class GradientHeader extends StatelessWidget {
-  const GradientHeader({super.key, required this.child, this.gradient = Brand.gradient, this.bottomPadding = 28});
+  const GradientHeader({super.key, required this.child, this.gradient, this.bottomPadding = 28});
 
   final Widget child;
-  final Gradient gradient;
+  final Gradient? gradient;
   final double bottomPadding;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: gradient,
+        gradient: gradient ?? Brand.gradient,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       child: Stack(
@@ -87,13 +87,13 @@ class SoftCard extends StatelessWidget {
 
 /// Botão principal com gradiente da marca.
 class GradientButton extends StatelessWidget {
-  const GradientButton({super.key, required this.label, required this.onPressed, this.icon, this.loading = false, this.gradient = Brand.gradient});
+  const GradientButton({super.key, required this.label, required this.onPressed, this.icon, this.loading = false, this.gradient});
 
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
   final bool loading;
-  final Gradient gradient;
+  final Gradient? gradient;
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +109,7 @@ class GradientButton extends StatelessWidget {
         child: Container(
           height: 56,
           decoration: BoxDecoration(
-            gradient: gradient,
+            gradient: gradient ?? Brand.gradient,
             borderRadius: BorderRadius.circular(18),
             boxShadow: enabled
                 ? [BoxShadow(color: Brand.rose.withValues(alpha: 0.35), blurRadius: 18, offset: const Offset(0, 8))]
@@ -311,7 +311,7 @@ class SlotGrid extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(color: const Color(0xFFFFF1F6), borderRadius: BorderRadius.circular(16)),
-        child: const Column(children: [
+        child: Column(children: [
           Icon(Icons.event_busy_outlined, color: Brand.rose),
           SizedBox(height: 8),
           Text('Nenhum horário livre nesse dia.\nTente outro dia ou profissional.', textAlign: TextAlign.center),
@@ -549,4 +549,64 @@ double sheetBottomInset(BuildContext context) {
   final insets = MediaQuery.viewInsetsOf(context).bottom;
   final nav = MediaQuery.viewPaddingOf(context).bottom;
   return insets > nav ? insets : nav;
+}
+
+/// Escolha do tema de cor do app: bolinhas com o gradiente de cada tema. Troca a cor de tudo na hora.
+class ThemePicker extends StatelessWidget {
+  const ThemePicker({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (context, _) {
+        final current = Brand.palette.id;
+        return Wrap(
+          spacing: 14,
+          runSpacing: 14,
+          children: [
+            for (final p in BrandPalette.all)
+              Semantics(
+                button: true,
+                selected: p.id == current,
+                label: 'Cor ${p.name}',
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => ThemeController.instance.select(p),
+                  child: SizedBox(
+                    width: 64,
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [p.pink, p.rose, p.violet],
+                            stops: const [0, 0.5, 1],
+                          ),
+                          border: Border.all(
+                            color: p.id == current ? Theme.of(context).colorScheme.onSurface : Colors.transparent,
+                            width: 3,
+                          ),
+                        ),
+                        child: p.id == current ? const Icon(Icons.check_rounded, color: Colors.white) : null,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(p.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.labelSmall?.copyWith(fontWeight: p.id == current ? FontWeight.w800 : FontWeight.w600)),
+                    ]),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
 }

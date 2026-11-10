@@ -16,7 +16,7 @@ class BlockedScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: Brand.nightDeep,
         body: Container(
-          decoration: const BoxDecoration(gradient: Brand.nightGradient),
+          decoration: BoxDecoration(gradient: Brand.nightGradient),
           child: SafeArea(
             child: Center(
               child: SingleChildScrollView(

@@ -247,7 +247,7 @@ class _AddTile extends StatelessWidget {
               ),
               child: busy
                   ? const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)))
-                  : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Icon(Icons.add_a_photo_outlined, color: Brand.rose),
                       SizedBox(height: 4),
                       Text('Foto', style: TextStyle(fontWeight: FontWeight.w700, color: Brand.rose, fontSize: 12)),

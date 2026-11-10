@@ -96,7 +96,7 @@ class ForceUpdateScreen extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     return Material(
       child: Container(
-        decoration: const BoxDecoration(gradient: Brand.nightGradient),
+        decoration: BoxDecoration(gradient: Brand.nightGradient),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -110,7 +110,7 @@ class ForceUpdateScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(28),
                   ),
                   child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    const Icon(Icons.system_update_rounded, size: 52, color: Brand.rose),
+                    Icon(Icons.system_update_rounded, size: 52, color: Brand.rose),
                     const SizedBox(height: 12),
                     Text('Atualização obrigatória', textAlign: TextAlign.center, style: text.titleLarge),
                     const SizedBox(height: 6),
@@ -298,7 +298,7 @@ class _AppVersionTileState extends State<AppVersionTile> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(color: Brand.rose.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-        child: const Icon(Icons.info_outline_rounded, color: Brand.rose, size: 20),
+        child: Icon(Icons.info_outline_rounded, color: Brand.rose, size: 20),
       ),
       title: Text('Versão', style: text.titleSmall),
       subtitle: Text(_version ?? '...'),

@@ -158,7 +158,7 @@ class _PhotoViewerState extends State<PhotoViewer> {
               if (photo.caption != null)
                 Text(photo.caption!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               if (subtitle.isNotEmpty)
-                Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Brand.line, fontSize: 13)),
+                Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: Brand.line, fontSize: 13)),
             ]),
           ),
         ),

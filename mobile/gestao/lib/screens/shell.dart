@@ -191,13 +191,13 @@ class _PdfPeriodSheet extends StatelessWidget {
           ),
           for (final (label, p) in options)
             ListTile(
-              leading: const Icon(Icons.picture_as_pdf_outlined, color: Brand.rose),
+              leading: Icon(Icons.picture_as_pdf_outlined, color: Brand.rose),
               title: Text(label),
               subtitle: Text(p.label),
               onTap: () => Navigator.pop(context, p),
             ),
           ListTile(
-            leading: const Icon(Icons.date_range_rounded, color: Brand.rose),
+            leading: Icon(Icons.date_range_rounded, color: Brand.rose),
             title: const Text('Escolher datas'),
             onTap: () async {
               final r = await showDateRangePicker(

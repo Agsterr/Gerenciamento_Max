@@ -11,6 +11,7 @@ import 'screens/shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ThemeController.instance.load();
   await initializeDateFormatting('pt_BR');
   await LocalReminders.instance.init();
   final session = Session();
@@ -53,7 +54,7 @@ class _GestaoAppState extends State<GestaoApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return ThemedApp(builder: (context) => MaterialApp(
       title: 'Salão Max Gestão',
       navigatorKey: _navigator,
       debugShowCheckedModeBanner: false,
@@ -82,6 +83,6 @@ class _GestaoAppState extends State<GestaoApp> {
             ),
         },
       ),
-    );
+    ));
   }
 }

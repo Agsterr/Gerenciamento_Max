@@ -95,7 +95,7 @@ class CatalogScreen extends StatelessWidget {
                   Pill('margem ${((s.price - s.cost) / s.price * 100).round()}%',
                       icon: Icons.trending_up_rounded, color: const Color(0xFFDCFCE7), textColor: const Color(0xFF15803D)),
               ],
-              trailing: Text(formatMoney(s.price), style: const TextStyle(fontWeight: FontWeight.w800, color: Brand.rose, fontSize: 16)),
+              trailing: Text(formatMoney(s.price), style: TextStyle(fontWeight: FontWeight.w800, color: Brand.rose, fontSize: 16)),
             ),
           ),
           _CrudList<Professional>(
@@ -467,7 +467,7 @@ class _CrudListState<T> extends State<_CrudList<T>> with AutomaticKeepAliveClien
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 labelText: 'Buscar por nome ou categoria',
-                prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
+                prefixIcon: Icon(Icons.search_rounded, color: Brand.rose),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
               ),
               onChanged: c.search,

@@ -191,7 +191,7 @@ class PagedSearchField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: hint,
         floatingLabelBehavior: FloatingLabelBehavior.never,
-        prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
+        prefixIcon: Icon(Icons.search_rounded, color: Brand.rose),
         border: border(),
         enabledBorder: border(),
         focusedBorder: border(),

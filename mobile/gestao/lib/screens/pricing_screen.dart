@@ -193,7 +193,7 @@ class _PricingScreenState extends State<PricingScreen> {
                     child: Theme(
                       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                       child: ExpansionTile(
-                        leading: const Icon(Icons.tune_rounded, color: Brand.rose),
+                        leading: Icon(Icons.tune_rounded, color: Brand.rose),
                         title: Text('Seus parâmetros', style: text.titleSmall),
                         subtitle: Text('Lucro ${_margin.text}% · taxas ${_fees.text}% · ocupação ${_occupancy.text}%'),
                         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -287,7 +287,7 @@ class _ServiceCard extends StatelessWidget {
     final variable = p.currentPrice * p.variablePercent / 100;
     final parts = [
       ('Material', p.materialCost, const Color(0xFF38BDF8)),
-      ('Custo fixo', p.fixedCostShare, const Color(0xFF8E2DE2)),
+      ('Custo fixo', p.fixedCostShare, Brand.violet),
       ('Comissão + taxas', variable, Brand.gold),
       (p.currentProfit >= 0 ? 'Lucro' : 'Prejuízo', p.currentProfit.abs(), p.currentProfit >= 0 ? const Color(0xFF10B981) : const Color(0xFFE11D48)),
     ];
@@ -374,7 +374,7 @@ class _Value extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             gradient: highlight ? Brand.gradient : null,
-            color: highlight ? null : const Color(0xFFFFF7FA),
+            color: highlight ? null : Brand.canvas,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

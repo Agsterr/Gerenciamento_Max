@@ -169,7 +169,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     padding: const EdgeInsets.all(14),
                     onTap: () => showFindBookingsSheet(context, api: widget.api, store: widget.store).then((_) => _load()),
                     child: Row(children: [
-                      const Icon(Icons.login_rounded, color: Brand.rose),
+                      Icon(Icons.login_rounded, color: Brand.rose),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -188,7 +188,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               child: SoftCard(
                 padding: const EdgeInsets.all(14),
                 child: Row(children: [
-                  const Icon(Icons.notifications_active_rounded, color: Brand.rose),
+                  Icon(Icons.notifications_active_rounded, color: Brand.rose),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text('O salão alterou ${saved.where(_changed).length == 1 ? 'um horário seu' : 'horários seus'}. Toque para ver.',
@@ -216,7 +216,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       textInputAction: TextInputAction.search,
                       decoration: InputDecoration(
                         labelText: 'Buscar nos meus horários',
-                        prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
+                        prefixIcon: Icon(Icons.search_rounded, color: Brand.rose),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
                       ),
                       onChanged: (v) => setState(() {

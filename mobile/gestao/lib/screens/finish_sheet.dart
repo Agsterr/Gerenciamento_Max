@@ -179,7 +179,7 @@ class _FinishSheetState extends State<_FinishSheet> {
                 const Text('Total a receber', style: TextStyle(fontWeight: FontWeight.w700)),
                 const Spacer(),
                 Text(formatMoney(_priceValue + _sales),
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Brand.rose)),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Brand.rose)),
               ]),
             ),
             const SizedBox(height: 16),

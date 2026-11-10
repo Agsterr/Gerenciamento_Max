@@ -14,6 +14,7 @@ import 'screens/salon_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ThemeController.instance.load();
   await initializeDateFormatting('pt_BR');
   await LocalReminders.instance.init();
   final store = await BookingStore.load();
@@ -76,7 +77,7 @@ class _ClienteAppState extends State<ClienteApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return ThemedApp(builder: (context) => MaterialApp(
       title: 'Salão Max',
       navigatorKey: _navigator,
       debugShowCheckedModeBanner: false,
@@ -93,6 +94,6 @@ class _ClienteAppState extends State<ClienteApp> {
         child: AppUpdateListener(service: widget.updates, navigatorKey: _navigator, child: child!),
       ),
       home: HomeScreen(store: widget.store, api: widget.api),
-    );
+    ));
   }
 }

@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: Brand.nightDeep,
       body: Container(
-        decoration: const BoxDecoration(gradient: Brand.nightGradient),
+        decoration: BoxDecoration(gradient: Brand.nightGradient),
         child: Stack(children: [
           Positioned(
             top: -120,

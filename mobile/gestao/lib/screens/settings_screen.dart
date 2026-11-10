@@ -125,7 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Row(children: [
               Container(
                 padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(gradient: Brand.gradient, shape: BoxShape.circle),
+                decoration: BoxDecoration(gradient: Brand.gradient, shape: BoxShape.circle),
                 child: InitialsAvatar(user.name, size: 60),
               ),
               const SizedBox(width: 14),
@@ -146,6 +146,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               BookingLinkCard(link: _publicLink),
+              const SectionTitle('Cor do aplicativo'),
+              SoftCard(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Escolha a cor que combina com você. Muda o app todo e o ícone.',
+                      style: text.bodySmall?.copyWith(color: Brand.muted)),
+                  const SizedBox(height: 14),
+                  const ThemePicker(),
+                ]),
+              ),
               if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!)),
               if (owner && salon != null) ...[
                 const SectionTitle('Funcionamento'),

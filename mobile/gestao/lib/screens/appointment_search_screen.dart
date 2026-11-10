@@ -75,7 +75,7 @@ class _AppointmentSearchScreenState extends State<AppointmentSearchScreen> {
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
                   labelText: 'Nome, telefone, serviço ou profissional',
-                  prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
+                  prefixIcon: Icon(Icons.search_rounded, color: Brand.rose),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
                 ),
                 onChanged: _list.search,

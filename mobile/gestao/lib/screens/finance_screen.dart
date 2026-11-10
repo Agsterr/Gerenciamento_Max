@@ -234,7 +234,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(18),
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PricingScreen(api: _api))),
-                      child: const Padding(
+                      child: Padding(
                         padding: EdgeInsets.all(14),
                         child: Row(children: [
                           Icon(Icons.calculate_rounded, color: Brand.rose),
@@ -331,7 +331,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       for (final (label, value, color) in [
                         ('Custos dos atendimentos', s.money('commissions') + s.money('serviceMaterialCost') + s.money('productsUsedCost'), Brand.rose),
                         ('Despesas fixas', s.money('fixedExpenses'), const Color(0xFF6366F1)),
-                        ('Despesas variáveis', s.money('variableExpenses'), const Color(0xFF8E2DE2)),
+                        ('Despesas variáveis', s.money('variableExpenses'), Brand.violet),
                         ('Custo dos produtos vendidos', s.money('productsSoldCost'), const Color(0xFFFFB547)),
                       ])
                         _Bar(label: label, value: value, total: s.money('totalCosts'), color: color),

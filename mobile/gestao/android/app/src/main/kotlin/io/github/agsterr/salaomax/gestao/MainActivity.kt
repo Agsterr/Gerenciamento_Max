@@ -8,5 +8,6 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         // Canal "direct" registra o instalador de atualização; o canal "play" não faz nada.
         DistributionChannel.register(this, flutterEngine)
+        AppIcon.register(this, flutterEngine)
     }
 }

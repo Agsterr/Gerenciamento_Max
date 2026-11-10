@@ -244,7 +244,7 @@ class _SalonScreenState extends State<SalonScreen> {
       child: SoftCard(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: SwitchListTile(
-          secondary: const Icon(Icons.local_offer_outlined, color: Brand.rose),
+          secondary: Icon(Icons.local_offer_outlined, color: Brand.rose),
           title: const Text('Avisos de promoção deste salão'),
           subtitle: Text(store.promoAlertsOff ? 'Desligados para todos os salões (em Sobre)' : 'Notificação quando sair promoção'),
           value: store.promoAlertsOn(widget.slug),
@@ -304,7 +304,7 @@ class _SalonScreenState extends State<SalonScreen> {
       flexibleSpace: FlexibleSpaceBar(
         collapseMode: CollapseMode.parallax,
         background: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: Brand.gradient,
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
           ),
@@ -756,7 +756,7 @@ class _NoProfessionalCard extends StatelessWidget {
       child: SoftCard(
         padding: const EdgeInsets.all(16),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Icon(Icons.info_outline_rounded, color: Brand.rose),
+          Icon(Icons.info_outline_rounded, color: Brand.rose),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

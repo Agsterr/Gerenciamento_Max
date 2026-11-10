@@ -171,7 +171,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   hintText: 'Nome do salão ou link',
                   labelText: 'Buscar salão',
                   floatingLabelBehavior: FloatingLabelBehavior.never,
-                  prefixIcon: const Icon(Icons.search_rounded, color: Brand.rose),
+                  prefixIcon: Icon(Icons.search_rounded, color: Brand.rose),
                   suffixIcon: _query.text.isEmpty
                       ? null
                       : IconButton(
@@ -282,7 +282,7 @@ class _SalonCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(color: const Color(0xFFFFEAF2), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.arrow_forward_rounded, color: Brand.rose, size: 20),
+            child: Icon(Icons.arrow_forward_rounded, color: Brand.rose, size: 20),
           ),
       ]),
     );
@@ -363,7 +363,7 @@ class PromoBanner extends StatelessWidget {
                       TextSpan(text: '$name: de '),
                       TextSpan(text: formatMoney(from), style: const TextStyle(decoration: TextDecoration.lineThrough)),
                       const TextSpan(text: ' por '),
-                      TextSpan(text: formatMoney(to), style: const TextStyle(fontWeight: FontWeight.w800, color: Brand.rose)),
+                      TextSpan(text: formatMoney(to), style: TextStyle(fontWeight: FontWeight.w800, color: Brand.rose)),
                     ]),
                     style: text.bodySmall?.copyWith(color: Brand.ink),
                   ),
