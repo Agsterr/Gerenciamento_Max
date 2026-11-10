@@ -109,10 +109,13 @@ function Orders() {
       {summary && (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="A receber dos salões" value={formatCents(summary.toReceiveCents)} hint="pedidos menos as baixas" />
+            <Stat label="A receber" value={formatCents(summary.toReceiveCents)} hint="de salões e clientes, menos as baixas" />
             <Stat label="Já recebido" value={formatCents(summary.receivedCents)} />
             <Stat label="Pedidos em andamento" value={String(summary.openOrders)} />
             <Stat label="Novos para aceitar" value={String(summary.pendingOrders)} />
+            {summary.commissionOwedCents > 0 && (
+              <Stat label="Comissões a repassar" value={formatCents(summary.commissionOwedCents)} hint="de vendas às clientes dos salões, já entregues" />
+            )}
           </div>
           {summary.deliveries.length > 0 && (
             <Card>
@@ -166,7 +169,10 @@ function Orders() {
                       </p>
                     )}
                   </div>
-                  <Badge className={color}>{label}</Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge className={color}>{label}</Badge>
+                    {o.origin === "CUSTOMER" && <Badge className="bg-sky-100 text-sky-800">Cliente do salão</Badge>}
+                  </div>
                 </div>
                 <ul className="mt-3 divide-y divide-zinc-100 text-sm">
                   {o.items.map((i, idx) => (
@@ -193,16 +199,33 @@ function Orders() {
                     <p className="font-extrabold text-brand-rose">{formatCents(o.balanceCents)}</p>
                   </div>
                 </div>
+                {o.origin === "CUSTOMER" && (
+                  <p className="mt-2 rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900">
+                    Pedido de cliente de <b>{o.salonName}</b>: a cliente paga {formatCents(o.totalCents)}. Comissão do salão:{" "}
+                    <b>{formatCents(o.commissionCents)}</b> · fica para você <b>{formatCents(o.netCents)}</b>.
+                    {o.commissionSettled && " Comissão já repassada."}
+                  </p>
+                )}
                 {o.payments.length > 0 && (
                   <p className="mt-2 text-xs text-zinc-500">
                     Baixas: {o.payments.map((p) => `${formatCents(p.amountCents)} (${p.method})`).join(" · ")}
                   </p>
                 )}
-                {o.status === "SHIPPED" && <p className="mt-2 text-sm text-violet-700">Aguardando o salão confirmar o recebimento.</p>}
+                {o.status === "SHIPPED" && o.origin === "SALON" && <p className="mt-2 text-sm text-violet-700">Aguardando o salão confirmar o recebimento.</p>}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {next && (
                     <Button size="sm" onClick={() => act(() => api.put(`/api/representative/shop/orders/${o.id}/status`, { status: next[0] }))}>
                       {next[1]}
+                    </Button>
+                  )}
+                  {o.origin === "CUSTOMER" && o.status === "SHIPPED" && (
+                    <Button size="sm" onClick={() => act(() => api.put(`/api/representative/shop/orders/${o.id}/status`, { status: "DELIVERED" }))}>
+                      Marcar como entregue
+                    </Button>
+                  )}
+                  {o.origin === "CUSTOMER" && o.status === "DELIVERED" && !o.commissionSettled && (
+                    <Button size="sm" onClick={() => act(() => api.post(`/api/representative/shop/orders/${o.id}/commission`))}>
+                      Comissão repassada ao salão
                     </Button>
                   )}
                   {o.status === "PENDING" && (

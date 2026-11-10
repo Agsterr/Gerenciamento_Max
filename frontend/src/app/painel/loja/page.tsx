@@ -110,6 +110,10 @@ export default function ShopPage() {
               await api.put(`/api/shop/products/${p.id}/visible`, { visible: v });
               reload();
             }}
+            onShowcase={async (on) => {
+              await api.put(`/api/shop/products/${p.id}/showcase`, { on });
+              reload();
+            }}
           />
         ))}
       </div>
@@ -143,7 +147,7 @@ export default function ShopPage() {
   );
 }
 
-function ProductCard({ p, qty, onQty, onVisible }: { p: ShopProduct; qty: number; onQty: (n: number) => void; onVisible: (v: boolean) => void }) {
+function ProductCard({ p, qty, onQty, onVisible, onShowcase }: { p: ShopProduct; qty: number; onQty: (n: number) => void; onVisible: (v: boolean) => void; onShowcase: (on: boolean) => void }) {
   return (
     <Card className={p.hidden ? "opacity-60" : ""}>
       {p.thumbUrl ? (
@@ -158,6 +162,7 @@ function ProductCard({ p, qty, onQty, onVisible }: { p: ShopProduct; qty: number
           </Badge>
         ))}
         {p.hidden && <Badge className="bg-zinc-200 text-zinc-700">Oculto da sua vitrine</Badge>}
+        {p.showcase && !p.hidden && <Badge className="bg-sky-100 text-sky-800">Visível para clientes</Badge>}
       </div>
       <p className="font-extrabold text-brand-ink">{p.name}</p>
       {p.category && <p className="text-sm text-zinc-500">{p.category}</p>}
@@ -177,6 +182,17 @@ function ProductCard({ p, qty, onQty, onVisible }: { p: ShopProduct; qty: number
           <p className="font-extrabold text-emerald-700">{formatCents(p.gainCents)}</p>
         </div>
       </div>
+      {!p.hidden && (
+        <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl bg-[#FFF1F6] px-3 py-2 text-sm font-semibold text-brand-ink">
+          <input type="checkbox" className="mt-0.5" checked={p.showcase} onChange={(e) => onShowcase(e.target.checked)} />
+          <span>
+            Mostrar para minhas clientes
+            <span className="block text-xs font-normal text-zinc-600">
+              Aparece na sua página de agendamento por {formatCents(p.suggestedCents)}. O pedido vai direto ao representante e você ganha {formatCents(p.gainCents)} por unidade.
+            </span>
+          </span>
+        </label>
+      )}
       <div className="mt-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <button aria-label="Menos" className="h-9 w-9 rounded-xl bg-zinc-100 text-lg font-bold" onClick={() => onQty(qty - 1)}>

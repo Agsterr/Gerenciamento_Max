@@ -13,6 +13,7 @@ const STEPS = ["PENDING", "PREPARING", "SHIPPED", "DELIVERED"] as const;
 /** "Minhas compras": os pedidos do salão na loja do representante, com a situação de cada um e o que ainda falta pagar. */
 export default function PurchasesPage() {
   const { data: orders, error, reload } = useApi<ShopOrder[]>("/api/shop/orders");
+  const { data: sales } = useApi<ShopOrder[]>("/api/shop/customer-orders");
   const { data: balance, reload: reloadBalance } = useApi<{ owedCents: number; paidCents: number }>("/api/shop/balance");
   const [msg, setMsg] = useState<string>();
 
@@ -106,6 +107,45 @@ export default function PurchasesPage() {
           );
         })}
       </div>
+      {sales && sales.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-lg font-extrabold text-brand-ink">Vendas para minhas clientes</h2>
+          <p className="mb-3 text-sm text-zinc-600">
+            Pedidos que suas clientes fizeram pela sua página. Vão direto ao representante, que entrega e repassa a sua comissão.
+          </p>
+          <div className="mb-3 grid grid-cols-2 gap-3">
+            <Stat
+              label="Comissão a receber"
+              value={formatCents(sales.filter((o) => o.status === "DELIVERED" && !o.commissionSettled).reduce((t, o) => t + o.commissionCents, 0))}
+              hint="de pedidos já entregues"
+            />
+            <Stat label="Comissão já repassada" value={formatCents(sales.filter((o) => o.commissionSettled).reduce((t, o) => t + o.commissionCents, 0))} />
+          </div>
+          <div className="space-y-3">
+            {sales.map((o) => {
+              const [label, color] = SHOP_STATUS[o.status];
+              return (
+                <Card key={o.id}>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="font-extrabold text-brand-ink">
+                        {o.contactName} · {formatCents(o.totalCents)}
+                      </p>
+                      <p className="text-sm text-zinc-500">{formatDateTime(o.createdAt)}</p>
+                    </div>
+                    <Badge className={color}>{label}</Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-zinc-700">{o.items.map((i) => `${i.quantity} × ${i.name}`).join(", ")}</p>
+                  <p className="mt-2 text-sm">
+                    Sua comissão: <b className="text-emerald-700">{formatCents(o.commissionCents)}</b>
+                    {o.commissionSettled ? " · repassada" : o.status === "DELIVERED" ? " · a receber" : o.status === "CANCELED" ? "" : " · depois da entrega"}
+                  </p>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </>
   );
 }

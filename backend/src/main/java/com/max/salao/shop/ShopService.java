@@ -43,7 +43,7 @@ public class ShopService {
     public record ProductView(Long id, String name, String description, String kind, String category, int costCents,
                               int suggestedCents, Integer promoCents, LocalDate promoUntil, int priceCents,
                               int gainCents, boolean onPromo, boolean isNew, List<String> tags, String imageUrl,
-                              String thumbUrl, boolean active, boolean hidden) {
+                              String thumbUrl, boolean active, boolean hidden, boolean showcase) {
     }
 
     public record Catalog(boolean available, String representativeName, List<ProductView> products,
@@ -63,8 +63,8 @@ public class ShopService {
     public record PaymentView(Long id, int amountCents, String method, String note, LocalDateTime createdAt) {
     }
 
-    public record OrderView(Long id, String status, long totalCents, long paidCents, long balanceCents,
-                            long gainCents, LocalDateTime createdAt, LocalDateTime updatedAt, Long salonId,
+    public record OrderView(Long id, String origin, String status, long totalCents, long paidCents, long balanceCents,
+                            long gainCents, long commissionCents, boolean commissionSettled, long netCents, LocalDateTime createdAt, LocalDateTime updatedAt, Long salonId,
                             String salonName, String contactName, String phone, String address, String neighborhood,
                             String city, String note, List<ItemView> items, List<PaymentView> payments) {
     }
@@ -73,7 +73,19 @@ public class ShopService {
     }
 
     public record Summary(long toReceiveCents, long receivedCents, int openOrders, int pendingOrders,
-                          List<Delivery> deliveries) {
+                          long commissionOwedCents, List<Delivery> deliveries) {
+    }
+
+    /** Produto na vitrine pública do salão: o preço é o sugerido (o que a cliente paga). */
+    public record PublicShopProduct(Long id, String name, String description, String category, int priceCents,
+                                    List<String> tags, String imageUrl, String thumbUrl) {
+    }
+
+    public record CustomerOrderRequest(List<ItemRequest> items, String name, String phone, String address,
+                                       String neighborhood, String city, String note) {
+    }
+
+    public record CustomerOrderReceipt(Long id, long totalCents, String representativeName) {
     }
 
     private final JdbcTemplate jdbc;
@@ -189,7 +201,7 @@ public class ShopService {
     @Transactional(readOnly = true)
     public Summary summary(long repId) {
         List<OrderView> all = orders("o.representative_id = ?", new Object[] {repId});
-        long toReceive = 0, received = 0;
+        long toReceive = 0, received = 0, commissionOwed = 0;
         int open = 0, pending = 0;
         Map<String, long[]> groups = new LinkedHashMap<>();
         Map<String, String[]> names = new LinkedHashMap<>();
@@ -199,6 +211,9 @@ public class ShopService {
             }
             toReceive += o.balanceCents();
             received += o.paidCents();
+            if ("CUSTOMER".equals(o.origin()) && "DELIVERED".equals(o.status()) && !o.commissionSettled()) {
+                commissionOwed += o.commissionCents();
+            }
             if ("PENDING".equals(o.status())) {
                 pending++;
             }
@@ -214,7 +229,7 @@ public class ShopService {
                 .map(e -> new Delivery(names.get(e.getKey())[0], names.get(e.getKey())[1], (int) e.getValue()[0], e.getValue()[1]))
                 .sorted(java.util.Comparator.comparing(d -> d.neighborhood().toLowerCase()))
                 .toList();
-        return new Summary(toReceive, received, open, pending, deliveries);
+        return new Summary(toReceive, received, open, pending, commissionOwed, deliveries);
     }
 
     @Transactional
@@ -224,6 +239,8 @@ public class ShopService {
         boolean ok = switch (status) {
             case "PREPARING" -> current.equals("PENDING");
             case "SHIPPED" -> current.equals("PENDING") || current.equals("PREPARING");
+            // pedido de cliente do salão: quem recebe é a cliente, então o representante marca a entrega
+            case "DELIVERED" -> "CUSTOMER".equals(o.origin()) && current.equals("SHIPPED");
             case "CANCELED" -> !current.equals("DELIVERED") && !current.equals("CANCELED");
             default -> false;
         };
@@ -252,6 +269,20 @@ public class ShopService {
         return ownOrder(repId, orderId);
     }
 
+    /** Registra que o representante repassou a comissão do pedido ao salão (ou descontou do que ele deve). */
+    @Transactional
+    public OrderView settleCommission(long repId, long orderId) {
+        OrderView o = ownOrder(repId, orderId);
+        if (!"CUSTOMER".equals(o.origin()) || !"DELIVERED".equals(o.status())) {
+            throw new BusinessException("A comissão só é repassada depois que o pedido de cliente foi entregue");
+        }
+        if (o.commissionSettled()) {
+            throw new BusinessException("Esta comissão já foi repassada");
+        }
+        jdbc.update("update shop_order set commission_settled = true, updated_at = ? where id = ?", now(), orderId);
+        return ownOrder(repId, orderId);
+    }
+
     private OrderView ownOrder(long repId, long orderId) {
         List<OrderView> l = orders("o.id = ? and o.representative_id = ?", new Object[] {orderId, repId});
         if (l.isEmpty()) {
@@ -274,10 +305,11 @@ public class ShopService {
             return new Catalog(false, null, List.of(), List.of());
         }
         String name = jdbc.queryForObject("select u.name from representative r join app_user u on u.id = r.user_id where r.id = ?", String.class, rep);
-        List<ProductView> products = jdbc.query("select p.*, (h.product_id is not null) as hidden from shop_product p "
+        List<ProductView> products = jdbc.query("select p.*, (h.product_id is not null) as hidden, (sc.product_id is not null) as showcase from shop_product p "
                 + "left join shop_hidden h on h.product_id = p.id and h.salon_id = ? "
+                + "left join shop_showcase sc on sc.product_id = p.id and sc.salon_id = ? "
                 + "where p.representative_id = ? and p.active order by p.created_at desc, p.id desc",
-                (rs, i) -> product(rs, true), salonId, rep);
+                (rs, i) -> product(rs, true), salonId, salonId, rep);
         List<String> categories = products.stream().map(ProductView::category).filter(c -> c != null && !c.isBlank())
                 .distinct().sorted(String.CASE_INSENSITIVE_ORDER).toList();
         return new Catalog(true, firstName(name), products, categories);
@@ -295,6 +327,103 @@ public class ShopService {
         } else {
             jdbc.update("insert into shop_hidden (salon_id, product_id) values (?, ?) on conflict do nothing", salonId, productId);
         }
+    }
+
+    /** Marca (ou desmarca) um produto do representante para as clientes do salão verem na página de agendamento. */
+    @Transactional
+    public void setShowcase(long salonId, long productId, boolean on) {
+        Long rep = referrerOf(salonId);
+        Integer ok = rep == null ? 0 : jdbc.queryForObject("select count(*) from shop_product where id = ? and representative_id = ? and active", Integer.class, productId, rep);
+        if (ok == null || ok == 0) {
+            throw new NotFoundException("Produto não encontrado");
+        }
+        if (on) {
+            jdbc.update("insert into shop_showcase (salon_id, product_id) values (?, ?) on conflict do nothing", salonId, productId);
+        } else {
+            jdbc.update("delete from shop_showcase where salon_id = ? and product_id = ?", salonId, productId);
+        }
+    }
+
+    /** Vitrine pública: o que o salão marcou, ativo e que ele não ocultou. */
+    @Transactional(readOnly = true)
+    public List<PublicShopProduct> publicShowcase(long salonId) {
+        Long rep = referrerOf(salonId);
+        if (rep == null) {
+            return List.of();
+        }
+        return jdbc.query("select p.* from shop_product p join shop_showcase sc on sc.product_id = p.id and sc.salon_id = ? "
+                + "where p.representative_id = ? and p.active and p.suggested_cents > 0 "
+                + "and not exists (select 1 from shop_hidden h where h.product_id = p.id and h.salon_id = ?) "
+                + "order by p.created_at desc, p.id desc", (rs, i) -> {
+            ProductView p = product(rs, false);
+            return new PublicShopProduct(p.id(), p.name(), p.description(), p.category(), p.suggestedCents(),
+                    p.tags().stream().filter(t -> !t.equals("PROMOCAO")).toList(), p.imageUrl(), p.thumbUrl());
+        }, salonId, rep, salonId);
+    }
+
+    /** Pedido de uma cliente do salão: vai direto para o representante; o salão ganha a comissão. */
+    @Transactional
+    public CustomerOrderReceipt placeCustomerOrder(long salonId, CustomerOrderRequest r) {
+        Long rep = referrerOf(salonId);
+        if (rep == null) {
+            throw new NotFoundException("Produto não encontrado");
+        }
+        if (r.items() == null || r.items().isEmpty()) {
+            throw new BusinessException("Escolha pelo menos um produto");
+        }
+        String name = r.name() == null ? "" : r.name().trim();
+        String phone = blank(r.phone());
+        String neighborhood = blank(r.neighborhood());
+        if (name.isEmpty() || phone == null || neighborhood == null) {
+            throw new BusinessException("Informe seu nome, WhatsApp e bairro para a entrega");
+        }
+        Map<Long, Integer> qty = new LinkedHashMap<>();
+        for (ItemRequest it : r.items()) {
+            if (it.productId() == null || it.quantity() <= 0 || it.quantity() > 99) {
+                throw new BusinessException("Quantidade inválida");
+            }
+            qty.merge(it.productId(), it.quantity(), Integer::sum);
+        }
+        Map<Long, PublicShopProduct> offered = publicShowcase(salonId).stream().collect(Collectors.toMap(PublicShopProduct::id, p -> p));
+        String salonName = jdbc.queryForObject("select name from salon where id = ?", String.class, salonId);
+        List<ItemView> items = new ArrayList<>();
+        long total = 0, commission = 0;
+        for (Map.Entry<Long, Integer> e : qty.entrySet()) {
+            PublicShopProduct offer = offered.get(e.getKey());
+            if (offer == null) {
+                throw new BusinessException("Um dos produtos não está mais disponível.");
+            }
+            ProductView p = one(rep, e.getKey());
+            items.add(new ItemView(p.id(), p.name(), e.getValue(), p.suggestedCents(), p.suggestedCents()));
+            total += (long) p.suggestedCents() * e.getValue();
+            commission += (long) (p.suggestedCents() - p.priceCents()) * e.getValue();
+        }
+        GeneratedKeyHolder keys = new GeneratedKeyHolder();
+        long totalCents = total, commissionCents = commission;
+        jdbc.update(con -> {
+            var ps = con.prepareStatement("insert into shop_order (representative_id, salon_id, salon_name, contact_name, phone, "
+                    + "address, neighborhood, city, note, total_cents, origin, commission_cents) values (?,?,?,?,?,?,?,?,?,?,'CUSTOMER',?)",
+                    Statement.RETURN_GENERATED_KEYS);
+            ps.setLong(1, rep);
+            ps.setLong(2, salonId);
+            ps.setString(3, salonName);
+            ps.setString(4, name);
+            ps.setString(5, phone);
+            ps.setString(6, blank(r.address()));
+            ps.setString(7, neighborhood);
+            ps.setString(8, blank(r.city()));
+            ps.setString(9, blank(r.note()));
+            ps.setLong(10, totalCents);
+            ps.setLong(11, commissionCents);
+            return ps;
+        }, keys);
+        long orderId = ((Number) keys.getKeys().get("id")).longValue();
+        for (ItemView it : items) {
+            jdbc.update("insert into shop_order_item (order_id, product_id, name, quantity, unit_cents, suggested_cents) values (?,?,?,?,?,?)",
+                    orderId, it.productId(), it.name(), it.quantity(), it.unitCents(), it.suggestedCents());
+        }
+        String repName = jdbc.queryForObject("select u.name from representative r join app_user u on u.id = r.user_id where r.id = ?", String.class, rep);
+        return new CustomerOrderReceipt(orderId, totalCents, firstName(repName));
     }
 
     @Transactional
@@ -364,7 +493,13 @@ public class ShopService {
 
     @Transactional(readOnly = true)
     public List<OrderView> salonOrders(long salonId) {
-        return orders("o.salon_id = ?", new Object[] {salonId});
+        return orders("o.salon_id = ? and o.origin = 'SALON'", new Object[] {salonId});
+    }
+
+    /** Vendas feitas às clientes do salão pela vitrine pública (o pedido vai direto ao representante). */
+    @Transactional(readOnly = true)
+    public List<OrderView> salonCustomerOrders(long salonId) {
+        return orders("o.salon_id = ? and o.origin = 'CUSTOMER'", new Object[] {salonId});
     }
 
     /** Endereço que o salão já informou, para preencher o pedido. */
@@ -407,7 +542,7 @@ public class ShopService {
     }
 
     private OrderView ownSalonOrder(long salonId, long orderId) {
-        List<OrderView> l = orders("o.id = ? and o.salon_id = ?", new Object[] {orderId, salonId});
+        List<OrderView> l = orders("o.id = ? and o.salon_id = ? and o.origin = 'SALON'", new Object[] {orderId, salonId});
         if (l.isEmpty()) {
             throw new NotFoundException("Pedido não encontrado");
         }
@@ -441,7 +576,9 @@ public class ShopService {
             long total = ((Number) r.get("total_cents")).longValue();
             long paid = ps.stream().mapToLong(PaymentView::amountCents).sum();
             long gain = its.stream().mapToLong(i -> (long) (i.suggestedCents() - i.unitCents()) * i.quantity()).sum();
-            out.add(new OrderView(id, (String) r.get("status"), total, paid, total - paid, gain,
+            long commission = ((Number) r.get("commission_cents")).longValue();
+            out.add(new OrderView(id, (String) r.get("origin"), (String) r.get("status"), total, paid, total - paid, gain,
+                    commission, (Boolean) r.get("commission_settled"), total - commission,
                     ((Timestamp) r.get("created_at")).toLocalDateTime(), ((Timestamp) r.get("updated_at")).toLocalDateTime(),
                     ((Number) r.get("salon_id")).longValue(), (String) r.get("salon_name"), (String) r.get("contact_name"),
                     (String) r.get("phone"), (String) r.get("address"), (String) r.get("neighborhood"), (String) r.get("city"),
@@ -472,7 +609,8 @@ public class ShopService {
         }
         return new ProductView(rs.getLong("id"), rs.getString("name"), rs.getString("description"), kind, rs.getString("category"),
                 cost, suggested, promo, until == null ? null : until.toLocalDate(), price, suggested - price, onPromo, isNew, tags,
-                rs.getString("image_url"), rs.getString("thumb_url"), rs.getBoolean("active"), withHidden && rs.getBoolean("hidden"));
+                rs.getString("image_url"), rs.getString("thumb_url"), rs.getBoolean("active"), withHidden && rs.getBoolean("hidden"),
+                withHidden && rs.getBoolean("showcase"));
     }
 
     private LocalDateTime now() {

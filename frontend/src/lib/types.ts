@@ -604,6 +604,8 @@ export type ShopProduct = {
   thumbUrl: string | null;
   active: boolean;
   hidden: boolean;
+  /** O salão marcou para as clientes dele verem na página de agendamento. */
+  showcase: boolean;
 };
 
 export type ShopCatalog = { available: boolean; representativeName: string | null; products: ShopProduct[]; categories: string[] };
@@ -612,6 +614,11 @@ export type ShopOrderStatus = "PENDING" | "PREPARING" | "SHIPPED" | "DELIVERED" 
 
 export type ShopOrder = {
   id: number;
+  /** SALON = compra do salão; CUSTOMER = pedido de uma cliente do salão (vai direto ao representante). */
+  origin: "SALON" | "CUSTOMER";
+  commissionCents: number;
+  commissionSettled: boolean;
+  netCents: number;
   status: ShopOrderStatus;
   totalCents: number;
   paidCents: number;
@@ -636,5 +643,17 @@ export type ShopSummary = {
   receivedCents: number;
   openOrders: number;
   pendingOrders: number;
+  commissionOwedCents: number;
   deliveries: { neighborhood: string; city: string; orders: number; totalCents: number }[];
+};
+
+export type PublicShopProduct = {
+  id: number;
+  name: string;
+  description: string | null;
+  category: string | null;
+  priceCents: number;
+  tags: string[];
+  imageUrl: string | null;
+  thumbUrl: string | null;
 };

@@ -36,7 +36,7 @@ class ShopIntegrationTest {
     private record Rep(String token, String code) {
     }
 
-    private record Salon(String token) {
+    private record Salon(String token, String slug) {
     }
 
     @Test
@@ -155,6 +155,77 @@ class ShopIntegrationTest {
         call(salon.token(), get("/api/representative/shop/products"), null, status().isForbidden());
     }
 
+    @Test
+    void customersOfTheSalonOrderRepresentativeProductsAndSalonEarnsCommission() throws Exception {
+        Rep rep = representative("Marcos Vendas");
+        Salon salon = salon(rep.code());
+        Salon stranger = salon(null);
+        long shampoo = call(rep.token(), post("/api/representative/shop/products"), Map.of("name", "Shampoo Pro", "costCents", 3000,
+                "suggestedCents", 4500, "active", true), status().isCreated()).get("id").asLong();
+        long mask = call(rep.token(), post("/api/representative/shop/products"), Map.of("name", "Máscara", "costCents", 4000,
+                "suggestedCents", 6000, "promoCents", 3500, "promoUntil", LocalDate.now().plusDays(3).toString(), "active", true),
+                status().isCreated()).get("id").asLong();
+        long other = call(rep.token(), post("/api/representative/shop/products"), Map.of("name", "Não marcado", "costCents", 100,
+                "suggestedCents", 200, "active", true), status().isCreated()).get("id").asLong();
+
+        // só o que o salão marcou aparece para as clientes, pelo preço sugerido; quem não tem representante não tem vitrine
+        String base = "/api/public/salons/" + salon.slug();
+        assertThat(call(null, get(base + "/shop-products"), null, status().isOk())).isEmpty();
+        call(salon.token(), put("/api/shop/products/" + shampoo + "/showcase"), Map.of("on", true), status().isNoContent());
+        call(salon.token(), put("/api/shop/products/" + mask + "/showcase"), Map.of("on", true), status().isNoContent());
+        call(stranger.token(), put("/api/shop/products/" + shampoo + "/showcase"), Map.of("on", true), status().isNotFound());
+        JsonNode shown = call(null, get(base + "/shop-products"), null, status().isOk());
+        assertThat(shown).hasSize(2);
+        assertThat(shown.findValuesAsText("name")).containsExactlyInAnyOrder("Shampoo Pro", "Máscara");
+        assertThat(shown.toString()).contains("4500", "6000").doesNotContain("costCents");
+        assertThat(call(null, get("/api/public/salons/" + stranger.slug() + "/shop-products"), null, status().isOk())).isEmpty();
+
+        // a cliente pede: valida dados, produto marcado e quantidade
+        Map<String, Object> ok = Map.of("items", List.of(Map.of("productId", shampoo, "quantity", 2), Map.of("productId", mask, "quantity", 1)),
+                "name", "Ana Cliente", "phone", "11988887777", "address", "Rua B, 5", "neighborhood", "Vila Nova", "city", "Santos");
+        call(null, post(base + "/shop-orders"), Map.of("items", List.of(Map.of("productId", shampoo, "quantity", 1)), "name", "Ana"), status().isUnprocessableEntity());
+        call(null, post(base + "/shop-orders"), Map.of("items", List.of(Map.of("productId", other, "quantity", 1)), "name", "Ana",
+                "phone", "11988887777", "neighborhood", "Vila Nova"), status().isUnprocessableEntity());
+        call(null, post("/api/public/salons/" + stranger.slug() + "/shop-orders"), ok, status().isNotFound());
+        JsonNode receipt = call(null, post(base + "/shop-orders"), ok, status().isCreated());
+        long orderId = receipt.get("id").asLong();
+        assertThat(receipt.get("totalCents").asLong()).isEqualTo(2 * 4500 + 6000);
+        assertThat(receipt.get("representativeName").asText()).isEqualTo("Marcos");
+
+        // vai direto ao representante, com a comissão do salão (preço sugerido menos o valor do salão, com a promoção)
+        JsonNode orders = call(rep.token(), get("/api/representative/shop/orders"), null, status().isOk());
+        assertThat(orders).hasSize(1);
+        JsonNode o = orders.get(0);
+        assertThat(o.get("origin").asText()).isEqualTo("CUSTOMER");
+        assertThat(o.get("contactName").asText()).isEqualTo("Ana Cliente");
+        assertThat(o.get("neighborhood").asText()).isEqualTo("Vila Nova");
+        assertThat(o.get("commissionCents").asLong()).isEqualTo(2 * 1500 + 2500);
+        assertThat(o.get("netCents").asLong()).isEqualTo(15000 - 5500);
+
+        // não entra nas compras do salão nem na dívida dele; aparece nas vendas às clientes
+        assertThat(call(salon.token(), get("/api/shop/orders"), null, status().isOk())).isEmpty();
+        assertThat(call(salon.token(), get("/api/shop/balance"), null, status().isOk()).get("owedCents").asLong()).isZero();
+        assertThat(call(salon.token(), get("/api/shop/customer-orders"), null, status().isOk())).hasSize(1);
+        call(salon.token(), post("/api/shop/orders/" + orderId + "/cancel"), null, status().isNotFound());
+
+        // o representante entrega; a comissão só é devida depois da entrega e é repassada uma vez
+        call(rep.token(), post("/api/representative/shop/orders/" + orderId + "/commission"), null, status().isUnprocessableEntity());
+        call(rep.token(), put("/api/representative/shop/orders/" + orderId + "/status"), Map.of("status", "DELIVERED"), status().isUnprocessableEntity());
+        call(rep.token(), put("/api/representative/shop/orders/" + orderId + "/status"), Map.of("status", "SHIPPED"), status().isOk());
+        assertThat(call(rep.token(), get("/api/representative/shop/summary"), null, status().isOk()).get("commissionOwedCents").asLong()).isZero();
+        assertThat(call(rep.token(), put("/api/representative/shop/orders/" + orderId + "/status"), Map.of("status", "DELIVERED"), status().isOk())
+                .get("status").asText()).isEqualTo("DELIVERED");
+        assertThat(call(rep.token(), get("/api/representative/shop/summary"), null, status().isOk()).get("commissionOwedCents").asLong()).isEqualTo(5500);
+        assertThat(call(rep.token(), post("/api/representative/shop/orders/" + orderId + "/commission"), null, status().isOk())
+                .get("commissionSettled").asBoolean()).isTrue();
+        call(rep.token(), post("/api/representative/shop/orders/" + orderId + "/commission"), null, status().isUnprocessableEntity());
+        assertThat(call(rep.token(), get("/api/representative/shop/summary"), null, status().isOk()).get("commissionOwedCents").asLong()).isZero();
+
+        // desmarcar tira da vitrine
+        call(salon.token(), put("/api/shop/products/" + shampoo + "/showcase"), Map.of("on", false), status().isNoContent());
+        assertThat(call(null, get(base + "/shop-products"), null, status().isOk())).hasSize(1);
+    }
+
     private Map<String, Object> order(long productId, int qty, String neighborhood) {
         return Map.of("items", List.of(Map.of("productId", productId, "quantity", qty)), "contactName", "Dona Rita", "neighborhood", neighborhood);
     }
@@ -173,7 +244,7 @@ class ShopIntegrationTest {
         if (code != null) {
             body.put("referralCode", code);
         }
-        return new Salon(call(null, post("/api/auth/register"), body, status().isCreated()).get("token").asText());
+        return new Salon(call(null, post("/api/auth/register"), body, status().isCreated()).get("token").asText(), slug);
     }
 
     private JsonNode call(String token, MockHttpServletRequestBuilder req, Object body, ResultMatcher expected) throws Exception {

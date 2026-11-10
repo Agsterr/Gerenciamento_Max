@@ -3,7 +3,10 @@ package com.max.salao.shop;
 import java.util.List;
 import java.util.Map;
 
+import com.max.salao.booking.PublicBookingController;
+import com.max.salao.shared.AbuseLimiter;
 import com.max.salao.shared.TenantContext;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
@@ -33,10 +36,15 @@ public class ShopController {
     public record VisibleRequest(boolean visible) {
     }
 
-    private final ShopService shop;
+    public record ShowcaseRequest(boolean on) {
+    }
 
-    public ShopController(ShopService shop) {
+    private final ShopService shop;
+    private final AbuseLimiter abuse;
+
+    public ShopController(ShopService shop, AbuseLimiter abuse) {
         this.shop = shop;
+        this.abuse = abuse;
     }
 
     private long rep(Jwt jwt) {
@@ -93,6 +101,11 @@ public class ShopController {
         return shop.addPayment(rep(jwt), id, req.amountCents(), req.method(), req.note());
     }
 
+    @PostMapping("/api/representative/shop/orders/{id}/commission")
+    public ShopService.OrderView commission(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return shop.settleCommission(rep(jwt), id);
+    }
+
     // ---- salão (dono)
 
     @GetMapping("/api/shop/catalog")
@@ -135,5 +148,30 @@ public class ShopController {
     @GetMapping("/api/shop/balance")
     public Map<String, Object> balance() {
         return shop.salonBalance(TenantContext.get());
+    }
+
+    @PutMapping("/api/shop/products/{id}/showcase")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void showcase(@PathVariable Long id, @RequestBody ShowcaseRequest req) {
+        shop.setShowcase(TenantContext.get(), id, req.on());
+    }
+
+    @GetMapping("/api/shop/customer-orders")
+    public List<ShopService.OrderView> customerOrders() {
+        return shop.salonCustomerOrders(TenantContext.get());
+    }
+
+    // ---- página pública do salão (a cliente vê os produtos que o salão marcou e pede; vai direto ao representante)
+
+    @GetMapping("/api/public/salons/{slug}/shop-products")
+    public List<ShopService.PublicShopProduct> publicProducts() {
+        return shop.publicShowcase(TenantContext.get());
+    }
+
+    @PostMapping("/api/public/salons/{slug}/shop-orders")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ShopService.CustomerOrderReceipt publicOrder(@RequestBody ShopService.CustomerOrderRequest req, HttpServletRequest http) {
+        abuse.check("shop-ip:" + PublicBookingController.clientIp(http), 20, java.time.Duration.ofHours(1));
+        return shop.placeCustomerOrder(TenantContext.get(), req);
     }
 }

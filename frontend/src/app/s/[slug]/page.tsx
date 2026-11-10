@@ -7,6 +7,7 @@ import { SlotPicker } from "@/components/agenda/SlotPicker";
 import { Gallery } from "@/components/Gallery";
 import { AppPromo } from "@/components/InstallApp";
 import { Icon, serviceIcon } from "@/components/Icon";
+import { ShopShowcase } from "@/components/booking/ShopShowcase";
 import { ErrorMessage, Field } from "@/components/ui";
 import { api } from "@/lib/api";
 import { bookableDays, formatDate, formatMoney, groupByCategory, promoPriceOn, whatsappLink } from "@/lib/format";
@@ -464,6 +465,8 @@ export default function PublicBookingPage() {
             </div>
           </section>
         )}
+
+        <ShopShowcase base={base} />
 
         <AppPromo className="mt-10" />
       </div>
