@@ -32,6 +32,8 @@ permissions:
 env:
   API_URL: https://salaomax.focodev.com.br
   SITE_URL: https://salaomax.focodev.com.br
+  # A Cloudflare (Bot Fight Mode) devolve 403 aos IPs do GitHub: as chamadas do fluxo vao por tunel SSH ate o nginx do servidor.
+  TUNNEL_URL: http://127.0.0.1:18089
   # Push do app do cliente (Firebase). Sem os secrets, o app sai sem push (veja docs/PUSH.md).
   FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
   FIREBASE_APP_ID_GESTAO: ${{ secrets.FIREBASE_APP_ID_GESTAO }}
@@ -61,11 +63,26 @@ jobs:
       - uses: actions/checkout@v4
         if: steps.skip.outputs.skip != 'true'
 
+      - name: Abrir túnel SSH até a API
+        if: steps.skip.outputs.skip != 'true'
+        env:
+          HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_USER: ${{ secrets.HETZNER_USER || 'root' }}
+        run: |
+          set -euo pipefail
+          [ -n "$HETZNER_SSH_KEY" ] && [ -n "$HETZNER_HOST" ] || { echo "Defina HETZNER_SSH_KEY e HETZNER_HOST nos secrets."; exit 1; }
+          mkdir -p ~/.ssh
+          printf '%s\n' "$HETZNER_SSH_KEY" > ~/.ssh/id_tunnel
+          chmod 600 ~/.ssh/id_tunnel
+          ssh-keyscan -H "$HETZNER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/id_tunnel -f -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 \
+            -L 18089:127.0.0.1:8089 "${HETZNER_USER}@${HETZNER_HOST}"
       - name: Aguardar API
         if: steps.skip.outputs.skip != 'true'
         run: |
           for i in $(seq 1 30); do
-            curl -fsS "${API_URL}/actuator/health" >/dev/null && exit 0
+            curl -fsS "${TUNNEL_URL}/actuator/health" >/dev/null && exit 0
             echo "Aguardando API (${i}/30)..."; sleep 15
           done
           echo "API indisponível."; exit 1
@@ -80,7 +97,7 @@ jobs:
           NAME="${LINE%%+*}"
           CODE="${LINE##*+}"
           PUBLISHED=0
-          if RESP=$(curl -fsS "${API_URL}/api/app/version?app=${{ matrix.app }}" 2>/dev/null); then
+          if RESP=$(curl -fsS "${TUNNEL_URL}/api/app/version?app=${{ matrix.app }}" 2>/dev/null); then
             PUBLISHED=$(echo "$RESP" | sed -n 's/.*"versionCode"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -n1)
             PUBLISHED="${PUBLISHED:-0}"
           fi
@@ -153,7 +170,7 @@ jobs:
           APK=build/app/outputs/flutter-apk/app-direct-release.apk
           NOTES=$(printf '%s' "${COMMIT_MSG:-Nova versão}" | head -n1 | cut -c1-180)
           for i in $(seq 1 6); do
-            if curl -fsS -X POST "${API_URL}/api/app/releases/deploy" \
+            if curl -fsS -X POST "${TUNNEL_URL}/api/app/releases/deploy" \
                 -H "X-Deploy-Token: ${DEPLOY_TOKEN}" \
                 -F "file=@${APK}" \
                 -F "app=${{ matrix.app }}" \
@@ -166,7 +183,7 @@ jobs:
             [ "$i" -eq 6 ] && { echo "Falha ao publicar."; exit 1; }
             echo "Tentativa ${i} falhou; aguardando 20s..."; sleep 20
           done
-          RESP=$(curl -fsS "${API_URL}/api/app/version?app=${{ matrix.app }}")
+          RESP=$(curl -fsS "${TUNNEL_URL}/api/app/version?app=${{ matrix.app }}")
           echo "$RESP" | grep -q "\"versionCode\":${{ steps.version.outputs.code }}" \
             || { echo "Versão publicada não confere: $RESP"; exit 1; }
           echo "### ${{ matrix.app }} ${{ steps.version.outputs.name }}+${{ steps.version.outputs.code }} publicado" >> "$GITHUB_STEP_SUMMARY"
