@@ -117,6 +117,8 @@ jobs:
         if: steps.skip.outputs.skip != 'true'
         with:
           channel: stable
+          # versão fixa: a 3.50 exige o plugin Android (AGP) 9.1.1 e quebrou o build; subir junto com o AGP
+          flutter-version: 3.47.9
           cache: true
 
       - name: Assinatura
