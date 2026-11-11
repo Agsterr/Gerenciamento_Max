@@ -1,0 +1,25 @@
+name: Conferir variáveis
+
+# Só lista as variáveis do repositório (Settings > Secrets and variables > Actions > Variables).
+# Variáveis não são segredos; segredos não aparecem aqui. Disparo manual.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vars:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Variáveis que os fluxos enxergam
+        env:
+          ALL_VARS: ${{ toJSON(vars) }}
+        run: |
+          echo "Variáveis do repositório (nome = valor entre colchetes):"
+          echo "$ALL_VARS" | jq -r 'to_entries[] | "\(.key) = [\(.value)]"'
+          echo
+          for n in PLAY_TRACK_GESTAO PLAY_RELEASE_STATUS_GESTAO PLAY_TRACK_CLIENTE PLAY_RELEASE_STATUS_CLIENTE PLAY_TRACK PLAY_RELEASE_STATUS; do
+            v=$(echo "$ALL_VARS" | jq -r --arg n "$n" '.[$n] // "(não existe)"')
+            echo "$n -> [$v]"
+          done
