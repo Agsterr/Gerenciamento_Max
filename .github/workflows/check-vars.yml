@@ -23,3 +23,21 @@ jobs:
             v=$(echo "$ALL_VARS" | jq -r --arg n "$n" '.[$n] // "(não existe)"')
             echo "$n -> [$v]"
           done
+
+  # Mesma regra do play-release.yml (passo "Faixa e situação deste app"), sem compilar nem enviar nada.
+  faixa:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [gestao, cliente]
+    steps:
+      - name: Faixa que o envio automático usaria
+        env:
+          APP_TRACK: ${{ matrix.app == 'gestao' && vars.PLAY_TRACK_GESTAO || vars.PLAY_TRACK_CLIENTE }}
+          APP_STATUS: ${{ matrix.app == 'gestao' && vars.PLAY_RELEASE_STATUS_GESTAO || vars.PLAY_RELEASE_STATUS_CLIENTE }}
+          ALL_TRACK: ${{ vars.PLAY_TRACK }}
+          ALL_STATUS: ${{ vars.PLAY_RELEASE_STATUS }}
+        run: |
+          TRACK="${APP_TRACK:-${ALL_TRACK:-alpha}}"
+          STATUS="${APP_STATUS:-${ALL_STATUS:-draft}}"
+          echo "${{ matrix.app }}: faixa $TRACK, situação $STATUS"
