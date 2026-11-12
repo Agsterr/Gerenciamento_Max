@@ -25,3 +25,12 @@
 - Se o resultado estiver feio, melhore e confira de novo. Se uma biblioteca (animação, ícones, componentes) deixar a tela claramente
   melhor, use-a. Diga na resposta o que foi visto e o que a imagem não consegue mostrar.
 
+## Pendências viram issue (regra para todos os agentes)
+- **Toda pendência abre uma issue no GitHub** (`Agsterr/Gerenciamento_Max`): o que ficou para depois, o que falta o usuário fazer
+  (Play Console, Asaas, variáveis, segredos), defeito visto e não corrigido, decisão em aberto, teste que não deu para fazer
+  (ex.: aparelho real). Não basta citar na resposta ou no commit.
+- Antes de abrir, procure uma issue aberta sobre o mesmo assunto e comente nela em vez de duplicar.
+- Título curto em português; no corpo: contexto, o que falta, onde mexer (arquivos) e como saber que terminou.
+  Use etiquetas (`app-gestao`, `app-cliente`, `site`, `servidor`, `play-store`, `pagamentos`, `ci`, `usuario`) quando couber.
+- Ao resolver, feche a issue citando o commit. Na resposta ao usuário, liste as issues abertas ou fechadas na tarefa.
+
