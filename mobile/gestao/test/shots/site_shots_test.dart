@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:salao_core/salao_core.dart';
 import 'package:salao_gestao/screens/pricing_screen.dart';
 import 'package:salao_gestao/screens/shell.dart';
 import 'package:salao_gestao/session.dart';
+import 'package:salao_gestao/shop/shop_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/screenshot.dart';
@@ -52,4 +54,29 @@ void main() {
     await tab(t, 'Financeiro');
   });
   site('gestao-precificacao', (s) => PricingScreen(api: s.api));
+
+  // novidades
+  testWidgets('gestao-offline', (tester) async {
+    final s = await signedIn(tester);
+    await shot(tester, Shell(session: s), 'gestao-offline', width: 390, height: 795, dark: false, pixelRatio: 2, before: (t) async {
+      // agenda já carregada; a conexão cai e duas ações ficam guardadas para enviar depois
+      s.api.status.value = const ApiStatus(online: false, pending: 2);
+      await t.pump();
+    });
+  }, skip: !shotsEnabled);
+  testWidgets('gestao-temas', (tester) async {
+    final s = await signedIn(tester);
+    Brand.palette = BrandPalette.azul;
+    addTearDown(() => Brand.palette = BrandPalette.rosa);
+    await shot(tester, Shell(session: s), 'gestao-temas', width: 390, height: 795, dark: false, pixelRatio: 2, before: (t) async {
+      await tab(t, 'Ajustes');
+      await t.scrollUntilVisible(find.text('Cor do aplicativo'), 200, scrollable: find.byType(Scrollable).first);
+      await t.pump();
+      await t.ensureVisible(find.text('Cor do aplicativo')); // seletor de cores no topo
+      await t.pump();
+      await t.drag(find.byType(Scrollable).first, const Offset(0, 40));
+      await t.pump();
+    });
+  }, skip: !shotsEnabled);
+  site('gestao-loja', (s) => ShopScreen(session: s));
 }

@@ -246,6 +246,8 @@ const FEATURES = [
   { icon: "sparkles", title: "Avisos e histórico", text: "Notificações de agendamentos no celular e no site, com filtro por dia e mês e limpeza automática das antigas." },
   { icon: "clock", title: "Seu horário, do seu jeito", text: "Horário de cada dia da semana, pausas como o almoço e fuso do seu estado." },
   { icon: "shield", title: "Dados protegidos", text: "Os dados de cada salão ficam separados, com conexão criptografada. Exclua sua conta quando quiser." },
+  { icon: "phone", title: "Funciona sem internet", text: "O app abre na hora com os dados guardados no celular. Sem sinal, as ações do dia ficam guardadas e vão sozinhas quando conectar." },
+  { icon: "palette", title: "Com a sua cara", text: "Seis cores para o app (rosa, azul, verde, grafite, laranja e roxo), que mudam o app todo e até o ícone." },
 ];
 
 const BEFORE_AFTER = [
@@ -636,7 +638,7 @@ function Client({ goTo }: { goTo: (a: Audience) => void }) {
                   <Icon name={icon} className="h-6 w-6" />
                 </div>
                 <h3 className="mt-4 text-lg font-extrabold">{t}</h3>
-                <p className="mt-1 text-brand-muted">{d}</p>
+                <p className="mt-1 text-brand-muted [overflow-wrap:anywhere]">{d}</p>
               </div>
             </Reveal>
           ))}
@@ -743,7 +745,7 @@ function Rep({ code }: { code?: string }) {
               <div className="shadow-soft h-full rounded-3xl bg-white p-6">
                 <span className="bg-brand shadow-glow flex h-11 w-11 items-center justify-center rounded-full text-lg font-extrabold text-white">{i + 1}</span>
                 <h3 className="mt-4 text-lg font-extrabold">{t}</h3>
-                <p className="mt-1 text-brand-muted">{d}</p>
+                <p className="mt-1 text-brand-muted [overflow-wrap:anywhere]">{d}</p>
               </div>
             </Reveal>
           ))}
@@ -751,6 +753,19 @@ function Rep({ code }: { code?: string }) {
         <p className="mx-auto mt-6 max-w-2xl rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-900 ring-1 ring-amber-200">
           <b>Importante:</b> a indicação vale quando o salão se cadastra pelo seu link. Ele guarda o seu código no aparelho ao abrir o link, por isso use sempre o seu.
         </p>
+        <div className="shadow-soft mx-auto mt-6 grid max-w-4xl items-center gap-6 rounded-3xl bg-white p-6 sm:grid-cols-[1fr_auto] sm:p-8">
+          <div>
+            <p className="text-sm font-extrabold uppercase tracking-widest text-brand-rose">Para quem vende produtos</p>
+            <h3 className="mt-1 text-2xl font-extrabold">Sua loja dentro do app dos salões</h3>
+            <ul className="mt-3 space-y-1.5 text-brand-muted">
+              <li>• Cadastre produtos e equipamentos com foto, o seu valor e o preço sugerido de venda.</li>
+              <li>• Os salões pedem pelo app; cada vendedor recebe só os pedidos dele, com endereço e bairro.</li>
+              <li>• O salão pode mostrar seus produtos às clientes dele: o pedido vai direto para você.</li>
+              <li>• 7 dias grátis; depois, R$&nbsp;49,90 por mês (Pix, boleto ou cartão).</li>
+            </ul>
+          </div>
+          <PhoneFrame src="/screens/gestao-loja.webp" top="#FFF7FA" alt="Loja do fornecedor no app do salão" className="mx-auto w-40" />
+        </div>
       </section>
 
       <section id="painel" className="bg-night relative scroll-mt-24 overflow-hidden px-4 py-20 text-white">
@@ -801,7 +816,7 @@ function Rep({ code }: { code?: string }) {
                   <Icon name={icon} className="h-6 w-6" />
                 </div>
                 <h3 className="mt-4 text-lg font-extrabold">{t}</h3>
-                <p className="mt-1 text-brand-muted">{d}</p>
+                <p className="mt-1 text-brand-muted [overflow-wrap:anywhere]">{d}</p>
               </div>
             </Reveal>
           ))}

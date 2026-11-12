@@ -59,6 +59,11 @@ export default function RepresentativeSignUp() {
             em que o pagamento for confirmado. Se o salão cancelar, os próximos meses deixam de contar; se o pagamento for
             estornado, aquele valor é descontado.
           </p>
+          <p className="mt-3 font-extrabold">Venda seus produtos também</p>
+          <p className="mt-1">
+            Com a loja, você cadastra produtos e equipamentos com foto e preço sugerido, e os salões fazem pedidos pelo app, separados
+            por vendedor e organizados por bairro para a entrega. Os primeiros 7 dias são grátis; depois, R$&nbsp;49,90 por mês.
+          </p>
         </div>
         <form onSubmit={onSubmit} className="space-y-3">
           <Field label="Seu nome" name="name" required autoComplete="name" />

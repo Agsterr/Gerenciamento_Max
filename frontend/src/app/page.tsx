@@ -16,6 +16,15 @@ const FEATURES = [
   { icon: "sparkles", title: "Avisos no celular", text: "Novo agendamento, cancelamento e lembrete chegam como notificação. Histórico com filtro por dia e mês, e limpeza automática." },
   { icon: "shield", title: "Pague como preferir", text: "Assine pelo site com Pix, boleto ou cartão, ou pela Google Play. Cancele quando quiser." },
   { icon: "palette", title: "Indique e ganhe", text: "Seja representante: R$ 15,00 por mês por salão indicado que pagar a mensalidade." },
+  { icon: "shield", title: "Funciona sem internet", text: "O app abre na hora com os dados guardados no celular. Confirme, inicie e finalize atendimentos sem sinal: tudo é enviado quando conectar." },
+  { icon: "palette", title: "Com a sua cara", text: "Seis cores para o app: rosa, azul, verde, grafite, laranja ou roxo. Muda o app todo e até o ícone." },
+  { icon: "box", title: "Produtos dos seus fornecedores", text: "Compre do seu fornecedor pelo app, com pedidos separados por vendedor, e mostre os produtos às suas clientes para ganhar comissão." },
+];
+
+const NEWS = [
+  { src: "/screens/gestao-offline.webp", top: "#FFF3C4", title: "Sem internet, sem parar", text: "Caiu o sinal? A agenda continua aberta e o que você fizer é enviado sozinho quando a conexão voltar." },
+  { src: "/screens/gestao-temas.webp", top: "#FEFEFF", title: "Escolha a cor do app", text: "Rosa, azul, verde, grafite, laranja ou roxo. Muda o app inteiro e o ícone na tela do celular." },
+  { src: "/screens/gestao-loja.webp", top: "#FFF7FA", title: "Loja dos fornecedores", text: "Produtos e equipamentos do seu fornecedor com o seu ganho calculado, pedidos separados por vendedor e entrega organizada." },
 ];
 
 const STEPS = [
@@ -115,6 +124,21 @@ export default function Home() {
               </div>
               <h3 className="mt-4 text-lg font-extrabold">{f.title}</h3>
               <p className="mt-1 text-brand-muted">{f.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* NOVIDADES */}
+      <section className="mx-auto max-w-6xl px-4 pb-20">
+        <p className="text-center text-sm font-extrabold uppercase tracking-widest text-brand-rose">Novidades no app</p>
+        <h2 className="mx-auto mt-2 max-w-2xl text-center text-3xl font-extrabold tracking-tight sm:text-4xl">Mais rápido, do seu jeito e até sem internet</h2>
+        <div className="mt-12 grid gap-8 sm:grid-cols-3">
+          {NEWS.map((n) => (
+            <div key={n.title} className="flex flex-col items-center text-center">
+              <PhoneFrame src={n.src} top={n.top} alt={n.title} className="w-3/5 sm:w-4/5" />
+              <h3 className="mt-6 text-lg font-extrabold">{n.title}</h3>
+              <p className="mt-1 max-w-xs text-brand-muted">{n.text}</p>
             </div>
           ))}
         </div>
