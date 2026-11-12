@@ -50,6 +50,8 @@ Future<String> shot(
   double textScale = 1,
   bool dark = true,
   Future<void> Function(WidgetTester tester)? before,
+  /// Resolução da imagem (2 = o dobro, para o site).
+  double pixelRatio = 1,
 }) async {
   await loadAppFonts();
   tester.view.physicalSize = Size(width * 2, height * 2);
@@ -80,7 +82,7 @@ Future<String> shot(
   final path = '$dir/$name.png';
   await tester.runAsync(() async {
     final boundary = key.currentContext!.findRenderObject() as RenderRepaintBoundary;
-    final image = await boundary.toImage(pixelRatio: 1);
+    final image = await boundary.toImage(pixelRatio: pixelRatio);
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
     File(path).writeAsBytesSync(data!.buffer.asUint8List());
   });

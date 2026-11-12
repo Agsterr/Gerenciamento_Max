@@ -141,8 +141,8 @@ export default function Home() {
             </Link>
           </div>
           <div className="mx-auto flex w-full max-w-sm gap-4">
-            <PhoneFrame src="/screens/gestao-financeiro.webp" top="#271257" alt="Financeiro do salão" className="w-1/2 translate-y-8" />
-            <PhoneFrame src="/screens/cliente-confirmado.webp" top="#EE3D85" alt="Agendamento confirmado" className="w-1/2" />
+            <PhoneFrame src="/screens/gestao-financeiro.webp" top="#291557" alt="Financeiro do salão" className="w-1/2 translate-y-8" />
+            <PhoneFrame src="/screens/cliente-confirmado.webp" top="#F0468A" alt="Agendamento confirmado" className="w-1/2" />
           </div>
         </div>
       </section>

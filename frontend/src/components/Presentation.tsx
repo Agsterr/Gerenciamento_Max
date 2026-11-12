@@ -396,8 +396,8 @@ function Salon({ signup, goTo }: { signup: string; goTo: (a: Audience) => void }
                   {!PLAY_LIVE && <p className="mt-3 text-sm text-white/60">Em breve também na Google Play.</p>}
                 </div>
                 <div className="order-1 mx-auto flex w-full max-w-sm gap-4 lg:order-2">
-                  <PhoneFrame src="/screens/gestao-agenda.webp" top="#2A135C" alt="Agenda do dia no app" className="float-slow w-1/2" />
-                  <PhoneFrame src="/screens/gestao-novo.jpg" top="#13092A" alt="Novo agendamento no app" className="float-slow-2 w-1/2 translate-y-10" />
+                  <PhoneFrame src="/screens/gestao-agenda.webp" top="#2F1762" alt="Agenda do dia no app" className="float-slow w-1/2" />
+                  <PhoneFrame src="/screens/gestao-novo.jpg" top="#150B2D" alt="Novo agendamento no app" className="float-slow-2 w-1/2 translate-y-10" />
                 </div>
               </>
             )}
@@ -521,8 +521,8 @@ function Salon({ signup, goTo }: { signup: string; goTo: (a: Audience) => void }
             </Link>
           </div>
           <div className="mx-auto flex w-full max-w-sm gap-4">
-            <PhoneFrame src="/screens/gestao-cadastros.jpg" top="#231050" alt="Cadastros do salão" className="w-1/2 translate-y-8" />
-            <PhoneFrame src="/screens/gestao-precificacao.jpg" top="#271256" alt="Preço certo de cada serviço" className="w-1/2" />
+            <PhoneFrame src="/screens/gestao-cadastros.jpg" top="#291556" alt="Cadastros do salão" className="w-1/2 translate-y-8" />
+            <PhoneFrame src="/screens/gestao-precificacao.jpg" top="#2C165C" alt="Preço certo de cada serviço" className="w-1/2" />
           </div>
         </div>
       </section>
@@ -561,11 +561,11 @@ function Salon({ signup, goTo }: { signup: string; goTo: (a: Audience) => void }
 }
 
 const CLIENT_STEPS = [
-  { title: "Encontre seu salão", text: "Pelo nome ou pelo link que o salão enviou.", src: "/screens/cliente-home.jpg", top: "#EB3782" },
-  { title: "Escolha o serviço e quem atende", text: "Corte, escova, coloração, manicure e mais, com preço e duração.", src: "/screens/cliente-salao.jpg", top: "#E9317F" },
+  { title: "Encontre seu salão", text: "Pelo nome ou pelo link que o salão enviou.", src: "/screens/cliente-home.jpg", top: "#EC418B" },
+  { title: "Escolha o serviço e quem atende", text: "Corte, escova, coloração, manicure e mais, com preço e duração.", src: "/screens/cliente-salao.jpg", top: "#E5267A" },
   { title: "Toque num horário livre", text: "Os horários são atualizados em tempo real. Sem ligação e sem esperar resposta.", src: "/screens/cliente-horarios.webp", top: "#E5267A" },
-  { title: "Informe nome e WhatsApp", text: "Só isso. Sem cadastro e sem senha. O horário fica confirmado.", src: "/screens/cliente-confirmado.webp", top: "#EE3D85" },
-  { title: "Veja seus horários quando quiser", text: "Próximos agendamentos e histórico, tudo à mão.", src: "/screens/cliente-meus-horarios.jpg", top: "#E6297B" },
+  { title: "Informe nome e WhatsApp", text: "Só isso. Sem cadastro e sem senha. O horário fica confirmado.", src: "/screens/cliente-confirmado.webp", top: "#F0468A" },
+  { title: "Veja seus horários quando quiser", text: "Próximos agendamentos e histórico, tudo à mão.", src: "/screens/cliente-meus-horarios.jpg", top: "#DD3B96" },
 ];
 
 function Client({ goTo }: { goTo: (a: Audience) => void }) {
@@ -918,7 +918,7 @@ export function Presentation({ code, audiences = ["salao", "cliente", "represent
       text: "Agenda, agendamento online, clientes, estoque e financeiro em um só lugar. Use no computador ou no celular.",
       primary: [`Testar ${TRIAL_DAYS} dias grátis`, signup],
       secondary: ["Ver como funciona", "#funcoes"],
-      visual: <PhonePair a={{ src: "/screens/gestao-agenda.webp", top: "#2A135C", alt: "Agenda do dia no app" }} b={{ src: "/screens/gestao-financeiro.webp", top: "#271257", alt: "Financeiro do salão" }} />,
+      visual: <PhonePair a={{ src: "/screens/gestao-agenda.webp", top: "#2F1762", alt: "Agenda do dia no app" }} b={{ src: "/screens/gestao-financeiro.webp", top: "#291557", alt: "Financeiro do salão" }} />,
     },
     cliente: {
       badge: "Para quem agenda no salão",
@@ -930,7 +930,7 @@ export function Presentation({ code, audiences = ["salao", "cliente", "represent
       text: "Sem ligação, sem esperar resposta no WhatsApp e sem criar conta. Escolha o serviço, o profissional e o horário.",
       primary: ["Ver o passo a passo", "#como"],
       secondary: ["Onde eu agendo?", "#onde"],
-      visual: <PhonePair a={{ src: "/screens/cliente-home.jpg", top: "#EB3782", alt: "Escolha do salão" }} b={{ src: "/screens/cliente-horarios.webp", top: "#E5267A", alt: "Horários livres" }} />,
+      visual: <PhonePair a={{ src: "/screens/cliente-home.jpg", top: "#EC418B", alt: "Escolha do salão" }} b={{ src: "/screens/cliente-horarios.webp", top: "#E5267A", alt: "Horários livres" }} />,
     },
     representante: {
       badge: "Programa de representantes",
