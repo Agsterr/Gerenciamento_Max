@@ -25,7 +25,10 @@ tem pouca RAM livre; o servidor só faz `docker compose pull`. Os containers tê
 - Porta local: `127.0.0.1:8089` → nginx → `/api/*` e `/actuator/health` para a API, resto para o Next.
 - Deploy manual: `ssh hetzner "cd /opt/salao-max && bash deploy.sh"`
 - Logs: `ssh hetzner "cd /opt/salao-max && docker compose -f docker-compose.prod.yml logs -f api"`
-- Senha do super-admin: `ssh hetzner "grep PLATFORM_ADMIN /opt/salao-max/.env"`
+- Senha do super-admin: `ssh hetzner "grep PLATFORM_ADMIN /opt/salao-max/.env"`.
+  Sem acesso ao servidor: crie os secrets `PLATFORM_ADMIN_EMAIL` e `PLATFORM_ADMIN_PASSWORD` (mín. 8 caracteres, sem `'`) e rode
+  o fluxo manual **Definir acesso ao painel da plataforma** (`.github/workflows/platform-admin.yml`). Ele grava no `.env` do
+  servidor (com cópia de segurança) e reinicia só a API. O e-mail não pode ser o de uma conta de salão.
 
 ## Cloudflare
 

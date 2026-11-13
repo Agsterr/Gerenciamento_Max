@@ -1,0 +1,79 @@
+name: Definir acesso ao painel da plataforma
+
+# Define o e-mail e a senha do super-admin (painel /plataforma) a partir dos secrets do repositório
+# PLATFORM_ADMIN_EMAIL e PLATFORM_ADMIN_PASSWORD (mín. 8 caracteres, sem aspas simples).
+# Grava no .env do servidor e reinicia só a API, que cria/atualiza o administrador ao subir.
+# Os valores nunca aparecem no log. Disparo manual (aba Actions).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-salao-max
+  cancel-in-progress: false
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+    steps:
+      - name: Conferir os secrets
+        env:
+          EMAIL: ${{ secrets.PLATFORM_ADMIN_EMAIL }}
+          PASSWORD: ${{ secrets.PLATFORM_ADMIN_PASSWORD }}
+        run: |
+          if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
+            echo "::error::Crie os secrets PLATFORM_ADMIN_EMAIL e PLATFORM_ADMIN_PASSWORD (Settings > Secrets and variables > Actions > Secrets)."
+            exit 1
+          fi
+          case "$EMAIL" in *@*.*) ;; *) echo "::error::PLATFORM_ADMIN_EMAIL não parece um e-mail."; exit 1 ;; esac
+          if [ "${#PASSWORD}" -lt 8 ]; then echo "::error::A senha precisa ter pelo menos 8 caracteres."; exit 1; fi
+          case "$PASSWORD$EMAIL" in *"'"*) echo "::error::Não use aspas simples (') na senha nem no e-mail."; exit 1 ;; esac
+
+      - name: Configurar SSH
+        env:
+          HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$HETZNER_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$HETZNER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Gravar no servidor e reiniciar a API
+        env:
+          HOST: ${{ secrets.HETZNER_HOST }}
+          USER: ${{ secrets.HETZNER_USER || 'root' }}
+          EMAIL: ${{ secrets.PLATFORM_ADMIN_EMAIL }}
+          PASSWORD: ${{ secrets.PLATFORM_ADMIN_PASSWORD }}
+        run: |
+          # os valores vão pela entrada padrão, em base64: não passam pela linha de comando nem pelo log
+          printf '%s\n%s\n' "$(printf '%s' "$EMAIL" | base64 -w0)" "$(printf '%s' "$PASSWORD" | base64 -w0)" | \
+            ssh -i ~/.ssh/id_deploy -o BatchMode=yes "${USER}@${HOST}" '
+              set -euo pipefail
+              read -r e64; read -r p64
+              email=$(printf "%s" "$e64" | base64 -d); pass=$(printf "%s" "$p64" | base64 -d)
+              cd /opt/salao-max
+              touch .env
+              cp .env ".env.bak.$(date +%Y%m%d%H%M%S)"
+              grep -v -E "^PLATFORM_ADMIN_(EMAIL|PASSWORD)=" .env > .env.new || true
+              printf "PLATFORM_ADMIN_EMAIL='\''%s'\''\nPLATFORM_ADMIN_PASSWORD='\''%s'\''\n" "$email" "$pass" >> .env.new
+              chmod --reference=.env .env.new 2>/dev/null || chmod 600 .env.new
+              mv .env.new .env
+              docker compose -f docker-compose.prod.yml up -d --no-deps --force-recreate api
+              echo "Acesso gravado; API reiniciando."'
+
+      - name: Esperar a API voltar
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS https://salaomax.focodev.com.br/actuator/health | grep -q UP; then
+              echo "API no ar. Entre em https://salaomax.focodev.com.br/login com o e-mail e a senha dos secrets."
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "::warning::A API não respondeu a tempo; confira em alguns minutos."
